@@ -21,7 +21,7 @@ export default async function Grupos({ searchParams }: { searchParams: Promise<{
 
   return (
     <>
-      <Header title="Grupos" lede="Todos os grupos do WhatsApp conectado. Escolha quais a Tribo vai gerenciar e qual é o grupo de resultados.">
+      <Header title="Grupos" lede="Todos os grupos do WhatsApp conectado. Escolha quais o Hub vai gerenciar e qual é o grupo de resultados.">
         <form action={syncGroupsAction}>
           <button className="btn" type="submit">
             <RefreshCw size={15} /> Atualizar lista
@@ -61,7 +61,7 @@ export default async function Grupos({ searchParams }: { searchParams: Promise<{
           <form action={saveGroupSelection}>
             <Panel
               title="Escolha dos grupos"
-              sub="Comunidade: a Tribo acompanha e manda mensagens. Resultados: só um, recebe o relatório e os comandos."
+              sub="Comunidade: o Hub acompanha e manda mensagens. Resultados: só um, recebe o relatório e os comandos."
               right={<button className="btn pri" type="submit">Salvar seleção</button>}
               body={false}
             >
@@ -92,7 +92,7 @@ export default async function Grupos({ searchParams }: { searchParams: Promise<{
                       <td>
                         <b style={{ fontWeight: 550 }}>{g.name}</b>
                         {g.isResults && <span className="chip c-s" style={{ marginLeft: 8 }}>resultados</span>}
-                        {!g.isCommunity && !g.isResults && <span className="dim" style={{ marginLeft: 8, fontSize: 12 }}>fora da Tribo</span>}
+                        {!g.isCommunity && !g.isResults && <span className="dim" style={{ marginLeft: 8, fontSize: 12 }}>fora do Hub</span>}
                       </td>
                       <td>
                         <div className="row" style={{ gap: 10, flexWrap: "nowrap" }}>

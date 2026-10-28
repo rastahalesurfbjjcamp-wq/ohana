@@ -1,4 +1,6 @@
-# Tribo
+# Rasta Hale Hub
+
+O nome aparece como "{nome da loja} Hub" (variável STORE_NAME), para o mesmo sistema servir outras lojas depois.
 
 Sistema de gestão da Rasta Hale. Esta é a **etapa 1**: WhatsApp e grupos, relatório diário e comandos no grupo de resultados.
 
@@ -19,16 +21,16 @@ Sistema de gestão da Rasta Hale. Esta é a **etapa 1**: WhatsApp e grupos, rela
 
 ## Como subir no Easypanel (VPS da Hostinger)
 
-1. No Easypanel, crie um projeto **tribo**.
+1. No Easypanel, crie um projeto **hub**.
 2. Adicione os serviços prontos:
-   - **Postgres** chamado `tribo-postgres`. Depois de criado, abra o console dele e rode `CREATE DATABASE evolution;` (a Evolution usa um banco separado).
-   - **Redis** chamado `tribo-redis`.
+   - **Postgres** chamado `hub-postgres`. Depois de criado, abra o console dele e rode `CREATE DATABASE evolution;` (a Evolution usa um banco separado).
+   - **Redis** chamado `hub-redis`.
 3. **Evolution API**: adicione o modelo “Evolution API” do Easypanel (ou um app com a imagem `evoapicloud/evolution-api`). Use o banco `evolution` do Postgres acima e o Redis. Defina a `AUTHENTICATION_API_KEY` direto nas variáveis dele. Coloque o domínio, por exemplo `evolution.rastahale.com.br`.
-4. **Painel**: novo app `tribo`, origem **GitHub** `rastahalesurfbjjcamp-wq/ohana`, branch `main`, build por **Dockerfile**.
+4. **Painel**: novo app `hub`, origem **GitHub** `rastahalesurfbjjcamp-wq/ohana`, branch `main`, build por **Dockerfile**.
    - Cole as variáveis do arquivo `.env.example` em *Environment*, preenchendo as chaves ali mesmo.
-   - Porta 3000. Domínio `painel.rastahale.com.br`.
+   - Porta 3000. Domínio `hub.rastahale.com.br`.
    - Em *Mounts*, crie um volume em `/app/uploads` (fotos e vídeos dos agendamentos).
-5. **Worker**: novo app `tribo-worker`, mesmo repositório e mesmas variáveis, com o comando de início `npm run worker`. Não precisa de domínio.
+5. **Worker**: novo app `hub-worker`, mesmo repositório e mesmas variáveis, com o comando de início `npm run worker`. Não precisa de domínio.
 6. Abra o painel, entre com o e-mail e a senha de `ADMIN_EMAIL` e `ADMIN_PASSWORD`, vá em **Configurações**, clique em **Conectar WhatsApp** e leia o QR code com o celular do número que está nos grupos.
 7. Em **Grupos** aparecem todos os grupos desse número. Marque os da comunidade e escolha o grupo de resultados. Os demais ficam de fora.
 8. Em **Configurações > Acessos**, coloque o WhatsApp de quem pode dar comandos no grupo de resultados.

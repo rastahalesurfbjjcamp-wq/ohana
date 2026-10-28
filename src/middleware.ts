@@ -6,7 +6,7 @@ const PUBLIC = ["/login", "/api/auth/login", "/api/webhooks", "/api/health", "/a
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   if (PUBLIC.some((p) => pathname.startsWith(p))) return NextResponse.next();
-  const token = req.cookies.get("tribo_session")?.value;
+  const token = req.cookies.get("hub_session")?.value;
   if (token) {
     try {
       await jwtVerify(token, new TextEncoder().encode(process.env.SESSION_SECRET ?? ""));

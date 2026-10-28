@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Tribo",
+  title: `${process.env.STORE_NAME ?? "Minha loja"} Hub`,
   description: "Comunidade, vendas e lucro da loja num lugar só",
 };
 

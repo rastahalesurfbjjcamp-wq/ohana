@@ -73,7 +73,7 @@ export const COMMAND_TOOLS: Anthropic.Tool[] = [
   },
 ];
 
-const SYSTEM = () => `Você é o assistente da Tribo, o sistema de gestão da ${env.storeName()}, ${env.storeAbout()}.
+const SYSTEM = () => `Você é o assistente do ${env.storeName()} Hub, o sistema de gestão da ${env.storeName()}, ${env.storeAbout()}.
 Você recebe mensagens do grupo de resultados no WhatsApp, digitadas ou transcritas de áudio.
 Quando a mensagem pedir números ou um lançamento, chame a ferramenta certa. Valores sempre em reais.
 Se faltar uma informação necessária (como o valor), pergunte de forma curta, em português simples.

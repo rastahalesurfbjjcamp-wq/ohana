@@ -1,6 +1,6 @@
 # Uma imagem para o painel e o worker. No Easypanel, crie dois serviços apontando para este repositório:
-#   tribo (painel):  comando padrão
-#   tribo-worker:    comando "npm run worker"
+#   hub (painel):  comando padrão
+#   hub-worker:    comando "npm run worker"
 FROM node:22-slim
 RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 WORKDIR /app

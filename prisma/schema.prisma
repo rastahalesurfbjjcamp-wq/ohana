@@ -1,4 +1,4 @@
-// Tribo: banco de dados da etapa 1 (WhatsApp e grupos)
+// Hub: banco de dados da etapa 1 (WhatsApp e grupos)
 
 generator client {
   provider = "prisma-client-js"

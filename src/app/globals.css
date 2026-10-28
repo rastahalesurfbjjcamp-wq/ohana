@@ -24,7 +24,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .app { display: flex; min-height: 100vh; }
 aside.side { width: 244px; flex-shrink: 0; background: #0b0e0d; border-right: 1px solid var(--line); color: #aab3ae; display: flex; flex-direction: column; padding: 22px 14px 16px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
 .brand { display: flex; align-items: center; gap: 11px; padding: 0 8px 18px; }
-.brand b { font-family: Elite; font-weight: 400; font-size: 22px; color: #fff; display: block; line-height: 1; }
+.brand b { font-family: Elite; font-weight: 400; font-size: 19px; white-space: nowrap; color: #fff; display: block; line-height: 1; }
 .brand small { font-size: 12px; color: var(--ink2); }
 .mark { width: 34px; height: 34px; border-radius: 10px; background: linear-gradient(135deg, #1c2a21, #0f1511); border: 1px solid var(--line); display: grid; place-items: center; font-family: Elite; color: var(--sun); font-size: 18px; }
 nav.nav { display: flex; flex-direction: column; }

@@ -34,10 +34,10 @@ export function Sidebar({ name, store, connected, leaves, logout }: { name: stri
   return (
     <aside className="side">
       <div className="brand">
-        <div className="mark">T</div>
+        <div className="mark">H</div>
         <div>
-          <b>Tribo</b>
-          <small>{store}</small>
+          <b>{store} Hub</b>
+          <small>Comunidade e vendas</small>
         </div>
       </div>
       <nav className="nav">

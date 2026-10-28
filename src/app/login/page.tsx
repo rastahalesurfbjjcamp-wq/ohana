@@ -18,10 +18,10 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
     <div className="login">
       <form action={entrar} className="pnl card stack">
         <div className="brand">
-          <div className="mark">T</div>
+          <div className="mark">H</div>
           <div>
-            <b>Tribo</b>
-            <small>{env.storeName()}</small>
+            <b>{env.storeName()} Hub</b>
+            <small>Comunidade e vendas</small>
           </div>
         </div>
         {erro && <div className="err">E-mail ou senha incorretos.</div>}

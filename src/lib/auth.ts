@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 import { db } from "./db";
 import { env } from "./env";
 
-export const SESSION_COOKIE = "tribo_session";
+export const SESSION_COOKIE = "hub_session";
 const key = () => new TextEncoder().encode(env.sessionSecret());
 
 export type Session = { userId: string; name: string; role: string };
