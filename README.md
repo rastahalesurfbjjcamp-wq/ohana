@@ -25,10 +25,10 @@ Sistema de gestão da Rasta Hale. Esta é a **etapa 1**: WhatsApp e grupos, rela
 2. Adicione os serviços prontos:
    - **Postgres** chamado `hub-postgres`. Depois de criado, abra o console dele e rode `CREATE DATABASE evolution;` (a Evolution usa um banco separado).
    - **Redis** chamado `hub-redis`.
-3. **Evolution API**: adicione o modelo “Evolution API” do Easypanel (ou um app com a imagem `evoapicloud/evolution-api`). Use o banco `evolution` do Postgres acima e o Redis. Defina a `AUTHENTICATION_API_KEY` direto nas variáveis dele. Coloque o domínio, por exemplo `evolution.rastahale.com.br`.
+3. **Evolution API**: adicione o modelo “Evolution API” do Easypanel (ou um app com a imagem `evoapicloud/evolution-api`). Use o banco `evolution` do Postgres acima e o Redis. Defina a `AUTHENTICATION_API_KEY` direto nas variáveis dele. Coloque o domínio, por exemplo `api.rastahalehub.com.br`.
 4. **Painel**: novo app `hub`, origem **GitHub** `rastahalesurfbjjcamp-wq/ohana`, branch `main`, build por **Dockerfile**.
    - Cole as variáveis do arquivo `.env.example` em *Environment*, preenchendo as chaves ali mesmo.
-   - Porta 3000. Domínio `hub.rastahale.com.br`.
+   - Porta 3000. Domínio `rastahalehub.com.br`.
    - Em *Mounts*, crie um volume em `/app/uploads` (fotos e vídeos dos agendamentos).
 5. **Worker**: novo app `hub-worker`, mesmo repositório e mesmas variáveis, com o comando de início `npm run worker`. Não precisa de domínio.
 6. Abra o painel, entre com o e-mail e a senha de `ADMIN_EMAIL` e `ADMIN_PASSWORD`, vá em **Configurações**, clique em **Conectar WhatsApp** e leia o QR code com o celular do número que está nos grupos.
