@@ -19,5 +19,5 @@ export async function saveUpload(file: File): Promise<{ url: string; type: "imag
   await writeFile(path.join(uploadDir(), name), Buffer.from(await file.arrayBuffer()));
   const mime = file.type || mimeFor(name);
   const type = mime.startsWith("image/") ? "image" : mime.startsWith("video/") ? "video" : "document";
-  return { url: `${env.appUrl().replace(/\/$/, "")}/api/media/${name}`, type };
+  return { url: `${env.internalUrl().replace(/\/$/, "")}/api/media/${name}`, type };
 }

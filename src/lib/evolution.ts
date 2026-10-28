@@ -35,7 +35,7 @@ export const WEBHOOK_EVENTS = [
 ];
 
 export function webhookUrl() {
-  return `${env.appUrl().replace(/\/$/, "")}/api/webhooks/evolution?secret=${encodeURIComponent(env.webhookSecret())}`;
+  return `${env.internalUrl().replace(/\/$/, "")}/api/webhooks/evolution?secret=${encodeURIComponent(env.webhookSecret())}`;
 }
 
 export const evolution = {

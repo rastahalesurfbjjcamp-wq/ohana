@@ -21,6 +21,8 @@ function opt(name: string): string | undefined {
 
 export const env = {
   appUrl: () => opt("APP_URL") ?? "http://localhost:3000",
+  // Endereço do Hub dentro do servidor, usado pela Evolution (webhook e mídias). Se vazio, usa APP_URL.
+  internalUrl: () => opt("INTERNAL_URL") ?? opt("APP_URL") ?? "http://localhost:3000",
   sessionSecret: () => derived("SESSION_SECRET"),
   redisUrl: () => opt("REDIS_URL") ?? "redis://localhost:6379",
   timezone: () => opt("TZ_LOJA") ?? "America/Sao_Paulo",
