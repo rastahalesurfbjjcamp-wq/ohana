@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
+import { env } from "@/lib/env";
 
 const PUBLIC = ["/login", "/api/auth/login", "/api/webhooks", "/api/health", "/api/media", "/fonts"];
 
@@ -9,7 +10,7 @@ export async function middleware(req: NextRequest) {
   const token = req.cookies.get("hub_session")?.value;
   if (token) {
     try {
-      await jwtVerify(token, new TextEncoder().encode(process.env.SESSION_SECRET ?? ""));
+      await jwtVerify(token, new TextEncoder().encode(env.sessionSecret()));
       return NextResponse.next();
     } catch {
       /* sessão inválida */
@@ -22,5 +23,6 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
+  runtime: "nodejs",
   matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|svg|ico|woff2?|ttf)$).*)"],
 };
