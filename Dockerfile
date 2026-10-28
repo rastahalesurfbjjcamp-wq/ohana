@@ -1,6 +1,6 @@
 # Uma imagem para o painel e o worker. No Easypanel, crie dois serviços apontando para este repositório:
 #   hub (painel):  comando padrão
-#   hub-worker:    comando "npm run worker"
+#   O worker roda junto (start.sh). Para separar, use RUN_WORKER=0 e crie outro app com "npm run worker".
 FROM node:22-slim
 RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
@@ -11,4 +11,4 @@ COPY . .
 RUN npm run build
 ENV NODE_ENV=production PORT=3000 UPLOAD_DIR=/app/uploads
 EXPOSE 3000
-CMD ["npm", "start"]
+CMD ["sh", "start.sh"]

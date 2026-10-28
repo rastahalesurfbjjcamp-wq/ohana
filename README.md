@@ -30,7 +30,7 @@ Sistema de gestão da Rasta Hale. Esta é a **etapa 1**: WhatsApp e grupos, rela
    - Cole as variáveis do arquivo `.env.example` em *Environment*, preenchendo as chaves ali mesmo.
    - Porta 3000. Domínio `rastahale.tech`.
    - Em *Mounts*, crie um volume em `/app/uploads` (fotos e vídeos dos agendamentos).
-5. **Worker**: novo app `hub-worker`, mesmo repositório e mesmas variáveis, com o comando de início `npm run worker`. Não precisa de domínio.
+5. **Worker**: já roda dentro do app do Hub (arquivo `start.sh`). Não precisa criar outro app.
 6. Abra o painel, entre com o e-mail e a senha de `ADMIN_EMAIL` e `ADMIN_PASSWORD`, vá em **Configurações**, clique em **Conectar WhatsApp** e leia o QR code com o celular do número que está nos grupos.
 7. Em **Grupos** aparecem todos os grupos desse número. Marque os da comunidade e escolha o grupo de resultados. Os demais ficam de fora.
 8. Em **Configurações > Acessos**, coloque o WhatsApp de quem pode dar comandos no grupo de resultados.
