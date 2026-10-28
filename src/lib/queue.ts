@@ -10,7 +10,7 @@ export function redis() {
 
 let _queue: Queue | null = null;
 export function queue() {
-  if (!_queue) _queue = new Queue("ohana", { connection: redis() });
+  if (!_queue) _queue = new Queue("tribo", { connection: redis() });
   return _queue;
 }
 

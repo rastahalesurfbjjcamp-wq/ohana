@@ -8,16 +8,16 @@ const SENT_TTL = 60 * 60 * 6;
 
 export async function markSent(res: unknown) {
   const id = (res as { key?: { id?: string } })?.key?.id;
-  if (id) await redis().set(`ohana:sent:${id}`, "1", "EX", SENT_TTL);
+  if (id) await redis().set(`tribo:sent:${id}`, "1", "EX", SENT_TTL);
 }
 
 export async function sentByBot(messageId: string) {
-  return (await redis().exists(`ohana:sent:${messageId}`)) === 1;
+  return (await redis().exists(`tribo:sent:${messageId}`)) === 1;
 }
 
 function hourKey() {
   const d = new Date();
-  return `ohana:rate:${d.toISOString().slice(0, 13)}`;
+  return `tribo:rate:${d.toISOString().slice(0, 13)}`;
 }
 
 // Devolve quantos ms esperar até poder mandar de novo (0 = pode mandar agora)

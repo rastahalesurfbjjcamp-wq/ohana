@@ -1,6 +1,6 @@
 # Uma imagem para o painel e o worker. No Easypanel, crie dois serviços apontando para este repositório:
-#   ohana (painel):  comando padrão
-#   ohana-worker:    comando "npm run worker"
+#   tribo (painel):  comando padrão
+#   tribo-worker:    comando "npm run worker"
 FROM node:22-slim
 RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 WORKDIR /app

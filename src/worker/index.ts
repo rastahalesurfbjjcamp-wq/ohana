@@ -1,4 +1,4 @@
-// Worker do Ohana: agendamentos, relatórios, mensagem de volta e comandos do grupo de resultados.
+// Worker da Tribo: agendamentos, relatórios, mensagem de volta e comandos do grupo de resultados.
 // Roda num serviço separado do painel (npm run worker).
 import { Worker, type Job } from "bullmq";
 import { db } from "../lib/db";
@@ -143,7 +143,7 @@ async function runCommand(d: CommandJob) {
 
 async function main() {
   const worker = new Worker(
-    "ohana",
+    "tribo",
     async (job) => {
       switch (job.name) {
         case "tick":
@@ -166,7 +166,7 @@ async function main() {
   worker.on("failed", (job, err) => console.error(`[job ${job?.name}]`, err.message));
 
   await queue().upsertJobScheduler("tick-every-minute", { every: 60_000 }, { name: "tick" });
-  console.log("Worker do Ohana rodando");
+  console.log("Worker da Tribo rodando");
 
   const stop = async () => {
     await worker.close();

@@ -17,9 +17,9 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
     <div className="login">
       <form action={entrar} className="pnl card stack">
         <div className="brand">
-          <div className="mark">O</div>
+          <div className="mark">T</div>
           <div>
-            <b>Ohana</b>
+            <b>Tribo</b>
             <small>Rasta Hale</small>
           </div>
         </div>

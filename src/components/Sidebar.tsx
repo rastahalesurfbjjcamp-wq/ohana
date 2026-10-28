@@ -34,9 +34,9 @@ export function Sidebar({ name, connected, leaves, logout }: { name: string; con
   return (
     <aside className="side">
       <div className="brand">
-        <div className="mark">O</div>
+        <div className="mark">T</div>
         <div>
-          <b>Ohana</b>
+          <b>Tribo</b>
           <small>Rasta Hale</small>
         </div>
       </div>

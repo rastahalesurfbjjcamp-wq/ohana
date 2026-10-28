@@ -5,9 +5,9 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ohana
+      POSTGRES_USER: tribo
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD}
-      POSTGRES_DB: ohana
+      POSTGRES_DB: tribo
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
@@ -25,34 +25,34 @@ services:
       SERVER_URL: ${EVOLUTION_URL}
       AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY}
       DATABASE_PROVIDER: postgresql
-      DATABASE_CONNECTION_URI: postgresql://ohana:${POSTGRES_PASSWORD}@postgres:5432/evolution
+      DATABASE_CONNECTION_URI: postgresql://tribo:${POSTGRES_PASSWORD}@postgres:5432/evolution
       CACHE_REDIS_ENABLED: "true"
       CACHE_REDIS_URI: redis://redis:6379/1
-      CONFIG_SESSION_PHONE_CLIENT: Ohana
+      CONFIG_SESSION_PHONE_CLIENT: Tribo
     volumes: [evolution:/evolution/instances]
     depends_on: [postgres, redis]
     ports: ["8080:8080"]
 
-  ohana:
+  tribo:
     build: .
     restart: unless-stopped
     env_file: .env
     environment:
-      DATABASE_URL: postgresql://ohana:${POSTGRES_PASSWORD}@postgres:5432/ohana
+      DATABASE_URL: postgresql://tribo:${POSTGRES_PASSWORD}@postgres:5432/tribo
       REDIS_URL: redis://redis:6379/0
     volumes: [uploads:/app/uploads]
     depends_on: [postgres, redis]
     ports: ["3000:3000"]
 
-  ohana-worker:
+  tribo-worker:
     build: .
     restart: unless-stopped
     command: ["npm", "run", "worker"]
     env_file: .env
     environment:
-      DATABASE_URL: postgresql://ohana:${POSTGRES_PASSWORD}@postgres:5432/ohana
+      DATABASE_URL: postgresql://tribo:${POSTGRES_PASSWORD}@postgres:5432/tribo
       REDIS_URL: redis://redis:6379/0
-    depends_on: [postgres, redis, ohana]
+    depends_on: [postgres, redis, tribo]
 
 volumes:
   pgdata:

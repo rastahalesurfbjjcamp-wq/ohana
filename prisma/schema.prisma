@@ -1,4 +1,4 @@
-// Ohana: banco de dados da etapa 1 (WhatsApp e grupos)
+// Tribo: banco de dados da etapa 1 (WhatsApp e grupos)
 
 generator client {
   provider = "prisma-client-js"
