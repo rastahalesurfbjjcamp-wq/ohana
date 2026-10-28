@@ -45,14 +45,21 @@ export async function syncGroupsAction() {
   revalidatePath("/grupos");
 }
 
-export async function updateGroup(formData: FormData) {
+// Salva a escolha dos grupos: quais são da comunidade e qual é o de resultados
+export async function saveGroupSelection(formData: FormData) {
   await auth();
-  const id = str(formData, "id");
-  await db.group.update({
-    where: { id },
-    data: { isCommunity: on(formData, "isCommunity"), isResults: on(formData, "isResults"), capacity: num(formData, "capacity") || 1024 },
-  });
+  const community = new Set(formData.getAll("community").map(String));
+  const results = str(formData, "results");
+  const groups = await db.group.findMany({ where: { archived: false }, select: { id: true } });
+  for (const g of groups) {
+    const cap = num(formData, `cap_${g.id}`);
+    await db.group.update({
+      where: { id: g.id },
+      data: { isCommunity: community.has(g.id) && g.id !== results, isResults: g.id === results, ...(cap > 0 ? { capacity: cap } : {}) },
+    });
+  }
   revalidatePath("/grupos");
+  redirect("/grupos?ok=1");
 }
 
 /* Agendamentos */
@@ -207,6 +214,7 @@ export async function waWebhook() {
 export async function waLogout() {
   await admin();
   await evolution.logout();
+  await db.setting.deleteMany({ where: { key: "_whatsapp" } });
   revalidatePath("/configuracoes");
 }
 

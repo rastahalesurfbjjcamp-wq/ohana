@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { Smartphone } from "lucide-react";
+import { AutoRefresh } from "@/components/AutoRefresh";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { evolution } from "@/lib/evolution";
@@ -41,6 +43,7 @@ export default async function Configuracoes({ searchParams }: { searchParams: Pr
             {wa.state === "open" && (
               <div className="row">
                 <span className="chip c-l"><i className="live" /> Conectado</span>
+                <Link className="btn sm pri" href="/grupos">Escolher os grupos</Link>
                 {isAdmin && (
                   <>
                     <form action={waWebhook}><button className="btn sm" type="submit">Reconfigurar webhook</button></form>
@@ -51,15 +54,16 @@ export default async function Configuracoes({ searchParams }: { searchParams: Pr
             )}
             {wa.state === "not_created" && (
               <>
-                <p className="mut">A instância ainda não existe. Crie e depois leia o QR code com o WhatsApp do número dos grupos.</p>
-                {isAdmin && <form action={waCreate}><button className="btn pri" type="submit"><Smartphone size={15} /> Criar instância</button></form>}
+                <p className="mut">Clique para gerar o QR code e conecte o WhatsApp do número que está nos grupos.</p>
+                {isAdmin && <form action={waCreate}><button className="btn pri" type="submit"><Smartphone size={15} /> Conectar WhatsApp</button></form>}
               </>
             )}
             {wa.state !== "open" && wa.state !== "not_created" && wa.state !== "error" && (
               <>
-                <p className="mut">No celular: WhatsApp, Dispositivos conectados, Conectar um dispositivo. Depois recarregue esta página.</p>
+                <AutoRefresh seconds={5} />
+                <p className="mut">No celular do número dos grupos: WhatsApp, Dispositivos conectados, Conectar um dispositivo, e aponte para o QR code. Quando conectar, esta página muda sozinha e os grupos aparecem em Grupos para você escolher.</p>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                {wa.qr ? <img className="qr" src={wa.qr.startsWith("data:") ? wa.qr : `data:image/png;base64,${wa.qr}`} alt="QR code do WhatsApp" /> : <span className="dim">Gerando QR code, recarregue em alguns segundos.</span>}
+                {wa.qr ? <img className="qr" src={wa.qr.startsWith("data:") ? wa.qr : `data:image/png;base64,${wa.qr}`} alt="QR code do WhatsApp" /> : <span className="dim">Gerando QR code...</span>}
               </>
             )}
             {wa.state === "error" && <div className="err">Não consegui falar com a Evolution API: {wa.error}</div>}

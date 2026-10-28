@@ -33,7 +33,7 @@ model Group {
   description String?
   size        Int      @default(0)
   capacity    Int      @default(1024)
-  isCommunity Boolean  @default(true) // entra nas métricas e nos disparos da comunidade
+  isCommunity Boolean  @default(false) // escolhido no painel: entra nas métricas, na mensagem de volta e nos disparos
   isResults   Boolean  @default(false) // grupo de resultados (relatório e comandos)
   inviteCode  String?
   archived    Boolean  @default(false)
