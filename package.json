@@ -1,0 +1,41 @@
+{
+  "name": "ohana",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "prisma generate && next build",
+    "start": "prisma db push --skip-generate && tsx prisma/seed.ts && next start -p ${PORT:-3000}",
+    "worker": "tsx src/worker/index.ts",
+    "seed": "tsx prisma/seed.ts",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.65.0",
+    "@date-fns/tz": "^1.4.1",
+    "@prisma/client": "^6.16.2",
+    "bcryptjs": "^3.0.2",
+    "bullmq": "^5.58.5",
+    "date-fns": "^4.1.0",
+    "ioredis": "^5.7.0",
+    "jose": "^6.1.0",
+    "lucide-react": "^0.544.0",
+    "next": "15.5.4",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "zod": "^3.25.76",
+    "tsx": "^4.20.6",
+    "prisma": "^6.16.2"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "15.5.4",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

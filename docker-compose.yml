@@ -1,0 +1,61 @@
+# Para rodar tudo junto num servidor sem Easypanel (ou no computador, para testar).
+# No Easypanel, o mais simples é criar cada parte como um serviço (veja o README).
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ohana
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD}
+      POSTGRES_DB: ohana
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes: [redisdata:/data]
+
+  evolution:
+    image: evoapicloud/evolution-api:latest # fixe uma versão depois de testar
+    restart: unless-stopped
+    environment:
+      SERVER_URL: ${EVOLUTION_URL}
+      AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY}
+      DATABASE_PROVIDER: postgresql
+      DATABASE_CONNECTION_URI: postgresql://ohana:${POSTGRES_PASSWORD}@postgres:5432/evolution
+      CACHE_REDIS_ENABLED: "true"
+      CACHE_REDIS_URI: redis://redis:6379/1
+      CONFIG_SESSION_PHONE_CLIENT: Ohana
+    volumes: [evolution:/evolution/instances]
+    depends_on: [postgres, redis]
+    ports: ["8080:8080"]
+
+  ohana:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://ohana:${POSTGRES_PASSWORD}@postgres:5432/ohana
+      REDIS_URL: redis://redis:6379/0
+    volumes: [uploads:/app/uploads]
+    depends_on: [postgres, redis]
+    ports: ["3000:3000"]
+
+  ohana-worker:
+    build: .
+    restart: unless-stopped
+    command: ["npm", "run", "worker"]
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://ohana:${POSTGRES_PASSWORD}@postgres:5432/ohana
+      REDIS_URL: redis://redis:6379/0
+    depends_on: [postgres, redis, ohana]
+
+volumes:
+  pgdata:
+  redisdata:
+  evolution:
+  uploads:

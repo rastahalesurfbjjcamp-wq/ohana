@@ -1,0 +1,163 @@
+// Ohana: banco de dados da etapa 1 (WhatsApp e grupos)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Os 2 acessos do painel
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(ADMIN)
+  phone        String?  // número autorizado a dar comandos no grupo de resultados (só dígitos, com DDI)
+  createdAt    DateTime @default(now())
+}
+
+enum Role {
+  ADMIN
+  TEAM
+}
+
+// Grupos do WhatsApp lidos da Evolution
+model Group {
+  id          String   @id @default(cuid())
+  jid         String   @unique // ex.: 1203630...@g.us
+  name        String
+  description String?
+  size        Int      @default(0)
+  capacity    Int      @default(1024)
+  isCommunity Boolean  @default(true) // entra nas métricas e nos disparos da comunidade
+  isResults   Boolean  @default(false) // grupo de resultados (relatório e comandos)
+  inviteCode  String?
+  archived    Boolean  @default(false)
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+
+  members     Membership[]
+  events      MemberEvent[]
+}
+
+// Pessoa (um número de WhatsApp)
+model Contact {
+  id          String   @id @default(cuid())
+  phone       String   @unique // só dígitos, com DDI
+  name        String?
+  firstSeenAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  memberships Membership[]
+  events      MemberEvent[]
+}
+
+model Membership {
+  id        String    @id @default(cuid())
+  groupId   String
+  contactId String
+  isAdmin   Boolean   @default(false)
+  joinedAt  DateTime  @default(now())
+  leftAt    DateTime?
+  group     Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  contact   Contact   @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, contactId])
+  @@index([leftAt])
+}
+
+enum EventType {
+  JOIN
+  LEAVE
+  RETURN
+}
+
+// Histórico de entradas e saídas
+model MemberEvent {
+  id         String    @id @default(cuid())
+  type       EventType
+  groupId    String
+  contactId  String
+  byAdmin    Boolean   @default(false) // removido por admin
+  winbackSent Boolean  @default(false) // mensagem de volta enviada
+  createdAt  DateTime  @default(now())
+  group      Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  contact    Contact   @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@index([type, createdAt])
+}
+
+enum ScheduleStatus {
+  SCHEDULED
+  SENDING
+  SENT
+  FAILED
+  CANCELED
+}
+
+// Mensagens agendadas para os grupos
+model ScheduledMessage {
+  id          String         @id @default(cuid())
+  text        String
+  mediaUrl    String?
+  mediaType   String?        // image | video | audio | document
+  mentionAll  Boolean        @default(true)
+  groupJids   String[]
+  sendAt      DateTime
+  repeat      String?        // null | daily | weekly
+  status      ScheduleStatus @default(SCHEDULED)
+  sentCount   Int            @default(0)
+  error       String?
+  createdBy   String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([status, sendAt])
+}
+
+// Configurações simples (chave e valor)
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+// Custos lançados (por comando no grupo ou no painel)
+enum CostKind {
+  FIXED     // custo fixo mensal (sai inteiro no mês)
+  VARIABLE  // custo avulso
+  STOCK_LOT // lote de estoque (custo dividido por unidade)
+}
+
+model Cost {
+  id          String   @id @default(cuid())
+  kind        CostKind
+  description String
+  amount      Decimal  @db.Decimal(12, 2) // valor total
+  units       Int?     // lote: quantidade de peças
+  unitCost    Decimal? @db.Decimal(12, 2) // lote: custo por peça
+  productKey  String?  // lote: palavra que liga o lote ao produto (ex.: "pura")
+  month       String?  // AAAA-MM a que o custo pertence
+  recurring   Boolean  @default(false)
+  source      String   @default("painel") // painel | whatsapp
+  createdBy   String?
+  createdAt   DateTime @default(now())
+}
+
+// Registro dos comandos recebidos no grupo de resultados
+model CommandLog {
+  id         String   @id @default(cuid())
+  fromPhone  String
+  input      String   // texto digitado ou transcrição do áudio
+  wasAudio   Boolean  @default(false)
+  intent     String?
+  reply      String?
+  pending    Json?    // ação aguardando "ok"
+  status     String   @default("done") // done | awaiting_confirmation | confirmed | canceled | error
+  createdAt  DateTime @default(now())
+}
