@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getSession, login } from "@/lib/auth";
+import { env } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +21,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           <div className="mark">T</div>
           <div>
             <b>Tribo</b>
-            <small>Rasta Hale</small>
+            <small>{env.storeName()}</small>
           </div>
         </div>
         {erro && <div className="err">E-mail ou senha incorretos.</div>}

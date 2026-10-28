@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Tribo",
-  description: "Gestão da Rasta Hale",
+  description: "Comunidade, vendas e lucro da loja num lugar só",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

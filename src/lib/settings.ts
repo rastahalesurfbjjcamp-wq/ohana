@@ -5,8 +5,8 @@ export const DEFAULTS = {
   winback: {
     enabled: true,
     delayMinutes: 10,
-    // {nome} vira o primeiro nome da pessoa, {grupo} o nome do grupo, {link} o convite
-    text: "Oi {nome}, aqui é da Rasta Hale. Vimos que você saiu do {grupo}. Se quiser voltar, o link é este: {link}",
+    // {loja} vira o nome da loja, {nome} o primeiro nome da pessoa, {grupo} o nome do grupo, {link} o convite
+    text: "Oi {nome}, aqui é da {loja}. Vimos que você saiu do {grupo}. Se quiser voltar, o link é este: {link}",
     onlyIfNotRemovedByAdmin: true,
   },
   report: {

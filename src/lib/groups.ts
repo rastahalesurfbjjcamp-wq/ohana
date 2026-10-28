@@ -5,6 +5,7 @@ import { participantPhone } from "./phone";
 import { enqueue } from "./queue";
 import { getSettings } from "./settings";
 import { sendText } from "./send";
+import { env } from "./env";
 
 async function upsertContact(phone: string, name?: string | null) {
   return db.contact.upsert({
@@ -120,7 +121,7 @@ export async function sendWinback(eventId: string) {
   const s = await getSettings();
   const link = ev.group.inviteCode ? `https://chat.whatsapp.com/${ev.group.inviteCode}` : "";
   const first = (ev.contact.name ?? "").split(" ")[0] || "tudo bem";
-  const text = s.winback.text.replace("{nome}", first).replace("{grupo}", ev.group.name).replace("{link}", link).trim();
+  const text = s.winback.text.replace("{loja}", env.storeName()).replace("{nome}", first).replace("{grupo}", ev.group.name).replace("{link}", link).trim();
   await sendText(ev.contact.phone, text);
   await db.memberEvent.update({ where: { id: ev.id }, data: { winbackSent: true } });
 }

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession, logout } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Sidebar } from "@/components/Sidebar";
+import { env } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,7 @@ export default async function PainelLayout({ children }: { children: React.React
   const connected = (wa?.value as { state?: string } | undefined)?.state === "open";
   return (
     <div className="app">
-      <Sidebar name={session.name} connected={connected} leaves={leaves} logout={sair} />
+      <Sidebar name={session.name} store={env.storeName()} connected={connected} leaves={leaves} logout={sair} />
       <main className="main">{children}</main>
     </div>
   );

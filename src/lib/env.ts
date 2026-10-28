@@ -14,10 +14,12 @@ export const env = {
   sessionSecret: () => req("SESSION_SECRET"),
   redisUrl: () => opt("REDIS_URL") ?? "redis://localhost:6379",
   timezone: () => opt("TZ_LOJA") ?? "America/Sao_Paulo",
+  storeName: () => opt("STORE_NAME") ?? "Minha loja",
+  storeAbout: () => opt("STORE_ABOUT") ?? "uma loja online",
 
   evolutionUrl: () => req("EVOLUTION_URL"),
   evolutionKey: () => req("EVOLUTION_API_KEY"),
-  evolutionInstance: () => opt("EVOLUTION_INSTANCE") ?? "rastahale",
+  evolutionInstance: () => opt("EVOLUTION_INSTANCE") ?? "loja",
   webhookSecret: () => req("WEBHOOK_SECRET"),
 
   shopifyDomain: () => opt("SHOPIFY_STORE_DOMAIN"),

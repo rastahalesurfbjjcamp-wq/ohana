@@ -65,7 +65,7 @@ export default async function Entradas() {
             <div className="field">
               <label>Texto</label>
               <textarea className="in" name="text" defaultValue={s.winback.text} />
-              <span className="hint">Use {"{nome}"} para o primeiro nome, {"{grupo}"} para o nome do grupo e {"{link}"} para o convite.</span>
+              <span className="hint">Use {"{loja}"} para o nome da loja, {"{nome}"} para o primeiro nome, {"{grupo}"} para o nome do grupo e {"{link}"} para o convite.</span>
             </div>
             <div className="field">
               <label>Esperar quantos minutos antes de mandar</label>

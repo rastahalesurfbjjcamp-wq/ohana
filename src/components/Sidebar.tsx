@@ -10,7 +10,7 @@ import {
 type Item = { href: string; icon: LucideIcon; label: string; badge?: number };
 type Group = { label: string; icon: LucideIcon; items: Item[] };
 
-export function Sidebar({ name, connected, leaves, logout }: { name: string; connected: boolean; leaves: number; logout: () => Promise<void> }) {
+export function Sidebar({ name, store, connected, leaves, logout }: { name: string; store: string; connected: boolean; leaves: number; logout: () => Promise<void> }) {
   const path = usePathname();
   const groups: Group[] = [
     {
@@ -37,7 +37,7 @@ export function Sidebar({ name, connected, leaves, logout }: { name: string; con
         <div className="mark">T</div>
         <div>
           <b>Tribo</b>
-          <small>Rasta Hale</small>
+          <small>{store}</small>
         </div>
       </div>
       <nav className="nav">
