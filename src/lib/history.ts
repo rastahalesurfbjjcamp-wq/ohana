@@ -8,14 +8,29 @@ import { isoDayLocal } from "./time";
 export type HistRow = { key: string; orders: number; gross: number; discounts: number; returns: number; net: number; shipping: number; total: number };
 const num = (v?: string) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
 const METRICS = "orders, gross_sales, discounts, sales_reversals, net_sales, shipping_charges, total_sales";
+// nomes antigos de algumas colunas, conforme a versão da API
+const ALIAS: Record<string, string> = { sales_reversals: "returns", shipping_charges: "shipping" };
+async function query(build: (m: string) => string) {
+  let metrics = METRICS;
+  for (let i = 0; i < 4; i++) {
+    try {
+      return await shopifyql(build(metrics));
+    } catch (e) {
+      const col = String(e).match(/Column '(\w+)' not found/)?.[1];
+      if (!col || !ALIAS[col]) throw e;
+      metrics = metrics.replace(col, ALIAS[col]);
+    }
+  }
+  return shopifyql(build(metrics));
+}
 const toRow = (key: string, r: Record<string, string>): HistRow => ({
   key,
   orders: num(r.orders),
   gross: num(r.gross_sales),
   discounts: Math.abs(num(r.discounts)),
-  returns: Math.abs(num(r.sales_reversals)),
+  returns: Math.abs(num(r.sales_reversals ?? r.returns)),
   net: num(r.net_sales),
-  shipping: num(r.shipping_charges),
+  shipping: num(r.shipping_charges ?? r.shipping),
   total: num(r.total_sales),
 });
 
@@ -28,7 +43,7 @@ export function sumRows(rows: HistRow[], key = "total"): HistRow {
 // Série por mês (ou por dia) entre duas datas
 export async function salesSeries(from: string, to: string, by: "month" | "day") {
   return swr(`hist:${by}:${from}:${to}`, by === "day" ? 120_000 : 600_000, async () => {
-    const rows = await shopifyql(`FROM sales SHOW ${METRICS} TIMESERIES ${by} SINCE ${from} UNTIL ${to}`);
+    const rows = await query((m) => `FROM sales SHOW ${m} TIMESERIES ${by} SINCE ${from} UNTIL ${to}`);
     return rows.map((r) => toRow(String(r[by] ?? Object.values(r)[0]).slice(0, by === "month" ? 7 : 10), r));
   });
 }
@@ -36,7 +51,7 @@ export async function salesSeries(from: string, to: string, by: "month" | "day")
 // Vendas por cupom no período (linha vazia = pedidos sem cupom)
 export async function couponSeries(from: string, to: string) {
   return swr(`hist:cupons:${from}:${to}`, 600_000, async () => {
-    const rows = await shopifyql(`FROM sales SHOW ${METRICS} GROUP BY discount_code SINCE ${from} UNTIL ${to} ORDER BY gross_sales DESC LIMIT 300`);
+    const rows = await query((m) => `FROM sales SHOW ${m} GROUP BY discount_code SINCE ${from} UNTIL ${to} ORDER BY gross_sales DESC LIMIT 300`);
     return rows.map((r) => toRow(r.discount_code ?? "", r)).filter((r) => r.orders || r.gross);
   });
 }
