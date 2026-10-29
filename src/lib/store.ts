@@ -446,3 +446,17 @@ export async function shipments(days = 30): Promise<Shipment[]> {
     return out;
   });
 }
+
+// Último pedido de um cliente (para o painel do atendimento)
+export async function lastOrderOf(customerGid: string): Promise<Order | null> {
+  const id = customerGid.split("/").pop();
+  if (!id) return null;
+  return cached(`lastorder:${id}`, 120_000, async () => {
+    const d = await gql<{ orders: { nodes: RawOrder[] } }>(
+      `query($q:String){ orders(first:1, sortKey:CREATED_AT, reverse:true, query:$q){ nodes{ ${ORDER_FIELDS} } } }`,
+      { q: `customer_id:${id}` },
+    );
+    const o = d.orders.nodes[0];
+    return o ? mapOrder(o) : null;
+  });
+}

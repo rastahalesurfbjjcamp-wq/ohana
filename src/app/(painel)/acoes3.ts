@@ -74,7 +74,11 @@ export async function replyChat(f: FormData) {
   const text = str(f, "text");
   if (!phone || !text) return;
   await sendText(phone, text);
-  await db.chatThread.update({ where: { phone }, data: { lastText: text.slice(0, 200), lastAt: new Date(), unread: 0, assignee: s.name } });
+  await db.chatThread.upsert({
+    where: { phone },
+    create: { phone, name: str(f, "name") || null, lastText: text.slice(0, 200), lastAt: new Date(), unread: 0, assignee: s.name, aiEnabled: false },
+    update: { lastText: text.slice(0, 200), lastAt: new Date(), unread: 0, assignee: s.name, aiEnabled: false },
+  });
   await db.chatMessage.create({ data: { phone, fromMe: true, by: "equipe", text } });
   revalidatePath("/atendimento");
 }
@@ -85,7 +89,8 @@ export async function threadAction(f: FormData) {
   if (act === "resolver") await db.chatThread.update({ where: { phone }, data: { status: "resolvido", unread: 0 } });
   if (act === "reabrir") await db.chatThread.update({ where: { phone }, data: { status: "aberto" } });
   if (act === "ia_on") await db.chatThread.update({ where: { phone }, data: { aiEnabled: true } });
-  if (act === "ia_off") await db.chatThread.update({ where: { phone }, data: { aiEnabled: false } });
+  if (act === "ia_off") await db.chatThread.update({ where: { phone }, data: { aiEnabled: false, assignee: (await auth()).name } });
+  if (act === "assign") await db.chatThread.update({ where: { phone }, data: { assignee: str(f, "assignee") || null } });
   revalidatePath("/atendimento");
 }
 
@@ -194,4 +199,12 @@ export async function generateDiagnosis() {
   }
   revalidatePath("/diagnostico");
   redirect("/diagnostico");
+}
+
+// Respostas rápidas do atendimento
+export async function saveQuickReplies(f: FormData) {
+  await auth();
+  const items = str(f, "items").split(/\n-{3,}\n|\n\n/).map((x) => x.trim()).filter(Boolean).slice(0, 30);
+  await db.setting.upsert({ where: { key: "_quick_replies" }, create: { key: "_quick_replies", value: { items } }, update: { value: { items } } });
+  revalidatePath("/atendimento");
 }
