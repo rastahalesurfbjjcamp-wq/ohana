@@ -113,7 +113,20 @@ export async function conversionForDay(isoDay: string) {
 }
 
 // Consulta ShopifyQL (mesmos números dos relatórios da Shopify). Devolve linhas com o nome de cada coluna.
-export async function shopifyql(q: string): Promise<Record<string, string>[]> {
+export async function shopifyql(q: string, tries = 4): Promise<Record<string, string>[]> {
+  try {
+    return await shopifyqlOnce(q);
+  } catch (e) {
+    // a Shopify limita consultas de relatório; espera e tenta de novo
+    if (tries > 1 && /THROTTLE|Rate limited/i.test(String(e))) {
+      await new Promise((r) => setTimeout(r, (5 - tries) * 2000));
+      return shopifyql(q, tries - 1);
+    }
+    throw e;
+  }
+}
+
+async function shopifyqlOnce(q: string): Promise<Record<string, string>[]> {
   type R = { shopifyqlQuery: { tableData?: { columns: { name: string }[]; rows: unknown[] } | null; parseErrors: string[] } };
   const data = await gql<R>(`query($q:String!){ shopifyqlQuery(query:$q){ tableData{ columns{ name } rows } parseErrors } }`, { q });
   const r = data.shopifyqlQuery;

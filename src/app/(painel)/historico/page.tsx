@@ -37,7 +37,8 @@ export default async function Historico({ searchParams }: { searchParams: Promis
   let cupons: HistRow[] = [];
   let erro = "";
   try {
-    [rows, cupons] = await Promise.all([salesSeries(from, to, by), couponSeries(from, to)]);
+    rows = await salesSeries(from, to, by);
+    cupons = await couponSeries(from, to);
   } catch (e) {
     erro = String(e).replace(/^Error: /, "");
   }
