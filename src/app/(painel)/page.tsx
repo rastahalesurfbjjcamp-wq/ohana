@@ -13,6 +13,16 @@ import { Bars } from "@/components/charts";
 import { daysBetween, resolvePeriod } from "@/lib/periods";
 import { ordersBetween, products, recentOrders, type Order } from "@/lib/store";
 import { ensureTeam, partnerStats } from "@/lib/partners";
+import { byGroup, campStats, type CampStat } from "@/lib/meta";
+import { getSettings } from "@/lib/settings";
+import { saveDashCards } from "./acoes7";
+import { Heart, SlidersHorizontal } from "lucide-react";
+
+const CARDS: [string, string][] = [
+  ["faturamento", "Faturamento"], ["pedidos", "Pedidos"], ["lucro", "Lucro"],
+  ["vendas", "Anúncios de venda (gasto e ROAS)"], ["leads", "Leads dos anúncios (custo por lead)"], ["perfil", "Seguidores (custo por seguidor)"],
+  ["gasto", "Gasto total em anúncios"], ["conversao", "Conversão da loja"], ["formulario", "Formulário do Hub"], ["clube", "Clube"],
+];
 
 export const dynamic = "force-dynamic";
 
@@ -145,7 +155,28 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
   const pixN = carts.filter((c) => c.kind === "pix" && c.status === "ativo").length;
   const recV = recovered.reduce((a, c) => a + (c.recoveredValue ?? c.value), 0);
   const sessions = m?.conversion?.sessions ?? null;
-  const roas = m?.ads ? m.net / m.ads : null;
+  const settings = await getSettings();
+  let camps: CampStat[] | null = null;
+  try { camps = await campStats(period.from, period.to); } catch { camps = null; }
+  const g = camps ? byGroup(camps) : null;
+  const salesSpend = g ? g.vendas.spend : m?.ads ?? null;
+  const roas = salesSpend && m ? m.net / salesSpend : null;
+  const per = (a: number, b: number) => (b ? brl(a / b) : "–");
+  const n0 = (v: number) => v.toLocaleString("pt-BR");
+  const cardOn = settings.ads.cards;
+  const ks: Record<string, React.ReactNode> = {
+    faturamento: <Link key="faturamento" href="/financeiro" className="ks hl"><small><Wallet size={14} /> Faturamento</small><b>{m ? brl(m.net, 0) : "–"}</b><span>{period.label.toLowerCase()}</span></Link>,
+    pedidos: <Link key="pedidos" href="/pedidos" className="ks"><small><Receipt size={14} /> Pedidos</small><b>{valid.length}</b><span>ticket {valid.length ? brl(valid.reduce((a, o) => a + o.subtotal, 0) / valid.length, 0) : "–"}</span></Link>,
+    lucro: <Link key="lucro" href="/financeiro" className="ks"><small><TrendingUp size={14} /> Lucro</small><b className={m && m.profitBeforeFixed < 0 ? "dn" : "up"}>{m ? brl(m.profitBeforeFixed, 0) : "–"}</b><span>antes dos custos fixos</span></Link>,
+    vendas: <Link key="vendas" href="/campanhas" className="ks"><small><Target size={14} /> Anúncios de venda</small><b>{salesSpend != null ? brl(salesSpend, 0) : "–"}</b><span>{roas ? `ROAS ${roas.toFixed(2).replace(".", ",")}` : "sem gasto lido"}{g && g.vendas.purchases ? ` · Meta: ${n0(g.vendas.purchases)} compras` : ""}</span></Link>,
+    leads: <Link key="leads" href="/campanhas" className="ks"><small><FileText size={14} /> Leads dos anúncios</small><b>{g ? n0(g.leads.leads) : "–"}</b><span>{g ? (g.leads.spend || g.leads.leads ? `${per(g.leads.spend, g.leads.leads)} por lead · gasto ${brl(g.leads.spend, 0)}` : "nenhuma campanha de lead") : "conecte o Meta Ads"}</span></Link>,
+    perfil: <Link key="perfil" href="/campanhas" className="ks"><small><Heart size={14} /> {g && !g.perfil.follows && g.perfil.visits ? "Visitas no perfil" : "Seguidores"}</small><b>{g ? n0(g.perfil.follows || g.perfil.visits) : "–"}</b><span>{g ? (g.perfil.spend ? `${per(g.perfil.spend, g.perfil.follows || g.perfil.visits)} cada · gasto ${brl(g.perfil.spend, 0)}` : "nenhuma campanha de perfil") : "conecte o Meta Ads"}</span></Link>,
+    gasto: <Link key="gasto" href="/campanhas" className="ks"><small><Megaphone size={14} /> Gasto em anúncios</small><b>{g ? brl(g.total.spend, 0) : m?.ads != null ? brl(m.ads, 0) : "–"}</b><span>{g ? `${g.total.campaigns} campanha(s) com gasto` : "todas as contas"}</span></Link>,
+    conversao: <Link key="conversao" href="/conversao" className="ks"><small><MousePointerClick size={14} /> Conversão</small><b>{m?.conversion ? `${(m.conversion.rate * 100).toFixed(2).replace(".", ",")}%` : "–"}</b><span>{m?.conversion?.sessions != null ? `${m.conversion.sessions.toLocaleString("pt-BR")} visitas` : "visitas na loja"}</span></Link>,
+    formulario: <Link key="formulario" href="/leads" className="ks"><small><FileText size={14} /> Formulário</small><b>{leadsP.reduce((a, x) => a + x._count, 0)}</b><span>{leadsP.filter((x) => x.status === "no_grupo" || x.status === "cliente").reduce((a, x) => a + x._count, 0)} já no grupo ou clientes</span></Link>,
+    clube: <Link key="clube" href="/clube" className="ks"><small><Crown size={14} /> Clube</small><b>{clubAll.length}</b><span>{clubNew} novo(s) · {clubLate} atrasado(s)</span></Link>,
+  };
+  const shown = CARDS.map(([k]) => k).filter((k) => cardOn.includes(k));
   const sold = new Map<string, number>();
   for (const o of valid) for (const l of o.lines) sold.set(l.title, (sold.get(l.title) ?? 0) + l.quantity);
   const zeroed = prods.filter((p) => p.status === "ACTIVE" && p.totalInventory <= 0).sort((a, b) => (sold.get(b.title) ?? 0) - (sold.get(a.title) ?? 0));
@@ -177,6 +208,16 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
         </div>
         <div className="row acts">
           <DateRange current={period.key} from={period.from} to={period.to} label={period.label} presets={["hoje", "ontem", "7d", "30d", "60d", "mes", "mes-passado"]} />
+          <details className="dd">
+            <summary className="btn"><SlidersHorizontal size={16} /> Personalizar</summary>
+            <form action={saveDashCards} className="dd-pop dd-list">
+              <b style={{ fontSize: 13 }}>Cartões do topo</b>
+              {CARDS.map(([k, l]) => (
+                <label key={k} className="dd-chk"><input type="checkbox" name="card" value={k} defaultChecked={cardOn.includes(k)} /> {l}</label>
+              ))}
+              <button className="btn pri sm" type="submit">Salvar</button>
+            </form>
+          </details>
           <Link className="btn" href="/agendamentos"><CalendarClock size={16} /> Agendar</Link>
           <Link className="btn pri" href="/disparos"><Megaphone size={16} /> Novo disparo</Link>
         </div>
@@ -189,13 +230,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
           <span className="act">Continuar <ArrowRight size={14} /></span>
         </Link>
       )}
-      <div className="kstrip" style={{ marginBottom: 16 }}>
-        <Link href="/financeiro" className="ks hl"><small><Wallet size={14} /> Faturamento</small><b>{m ? brl(m.net, 0) : "–"}</b><span>{plab}</span></Link>
-        <Link href="/pedidos" className="ks"><small><Receipt size={14} /> Pedidos</small><b>{valid.length}</b><span>ticket {valid.length ? brl(valid.reduce((a, o) => a + o.subtotal, 0) / valid.length, 0) : "–"}</span></Link>
-        <Link href="/financeiro" className="ks"><small><TrendingUp size={14} /> Lucro</small><b className={m && m.profitBeforeFixed < 0 ? "dn" : "up"}>{m ? brl(m.profitBeforeFixed, 0) : "–"}</b><span>antes dos custos fixos</span></Link>
-        <Link href="/campanhas" className="ks"><small><Target size={14} /> Anúncios</small><b>{m?.ads != null ? brl(m.ads, 0) : "–"}</b><span>{roas ? `ROAS ${roas.toFixed(2).replace(".", ",")}` : "sem gasto lido"}</span></Link>
-        <Link href="/conversao" className="ks"><small><MousePointerClick size={14} /> Conversão</small><b>{m?.conversion ? `${(m.conversion.rate * 100).toFixed(2).replace(".", ",")}%` : "–"}</b><span>{sessions != null ? `${sessions.toLocaleString("pt-BR")} visitas` : "visitas na loja"}</span></Link>
-        <Link href="/leads" className="ks"><small><FileText size={14} /> Leads</small><b>{leadsN}</b><span>{leadsIn} já no grupo ou clientes</span></Link>
+      <div className="kstrip dyn" style={{ marginBottom: 16, ["--kc" as string]: Math.min(shown.length, 7) }}>
+        {shown.map((k) => ks[k])}
       </div>
 
       <div className="cols c-2-1">

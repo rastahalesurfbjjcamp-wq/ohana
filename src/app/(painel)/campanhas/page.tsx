@@ -5,13 +5,18 @@ import { CampaignTree, type TNode } from "@/components/CampaignTree";
 import { CopyButton } from "@/components/CopyButton";
 import { db } from "@/lib/db";
 import { channelOf } from "@/lib/attribution";
-import { metaAds, type AdRow } from "@/lib/meta";
+import { activeAccounts, byGroup, campStats, metaAccounts, metaAds, type AdRow, type CampStat, type MetaAccount } from "@/lib/meta";
+import { getSettings } from "@/lib/settings";
+import { saveAdAccounts, saveCampGroup } from "../acoes7";
+import { SubmitSelect } from "@/components/SubmitSelect";
 import { resolvePeriod } from "@/lib/periods";
 import { funnelByDay, ordersBetween, type Order } from "@/lib/store";
 import { brl, dayRange } from "@/lib/time";
 import { Header, Panel } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
+
+const LABEL: Record<string, string> = { vendas: "venda", leads: "lead", perfil: "perfil", fora: "não mostrar" };
 
 const UTM = "?utm_source=meta&utm_medium=paid&utm_campaign={{campaign.id}}&utm_term={{adset.id}}&utm_content={{ad.id}}";
 
@@ -26,6 +31,14 @@ export default async function Campanhas({ searchParams }: { searchParams: Promis
   } catch (e) {
     metaError = String(e).replace(/^Error: /, "");
   }
+  let cstats: CampStat[] | null = null;
+  let accounts: MetaAccount[] = [];
+  try { cstats = await campStats(period.from, period.to); } catch (e) { metaError ||= String(e).replace(/^Error: /, ""); }
+  try { accounts = await metaAccounts(); } catch { accounts = []; }
+  const settings = await getSettings();
+  const actives = await activeAccounts();
+  const cfgOf = (id: string) => settings.ads.accounts.find((a) => a.id === id) ?? (settings.ads.accounts.length ? null : actives.find((a) => a.id === id) ?? null);
+  const grp = cstats ? byGroup(cstats) : null;
   const [orders, leads, funnel] = await Promise.all([
     ordersBetween(start, end).catch(() => [] as Order[]),
     db.lead.findMany({ where: { createdAt: { gte: start, lt: end } } }),
@@ -123,6 +136,79 @@ export default async function Campanhas({ searchParams }: { searchParams: Promis
           </div>
         ))}
       </div>
+      {(cstats || accounts.length > 0) && (
+        <div className="cols c-2-1" style={{ alignItems: "start", marginBottom: 16 }}>
+          <section className="pnl">
+            <div className="ph"><div><h3>Campanhas por tipo</h3><small>O tipo decide onde o gasto aparece na visão geral. Automático segue o objetivo da campanha.</small></div></div>
+            {grp && (
+              <div className="kstrip" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))", padding: "0 18px 14px" }}>
+                <div className="ks"><small>Venda</small><b>{brl(grp.vendas.spend, 0)}</b><span>{grp.vendas.purchases} compra(s) pelo Meta{grp.vendas.spend && grp.vendas.value ? ` · ROAS ${(grp.vendas.value / grp.vendas.spend).toFixed(2).replace(".", ",")}` : ""}</span></div>
+                <div className="ks"><small>Lead</small><b>{grp.leads.leads.toLocaleString("pt-BR")}</b><span>{grp.leads.leads ? `${brl(grp.leads.spend / grp.leads.leads)} por lead` : "sem leads"} · {brl(grp.leads.spend, 0)}</span></div>
+                <div className="ks"><small>Perfil</small><b>{(grp.perfil.follows || grp.perfil.visits).toLocaleString("pt-BR")}</b><span>{grp.perfil.follows ? "seguidores" : "visitas no perfil"}{(grp.perfil.follows || grp.perfil.visits) ? ` · ${brl(grp.perfil.spend / (grp.perfil.follows || grp.perfil.visits))} cada` : ""} · {brl(grp.perfil.spend, 0)}</span></div>
+              </div>
+            )}
+            {cstats && cstats.length ? (
+              <table className="tb">
+                <thead><tr><th>Campanha</th><th>Tipo</th><th>Gasto</th><th>Resultado</th><th>Custo</th></tr></thead>
+                <tbody>
+                  {cstats.map((c) => {
+                    const res = c.group === "leads" ? [c.leads, "leads"] : c.group === "perfil" ? (c.follows ? [c.follows, "seguidores"] : [c.visits, "visitas no perfil"]) : [c.purchases, "compras"];
+                    const n = res[0] as number;
+                    return (
+                      <tr key={c.account + c.id}>
+                        <td><b style={{ fontWeight: 550 }}>{c.name}</b><div className="dim" style={{ fontSize: 11.5 }}>{c.accountName}{c.objective ? ` · ${c.objective.replace("OUTCOME_", "").toLowerCase()}` : ""}</div></td>
+                        <td>
+                          <form action={saveCampGroup}>
+                            <input type="hidden" name="id" value={c.id} />
+                            <SubmitSelect name="group" value={c.manual ? c.group : "auto"} label="Tipo da campanha">
+                              <option value="auto">Automático ({LABEL[c.auto]})</option>
+                              <option value="vendas">Venda</option>
+                              <option value="leads">Lead</option>
+                              <option value="perfil">Perfil</option>
+                              <option value="fora">Não mostrar</option>
+                            </SubmitSelect>
+                          </form>
+                        </td>
+                        <td>{brl(c.spend, 2)}</td>
+                        <td>{c.group === "fora" ? "–" : `${n.toLocaleString("pt-BR")} ${res[1]}`}</td>
+                        <td>{c.group !== "fora" && n ? brl(c.spend / n) : "–"}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            ) : <div className="empty">Nenhuma campanha com gasto no período.</div>}
+          </section>
+          <section className="pnl">
+            <div className="ph"><div><h3>Contas de anúncio</h3><small>Escolha quais contas entram no Hub e o que cada uma roda.</small></div></div>
+            {accounts.length ? (
+              <form action={saveAdAccounts} style={{ padding: "0 18px 18px" }}>
+                {accounts.map((a) => {
+                  const cfg = cfgOf(a.id);
+                  return (
+                    <div className="lrow" key={a.id} style={{ alignItems: "center", gap: 10 }}>
+                      <input type="hidden" name="id" value={a.id} />
+                      <input type="hidden" name={`name_${a.id}`} value={a.name} />
+                      <label className="dd-chk" style={{ flex: 1, padding: 0 }}>
+                        <input type="checkbox" name={`on_${a.id}`} value="1" defaultChecked={!!cfg?.on} />
+                        <span><b style={{ fontWeight: 550, color: "var(--ink)" }}>{a.name}</b><br /><small className="dim">{a.id}{a.status !== 1 ? " · inativa" : ""}</small></span>
+                      </label>
+                      <select name={`kind_${a.id}`} defaultValue={cfg?.kind ?? "auto"} className="in" style={{ height: 34, width: 130 }} aria-label="O que essa conta roda">
+                        <option value="auto">Pelo objetivo</option>
+                        <option value="vendas">Só venda</option>
+                        <option value="leads">Só lead</option>
+                        <option value="perfil">Só perfil</option>
+                      </select>
+                    </div>
+                  );
+                })}
+                <button className="btn pri sm" type="submit" style={{ marginTop: 12 }}>Salvar contas</button>
+                <p className="dim" style={{ fontSize: 12, marginTop: 10 }}>&quot;Só perfil&quot; conta tudo dessa conta como tráfego para o perfil, com seguidores e custo por seguidor.</p>
+              </form>
+            ) : <div className="empty">Nenhuma conta encontrada no token do Meta.</div>}
+          </section>
+        </div>
+      )}
       <div className="cols c-3-1" style={{ alignItems: "start" }}>
         <section className="pnl">
           {nodes.length ? <CampaignTree nodes={nodes} /> : <div className="empty">Nenhum lead ou venda com campanha no período.</div>}

@@ -97,6 +97,11 @@ export const DEFAULTS = {
     exchangeText: "",
     handoff: true,
   },
+  ads: {
+    accounts: [] as AdAccountCfg[], // contas que aparecem no Hub (vazio = só a conta da integração)
+    camp: {} as Record<string, AdGroup>, // campanha -> tipo escolhido à mão
+    cards: ["faturamento", "pedidos", "lucro", "vendas", "leads", "perfil", "conversao"] as string[],
+  },
   costs: {
     taxRate: 0.06, // imposto sobre o faturamento
     paymentFeeRate: 0.045, // média das taxas de pagamento
@@ -109,7 +114,11 @@ export const DEFAULTS = {
   },
 } as const;
 
+export type AdGroup = "vendas" | "leads" | "perfil" | "fora";
+export type AdAccountCfg = { id: string; name: string; on: boolean; kind: "auto" | "vendas" | "leads" | "perfil" };
+
 export type Settings = {
+  ads: { accounts: AdAccountCfg[]; camp: Record<string, AdGroup>; cards: string[] };
   winback: { enabled: boolean; delayMinutes: number; text: string; onlyIfNotRemovedByAdmin: boolean };
   report: {
     enabled: boolean;

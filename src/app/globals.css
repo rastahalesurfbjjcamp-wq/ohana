@@ -1071,3 +1071,13 @@ a.itile:hover { border-color: #34403b; transform: translateY(-1px); }
   .tb .thumb { display: none; }
 }
 @media (max-width: 860px) { .kstrip[style*="grid-template-columns"] { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; padding-left: 12px !important; padding-right: 12px !important; } }
+
+/* Visão geral: cartões escolhidos pelo usuário */
+.kstrip.dyn { grid-template-columns: repeat(var(--kc, 6), minmax(0, 1fr)); }
+@media (max-width: 1200px) { .kstrip.dyn { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .kstrip.dyn { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.dd-pop.dd-list { display: flex; flex-direction: column; gap: 4px; width: 290px; padding: 14px; }
+.dd-chk { display: flex; align-items: center; gap: 9px; padding: 6px 4px; font-size: 13.5px; color: var(--ink2); border-radius: 8px; cursor: pointer; }
+.dd-chk:hover { background: #1a201d; color: #fff; }
+.dd-chk input { width: 16px; height: 16px; accent-color: #34c26a; }
+.dd-list .btn { margin-top: 8px; justify-content: center; }
