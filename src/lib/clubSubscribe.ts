@@ -119,7 +119,8 @@ type Hook = { event?: string; data?: Record<string, unknown> };
 
 // Avisos da Appmax: Pix pago, pedido aprovado, cobrança mensal paga ou recusada, cancelamento
 export async function handleAppmaxEvent(h: Hook) {
-  const ev = String(h.event ?? "");
+  // a Appmax manda tanto "order_paid_by_pix" quanto o formato antigo "OrderPaidByPix"
+  const ev = String(h.event ?? "").replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase().replace(/^appstore_|_appstore$/g, "");
   const d = h.data ?? {};
   const orderId = Number(d.order_id ?? (d.order as { id?: number } | undefined)?.id ?? d.id ?? 0) || null;
   const subId = d.subscription_id != null ? String(d.subscription_id) : (d.subscription as { id?: number } | undefined)?.id != null ? String((d.subscription as { id: number }).id) : null;
@@ -149,11 +150,16 @@ export async function handleAppmaxEvent(h: Hook) {
     await event(m.id, "falhou", `Cobrança recusada: ${reason}`, value);
     return "falhou";
   }
-  if (ev === "subscription_cancelation") {
+  if (ev === "subscription_cancelation" || ev === "subscription_canceled" || ev === "subscription_cancelled") {
     await db.clubMember.update({ where: { id: m.id }, data: { status: "cancelado", canceledAt: new Date(), codeActive: false } });
     if (m.discountId) await setCodeActive(m.discountId, false).catch(() => null);
     await event(m.id, "cancelou", "Cancelou a assinatura");
     return "cancelado";
+  }
+  if (ev === "subscription_delayed" || ev === "subscription_late") {
+    await db.clubMember.update({ where: { id: m.id }, data: { lastChargeStatus: "falhou", failReason: "mensalidade atrasada" } });
+    await event(m.id, "falhou", "Mensalidade atrasada", value);
+    return "atrasado";
   }
   if (ev === "subscription_paused") { await event(m.id, "pausou", "Assinatura pausada"); return "pausado"; }
   if (ev === "subscription_resumed") { await event(m.id, "voltou", "Assinatura reativada"); return "reativado"; }
