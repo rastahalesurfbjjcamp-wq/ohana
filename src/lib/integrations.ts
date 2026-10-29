@@ -4,7 +4,7 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:
 import { db } from "./db";
 import { env } from "./env";
 
-export type Provider = "shopify" | "meta" | "ai" | "transcribe" | "appmax";
+export type Provider = "shopify" | "meta" | "ai" | "transcribe" | "appmax" | "waba";
 
 export interface Creds {
   shopify: { domain?: string; token?: string; clientId?: string; clientSecret?: string };
@@ -12,6 +12,7 @@ export interface Creds {
   ai: { key?: string; model?: string };
   transcribe: { key?: string; url?: string; model?: string };
   appmax: { clientId?: string; clientSecret?: string; mode?: string };
+  waba: { phoneId?: string; wabaId?: string; token?: string; verify?: string };
 }
 
 // Campos que são segredo (guardados criptografados e nunca mostrados inteiros)
@@ -21,6 +22,7 @@ const SECRET: Record<Provider, string[]> = {
   ai: ["key"],
   transcribe: ["key"],
   appmax: ["clientSecret"],
+  waba: ["token"],
 };
 
 function key() {
@@ -76,6 +78,8 @@ export async function creds(): Promise<Creds> {
     ai: { key: s.ai?.key || env.anthropicKey(), model: s.ai?.model || env.anthropicModel() },
     transcribe: { key: s.transcribe?.key || env.transcribeKey(), url: s.transcribe?.url || env.transcribeUrl(), model: s.transcribe?.model || env.transcribeModel() },
     appmax: { clientId: s.appmax?.clientId || process.env.APPMAX_CLIENT_ID, clientSecret: s.appmax?.clientSecret || process.env.APPMAX_CLIENT_SECRET, mode: s.appmax?.mode || process.env.APPMAX_MODE || "producao" },
+    // API oficial do WhatsApp: sem token próprio, usa o mesmo token do Meta (se ele tiver a permissão do WhatsApp)
+    waba: { phoneId: s.waba?.phoneId, wabaId: s.waba?.wabaId, token: s.waba?.token || s.meta?.token || env.metaToken(), verify: createHash("sha256").update(`WABA:${process.env.INTEGRATIONS_SECRET ?? process.env.DATABASE_URL ?? ""}`).digest("hex").slice(0, 24) },
   };
   cache = { at: Date.now(), value };
   return value;

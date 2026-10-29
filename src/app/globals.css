@@ -1095,3 +1095,13 @@ a.itile:hover { border-color: #34403b; transform: translateY(-1px); }
 /* Atualizar no topo de cada tela */
 .rbtn.on svg { animation: spin .8s linear infinite; color: var(--lagoon); }
 @media (max-width: 860px) { .rbtn { display: none !important; } }
+
+/* Barra fina no topo enquanto troca de tela ou de data */
+.navbar-prog { position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 200; overflow: hidden; pointer-events: none; }
+.navbar-prog i { position: absolute; top: 0; bottom: 0; left: -40%; width: 40%; background: linear-gradient(90deg, transparent, #34c26a, #f7c928, transparent); animation: navprog 1s ease-in-out infinite; }
+@keyframes navprog { to { left: 100%; } }
+.spin { animation: spin .8s linear infinite; }
+.nav-splash { position: fixed; inset: 0; z-index: 150; background: rgba(11,14,13,.82); backdrop-filter: blur(6px); display: grid; place-items: center; animation: splashIn .2s ease both; }
+.nav-splash .splash { min-height: 0; }
+.tile.brand { background: #f3f5f4; border: 1px solid #2a312e; }
+.tile.brand svg path[fill="#ffffff"] { fill: #111; }

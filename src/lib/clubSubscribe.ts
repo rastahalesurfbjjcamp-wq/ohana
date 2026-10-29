@@ -2,7 +2,8 @@
 import { db } from "./db";
 import { getSettings } from "./settings";
 import { createCustomer, createOrder, createSubscription, FAILED, orderStatus, PAID, payCard, payPix } from "./appmax";
-import { cpfValid, createMemberCode, digits, findShopifyCustomer, registerPayment, setCodeActive, tagCustomer } from "./club";
+import { cpfValid, digits, ensureMemberCode, findShopifyCustomer, registerPayment, setCodeActive } from "./club";
+import { redis } from "./queue";
 import { normalizePhone } from "./segments";
 
 export type StartInput = { name: string; cpf: string; phone: string; email: string; method: "pix" | "cartao"; ip?: string; card?: { number: string; cvv: string; month: string; year: string; holder: string } };
@@ -42,7 +43,7 @@ export async function startCheckout(i: StartInput) {
     const r = await payCard(orderId, customerId, { number: digits(c.number), cvv: digits(c.cvv), month: c.month.padStart(2, "0"), year: c.year.slice(-2), holder: c.holder.trim(), cpf });
     if (PAID.has(r.status)) {
       const m = await activate(ck.id);
-      return { id: ck.id, paid: true, code: m?.code ?? null };
+      return { id: ck.id, paid: true, code: m?.code ?? null, gerando: !m?.code };
     }
     if (FAILED.has(r.status)) {
       await db.clubCheckout.update({ where: { id: ck.id }, data: { status: "recusado", error: "Cartão recusado" } });
@@ -62,16 +63,20 @@ export async function checkStatus(id: string) {
   if (!ck) return { status: "nao-encontrado" as const };
   if (ck.status === "pago") {
     const m = ck.memberId ? await db.clubMember.findUnique({ where: { id: ck.memberId } }) : null;
-    return { status: "pago" as const, code: m?.code ?? null };
+    const code = m?.code ?? (m ? await ensureMemberCode(m.id).catch(() => null) : null);
+    return { status: "pago" as const, code, gerando: !code };
   }
   if (ck.status !== "pendente" || !ck.orderId) return { status: ck.status };
   if (ck.pixExpires && ck.pixExpires.getTime() < Date.now() - 60_000) {
     await db.clubCheckout.update({ where: { id }, data: { status: "expirado" } });
     return { status: "expirado" as const };
   }
+  // muita gente esperando ao mesmo tempo: no máximo uma consulta à Appmax a cada 5 s por pedido (o aviso da Appmax também ativa)
+  const fresh = await redis().set(`clube:chk:${id}`, "1", "EX", 5, "NX").catch(() => "OK");
+  if (!fresh) return { status: "pendente" as const };
   try {
     const st = await orderStatus(ck.orderId);
-    if (PAID.has(st)) { const m = await activate(ck.id); return { status: "pago" as const, code: m?.code ?? null }; }
+    if (PAID.has(st)) { const m = await activate(ck.id); return { status: "pago" as const, code: m?.code ?? null, gerando: !m?.code }; }
     if (FAILED.has(st)) { await db.clubCheckout.update({ where: { id }, data: { status: "recusado" } }); return { status: "recusado" as const }; }
   } catch {
     // tenta de novo no próximo pedido de status
@@ -94,11 +99,9 @@ export async function activate(checkoutId: string) {
   const s = (await getSettings()).club;
   let m = await db.clubMember.findUnique({ where: { cpf: ck.cpf } });
   if (!m) {
-    const shop = await findShopifyCustomer({ email: ck.email, phone: ck.phone, cpf: ck.cpf }).catch(() => null);
-    let code: string | null = null, discountId: string | null = null;
-    try { const r = await createMemberCode(ck.name, shop?.id ?? null, s.discountPct); code = r.code; discountId = r.id; } catch { /* cria o cupom depois pelo painel */ }
-    if (shop?.id) await tagCustomer(shop.id);
-    m = await db.clubMember.create({ data: { name: ck.name, cpf: ck.cpf, phone: ck.phone, email: ck.email, customerId: shop?.id ?? null, code, discountId, fee: s.fee, provider: "appmax", payMethod: ck.method, cardLast4: ck.cardLast4 } });
+    // só e-mail e telefone aqui (rápido); o cupom é criado logo abaixo, com novas tentativas se a Shopify demorar
+    const shop = await findShopifyCustomer({ email: ck.email, phone: ck.phone, cpf: null }).catch(() => null);
+    m = await db.clubMember.create({ data: { name: ck.name, cpf: ck.cpf, phone: ck.phone, email: ck.email, customerId: shop?.id ?? null, fee: s.fee, provider: "appmax", payMethod: ck.method, cardLast4: ck.cardLast4 } });
   } else {
     m = await db.clubMember.update({ where: { id: m.id }, data: { status: "ativo", canceledAt: null, provider: "appmax", payMethod: ck.method, cardLast4: ck.cardLast4 ?? m.cardLast4, email: m.email ?? ck.email, phone: m.phone ?? ck.phone } });
     if (m.discountId && !m.codeActive) await setCodeActive(m.discountId, true).then(() => db.clubMember.update({ where: { id: m!.id }, data: { codeActive: true } })).catch(() => null);
@@ -111,6 +114,7 @@ export async function activate(checkoutId: string) {
     await event(m.id, "falhou", `Pagamento recebido, mas a assinatura mensal não foi criada na Appmax: ${String(e).replace(/^Error: /, "").slice(0, 120)}`);
   }
   await db.clubCheckout.update({ where: { id: ck.id }, data: { memberId: m.id } });
+  if (!m.code) await ensureMemberCode(m.id).catch(() => null);
   await event(m.id, "assinou", `Assinou o clube pelo ${ck.method === "pix" ? "Pix" : `cartão final ${ck.cardLast4 ?? ""}`}`, s.fee);
   return db.clubMember.findUnique({ where: { id: m.id } });
 }

@@ -5,6 +5,8 @@ import { Sidebar } from "@/components/Sidebar";
 import { env } from "@/lib/env";
 import { TableSort } from "@/components/TableSort";
 import { ChunkGuard } from "@/components/ChunkGuard";
+import { warmSoon } from "@/lib/warm";
+import { NavProgress } from "@/components/NavProgress";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +19,7 @@ async function sair() {
 export default async function PainelLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession();
   if (!session) redirect("/login");
+  warmSoon();
   const [wa, leaves] = await Promise.all([
     db.setting.findUnique({ where: { key: "_whatsapp" } }),
     db.memberEvent.count({ where: { type: "LEAVE", createdAt: { gte: new Date(Date.now() - 864e5) }, group: { isCommunity: true } } }),
@@ -28,6 +31,7 @@ export default async function PainelLayout({ children }: { children: React.React
       <main className="main">{children}</main>
       <TableSort />
       <ChunkGuard />
+      <NavProgress name={env.storeName()} />
     </div>
   );
 }

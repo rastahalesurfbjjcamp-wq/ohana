@@ -5,6 +5,8 @@ import { getSettings } from "./settings";
 import { gql, ordersBetween, type Order } from "./store";
 import { dayRange, isoDayLocal } from "./time";
 import { swr } from "./cache";
+import { beyondOrdersWindow } from "./shopify";
+import { couponSales } from "./history";
 
 export type PartnerRow = {
   id: string; name: string; code: string; kind: string; instagram: string | null; phone: string; payout: string; discountPct: number | null; discountType: string | null; discountAmount: number | null; minSubtotal: number | null; active: boolean;
@@ -12,11 +14,12 @@ export type PartnerRow = {
 };
 
 // Vendas de cada parceiro no período, pelo cupom usado no pedido
+
 export async function partnerStats(fromIso: string, toIso: string) {
   const s = await getSettings();
   const partners = await db.referral.findMany({ where: { kind: { in: ["atleta", "influenciador"] } }, orderBy: { createdAt: "asc" } });
   const byCode = new Map(partners.map((p) => [p.code.toUpperCase(), p]));
-  const orders = (await ordersBetween(dayRange(fromIso).start, dayRange(toIso).end)).filter((o) => !o.cancelled && o.financial !== "REFUNDED" && o.financial !== "VOIDED");
+  const orders = beyondOrdersWindow(dayRange(fromIso).start) ? [] : (await ordersBetween(dayRange(fromIso).start, dayRange(toIso).end)).filter((o) => !o.cancelled && o.financial !== "REFUNDED" && o.financial !== "VOIDED");
   const resolve = await costResolver();
   const rate = s.costs.taxRate + s.costs.paymentFeeRate;
   const pct = s.referral.commission / 100;
@@ -26,6 +29,18 @@ export async function partnerStats(fromIso: string, toIso: string) {
   }
   const daily = new Map<string, number>();
   const list: { order: Order; partner: string }[] = [];
+  // mais de 60 dias atrás: a Shopify não entrega os pedidos, então soma pelo relatório de vendas por cupom
+  if (beyondOrdersWindow(dayRange(fromIso).start)) {
+    for (const p of partners) {
+      const cs = await couponSales([p.code], fromIso, toIso).catch(() => null);
+      if (!cs || !cs.orders) continue;
+      const r = rows.get(p.id)!;
+      const commission = cs.net * pct;
+      r.orders = cs.orders; r.pieces = cs.items; r.revenue = cs.net; r.commission = commission;
+      r.profit = cs.net - cs.cogs - cs.net * rate - cs.items * s.costs.packagingPerItem - commission;
+    }
+    return { rows: [...rows.values()].sort((a, b) => b.revenue - a.revenue), daily, orders: list, commissionPct: s.referral.commission, discountPct: s.referral.percent };
+  }
   for (const o of orders) {
     const code = o.codes.find((c) => byCode.has(c));
     if (!code) continue;

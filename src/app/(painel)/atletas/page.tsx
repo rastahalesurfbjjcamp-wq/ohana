@@ -33,7 +33,7 @@ export default async function Atletas({ searchParams }: { searchParams: Promise<
   let payStats: Awaited<ReturnType<typeof partnerStats>> | null = null;
   let error: unknown = null;
   await ensureTeam().catch(() => null);
-  await syncPartnerDiscounts().catch(() => null);
+  syncPartnerDiscounts().catch(() => null); // confere os cupons na Shopify por trás, sem segurar a tela
   const rule = await ruleDisc();
   const ruleTxt = describeDisc(rule);
   try {

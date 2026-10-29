@@ -1,12 +1,13 @@
+import { Brand } from "@/components/Brand";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Bell, Bot, Mic, QrCode, ShieldCheck, X } from "lucide-react";
+import { Bell, Mic, QrCode, ShieldCheck, X } from "lucide-react";
 import { getSettings } from "@/lib/settings";
 import { getSession } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { creds, mask, storedProviders, type Provider } from "@/lib/integrations";
 import { Header } from "@/components/ui";
-import { disconnect, retest, saveProvider } from "./actions";
+import { disconnect, retest, saveProvider, wabaTest } from "./actions";
 import { callbackUrl } from "@/lib/shopifyOauth";
 import { env } from "@/lib/env";
 
@@ -78,6 +79,23 @@ export default async function Integracoes({ searchParams }: { searchParams: Prom
         "No painel da Appmax, gere as credenciais de API (Client ID e Client secret) da loja e cole aqui.",
         `Cadastre o endereço de avisos (webhook): ${env.appUrl().replace(/\/$/, "")}/api/webhooks/appmax, com os eventos de pedido (Pix pago, aprovado, Pix expirado) e de assinatura (cobrança paga, recusada, cancelamento).`,
         `A página de assinatura fica em ${env.appUrl().replace(/\/$/, "")}/assinar. Para testar antes, use o ambiente sandbox.`,
+      ],
+    },
+    {
+      p: "waba",
+      title: "WhatsApp · API oficial da Meta",
+      what: "Mensagens com selo de empresa e botões, sem risco de bloqueio do número. Ideal para recuperação de carrinho e disparos grandes.",
+      fields: [
+        { name: "phoneId", label: "ID do número de telefone", placeholder: "Gerenciador do WhatsApp, Números de telefone", current: c.waba.phoneId },
+        { name: "wabaId", label: "ID da conta do WhatsApp Business", placeholder: "para listar os modelos aprovados", current: c.waba.wabaId },
+        { name: "token", label: "Token (deixe vazio para usar o mesmo do Meta Ads)", secret: true, placeholder: "EAA...", current: mask(c.waba.token) },
+      ],
+      steps: [
+        "No app Rasta Hale Hub (developers.facebook.com), adicione o caso de uso WhatsApp e escolha a conta do WhatsApp Business do portfólio.",
+        "Adicione o número e confirme pelo código. Use um número que não esteja no WhatsApp do celular (o da Evolution continua para os grupos).",
+        "Em Usuários do sistema, atribua a conta do WhatsApp ao rastahalehub e gere o token com whatsapp_business_messaging e whatsapp_business_management (ou gere de novo o do Meta Ads com essas permissões).",
+        `Em WhatsApp, Configuração, cadastre o webhook ${env.appUrl().replace(/\/$/, "")}/api/webhooks/whatsapp com o token de verificação ${c.waba.verify} e assine "messages".`,
+        "Cole aqui o ID do número e o ID da conta, salve e mande um teste.",
       ],
     },
     {
@@ -184,7 +202,7 @@ export default async function Integracoes({ searchParams }: { searchParams: Prom
       <div className="cols c-1-1">
         <section className="pnl" style={{ padding: 22 }}>
           <div className="row" style={{ gap: 12, flexWrap: "nowrap" }}>
-            <span className={`tile ${waOn ? "t-l" : "t-c"}`}><QrCode size={18} /></span>
+            <span className="tile brand"><Brand name="whatsapp" /></span>
             <div style={{ flex: 1 }}><b style={{ fontSize: 15 }}>WhatsApp · Evolution</b><div className="dim" style={{ fontSize: 12.5 }}>grupos da comunidade, atendimento, disparos e relatório</div></div>
             <span className={`chip ${waOn ? "c-l" : "c-s"}`}>{waOn ? "Conectado" : "Aguardando QR"}</span>
           </div>
@@ -198,19 +216,31 @@ export default async function Integracoes({ searchParams }: { searchParams: Prom
             <Link className="btn ghost" href="/configuracoes"><ShieldCheck size={15} /> Ajustar proteção</Link>
           </div>
         </section>
-        <section className="pnl" style={{ padding: 22, opacity: 0.85 }}>
+        <section className="pnl" style={{ padding: 22 }}>
           <div className="row" style={{ gap: 12, flexWrap: "nowrap" }}>
-            <span className="tile t-k">∞</span>
-            <div style={{ flex: 1 }}><b style={{ fontSize: 15 }}>WhatsApp · API Oficial da Meta</b><div className="dim" style={{ fontSize: 12.5 }}>selo de conta comercial, botões e sem risco de bloqueio</div></div>
-            <span className="chip c-n">Em breve</span>
+            <span className="tile brand"><Brand name="whatsapp" /></span>
+            <div style={{ flex: 1 }}><b style={{ fontSize: 15 }}>WhatsApp · API oficial da Meta</b><div className="dim" style={{ fontSize: 12.5 }}>selo de empresa, botões e sem risco de bloqueio</div></div>
+            <span className={`chip ${stateOf("waba")[1]}`}>{stateOf("waba")[0]}</span>
           </div>
-          <p className="mut" style={{ fontSize: 13, lineHeight: 1.55, marginTop: 14 }}>Para disparos grandes e recuperação com botões. A Meta cobra por mensagem de marketing. Depende do app da Meta aprovado, o mesmo que libera o Meta Ads com um clique.</p>
+          <p className="mut" style={{ fontSize: 13, lineHeight: 1.55, marginTop: 14 }}>Pronta para conectar. Serve para recuperação de carrinho com botão e disparos grandes. A Meta cobra por conversa de marketing; respostas a quem chamou primeiro são grátis por 24 horas.</p>
+          {status.waba?.msg && <p className={status.waba.ok ? "up" : "dn"} style={{ fontSize: 12.5, marginTop: 8 }}>{status.waba.msg}</p>}
+          <div className="row" style={{ gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+            <Link className="btn" href={open === "waba" ? "/integracoes" : "/integracoes?abrir=waba"}>{open === "waba" ? "Fechar" : "Configurar"}</Link>
+            {c.waba.phoneId && (
+              <form action={wabaTest} className="row" style={{ gap: 8 }}>
+                <input className="in" name="phone" placeholder="55 21 99999-9999" style={{ height: 36, width: 170 }} />
+                <button className="btn pri" type="submit">Mandar teste</button>
+              </form>
+            )}
+          </div>
         </section>
       </div>
 
+      {open === "waba" && <div style={{ marginTop: 16 }}><Detail /></div>}
+
       <h3 className="isec">Loja e vendas</h3>
       <div className="igrid">
-        <Tile p="shopify" letter="S" tone="t-l" title="Shopify" sub="pedidos, carrinhos, clientes, estoque, cupons" />
+        <Tile p="shopify" letter={<Brand name="shopify" />} tone="brand" title="Shopify" sub="pedidos, carrinhos, clientes, estoque, cupons" />
         <div className="itile off"><span className="tile t-p" style={{ fontWeight: 800 }}>A</span><div style={{ flex: 1 }}><b>Gateway de pagamento</b><small>Pix e cartão chegam pela Shopify</small></div><span className={`chip ${status.shopify?.ok ? "c-l" : "c-n"}`}>{status.shopify?.ok ? "Pela Shopify" : "Precisa da Shopify"}</span></div>
         <Tile p="appmax" letter="A" tone="t-s" title="Appmax (clube)" sub="assinatura mensal por Pix e cartão" />
         <div className="itile off"><span className="tile t-s" style={{ fontWeight: 800 }}>C</span><div style={{ flex: 1 }}><b>Correios e transportadoras</b><small>rastreio que a Olist manda para a Shopify</small></div><span className={`chip ${status.shopify?.ok ? "c-l" : "c-n"}`}>{status.shopify?.ok ? "Pela Shopify" : "Precisa da Shopify"}</span></div>
@@ -219,15 +249,15 @@ export default async function Integracoes({ searchParams }: { searchParams: Prom
 
       <h3 className="isec">Anúncios</h3>
       <div className="igrid">
-        <Tile p="meta" letter="f" tone="t-k" title="Meta Ads" sub={c.meta.adAccount ? `conta ${c.meta.adAccount} · gasto e campanhas` : "gasto, campanhas e leads"} />
-        <Tile letter="G" tone="t-n" title="Google Ads" sub="gasto e campanhas" />
-        <Tile letter="♪" tone="t-n" title="TikTok Ads" sub="gasto e campanhas" />
+        <Tile p="meta" letter={<Brand name="meta" />} tone="brand" title="Meta Ads" sub={c.meta.adAccount ? `conta ${c.meta.adAccount} · gasto e campanhas` : "gasto, campanhas e leads"} />
+        <Tile letter={<Brand name="google" />} tone="brand" title="Google Ads" sub="gasto e campanhas" />
+        <Tile letter={<Brand name="tiktok" />} tone="brand" title="TikTok Ads" sub="gasto e campanhas" />
       </div>
       {open === "meta" && <Detail />}
 
       <h3 className="isec">Inteligência</h3>
       <div className="igrid">
-        <Tile p="ai" letter={<Bot size={17} />} tone="t-p" title="Claude (IA)" sub="assistente, diagnóstico, comandos e dica do dia" />
+        <Tile p="ai" letter={<Brand name="claude" />} tone="brand" title="Claude (IA)" sub="assistente, diagnóstico, comandos e dica do dia" />
         <Tile p="transcribe" letter={<Mic size={17} />} tone="t-s" title="Transcrição de áudio" sub="entende áudios no grupo e no atendimento" />
       </div>
       {(open === "ai" || open === "transcribe") && <Detail />}

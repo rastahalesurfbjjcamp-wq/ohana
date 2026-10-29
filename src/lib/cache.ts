@@ -2,7 +2,7 @@
 // e junta pedidos iguais que chegam ao mesmo tempo numa chamada só.
 const store = new Map<string, { at: number; value: unknown }>();
 const inflight = new Map<string, Promise<unknown>>();
-const MAX_STALE = 10 * 60_000;
+const MAX_STALE = 30 * 60_000; // mostra o último dado na hora e atualiza por trás
 
 function load<T>(key: string, fn: () => Promise<T>): Promise<T> {
   const running = inflight.get(key);

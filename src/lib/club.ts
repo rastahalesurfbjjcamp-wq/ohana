@@ -3,6 +3,7 @@ import { db } from "./db";
 import { getSettings } from "./settings";
 import { gql, ordersBetween, type Order } from "./store";
 import { normalizePhone } from "./segments";
+import { redis } from "./queue";
 
 export const digits = (v: string | null | undefined) => (v ?? "").replace(/\D/g, "");
 export const maskCpf = (c: string | null) => (c && c.length === 11 ? `${c.slice(0, 3)}.***.***-${c.slice(9)}` : c ?? "");
@@ -73,11 +74,23 @@ export async function findShopifyCustomer(p: { email?: string | null; phone?: st
   return null;
 }
 
+// A Shopify limita chamadas em sequência: espera e tenta de novo
+async function withRetry<T>(f: () => Promise<T>, tries = 4): Promise<T> {
+  for (let i = 1; ; i++) {
+    try {
+      return await f();
+    } catch (e) {
+      if (i >= tries || !/THROTTLED|Throttled|rate limit|502|503|504|fetch failed|ECONNRESET/i.test(String(e))) throw e;
+      await new Promise((r) => setTimeout(r, 1000 * i * i));
+    }
+  }
+}
+
 async function discountCreate(input: Record<string, unknown>) {
-  const d = await gql<{ discountCodeBasicCreate: { codeDiscountNode: { id: string } | null; userErrors: { message: string }[] } }>(
+  const d = await withRetry(() => gql<{ discountCodeBasicCreate: { codeDiscountNode: { id: string } | null; userErrors: { message: string }[] } }>(
     `mutation($input: DiscountCodeBasicInput!){ discountCodeBasicCreate(basicCodeDiscount:$input){ codeDiscountNode{ id } userErrors{ message } } }`,
     { input },
-  );
+  ));
   const e = d.discountCodeBasicCreate.userErrors[0];
   if (e) throw new Error(e.message);
   return d.discountCodeBasicCreate.codeDiscountNode?.id ?? null;
@@ -86,10 +99,61 @@ const contextFor = (customerId: string | null) => (customerId ? { customers: { a
 
 // Cupom de membro: desconto em toda compra, só vale para o próprio cliente na Shopify
 export async function createMemberCode(name: string, customerId: string | null, percent: number) {
-  const base = name.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^A-Za-z]/g, "").toUpperCase().slice(0, 8) || "MEMBRO";
-  const code = `CLUBE${base}${rand(2)}`;
-  const id = await discountCreate({ title: `Clube ${name}`, code, startsAt: new Date().toISOString(), context: contextFor(customerId), customerGets: { value: { percentage: percent / 100 }, items: { all: true } }, tags: ["clube"] });
-  return { code, id };
+  const base = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Za-z]/g, "").toUpperCase().slice(0, 6) || "MEMBRO";
+  // código único: se já existir um igual na loja, sorteia outro
+  for (let i = 0; i < 4; i++) {
+    const code = `CLUBE${base}${rand(4)}`;
+    try {
+      const id = await discountCreate({ title: `Clube ${name}`, code, startsAt: new Date().toISOString(), context: contextFor(customerId), customerGets: { value: { percentage: percent / 100 }, items: { all: true } } });
+      return { code, id };
+    } catch (e) {
+      if (i < 3 && /unique|already|já existe|taken/i.test(String(e))) continue;
+      throw e;
+    }
+  }
+  throw new Error("Não consegui criar um código único");
+}
+
+// Cria o cliente na Shopify quando ele ainda não tem cadastro (precisa da permissão write_customers)
+export async function createShopifyCustomer(p: { name: string; email?: string | null; phone?: string | null }): Promise<string | null> {
+  const [first, ...rest] = p.name.trim().split(/\s+/);
+  const d = await withRetry(() => gql<{ customerCreate: { customer: { id: string } | null; userErrors: { message: string }[] } }>(
+    `mutation($input: CustomerInput!){ customerCreate(input:$input){ customer{ id } userErrors{ message } } }`,
+    { input: { firstName: first, lastName: rest.join(" ") || undefined, email: p.email || undefined, phone: p.phone ? `+${p.phone}` : undefined, tags: ["clube"] } },
+  )).catch(() => null);
+  return d?.customerCreate.customer?.id ?? null;
+}
+
+// Garante o cupom do membro. Seguro para chamar várias vezes ao mesmo tempo (trava no Redis).
+export async function ensureMemberCode(memberId: string): Promise<string | null> {
+  const m0 = await db.clubMember.findUnique({ where: { id: memberId } });
+  if (!m0) return null;
+  if (m0.code) return m0.code;
+  const lock = await redis().set(`clube:code:${memberId}`, "1", "EX", 90, "NX");
+  if (!lock) return null; // outro processo já está gerando
+  try {
+    const m = await db.clubMember.findUnique({ where: { id: memberId } });
+    if (!m) return null;
+    if (m.code) return m.code;
+    const s = (await getSettings()).club;
+    let customerId = m.customerId;
+    if (!customerId) {
+      const shop = await findShopifyCustomer({ email: m.email, phone: m.phone, cpf: null }).catch(() => null);
+      customerId = shop?.id ?? (await createShopifyCustomer({ name: m.name, email: m.email, phone: m.phone }));
+    }
+    const r = await createMemberCode(m.name, customerId, s.discountPct);
+    await db.clubMember.update({ where: { id: m.id }, data: { code: r.code, discountId: r.id, codeActive: true, customerId: customerId ?? undefined } });
+    if (customerId) await tagCustomer(customerId);
+    await db.clubEvent.create({ data: { memberId: m.id, kind: "resgate", text: `Cupom de membro criado: ${r.code}` } }).catch(() => null);
+    return r.code;
+  } catch (e) {
+    // avisa no painel uma vez por hora, não a cada tentativa
+    const recent = await db.clubEvent.count({ where: { memberId, kind: "falhou", text: { startsWith: "Não consegui criar o cupom" }, createdAt: { gte: new Date(Date.now() - 3600_000) } } }).catch(() => 1);
+    if (!recent) await db.clubEvent.create({ data: { memberId, kind: "falhou", text: `Não consegui criar o cupom ainda (o Hub tenta de novo sozinho): ${String(e).replace(/^Error: /, "").slice(0, 140)}` } }).catch(() => null);
+    return null;
+  } finally {
+    await redis().del(`clube:code:${memberId}`).catch(() => null);
+  }
 }
 
 export async function setCodeActive(discountId: string, on: boolean) {

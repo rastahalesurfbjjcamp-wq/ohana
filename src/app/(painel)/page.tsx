@@ -51,25 +51,25 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
   const range = RANGES.find((x) => x[0] === r) ?? RANGES[0];
   const today = isoDayLocal();
   const from = addDays(today, -(range[2] - 1));
-  const session = await getSession();
-  const ob = await onboardingSteps();
+  // tudo que depende de Shopify e Meta começa junto, sem esperar um pelo outro
+  const oldP = beyondOrdersWindow(pStart);
+  const settingsP = getSettings();
+  const mP = computeMetrics(period.from, period.to).catch(() => null);
+  const campsP = campStats(period.from, period.to).catch(() => null);
+  const seriesP = oldP ? salesSeries(period.from, period.to, "day").catch(() => []) : Promise.resolve([]);
+  const csP = settingsP.then((st) => (st.ads.cards.includes("perfil") && st.ads.perfilCoupons.length ? couponSales(st.ads.perfilCoupons, period.from, period.to).catch(() => null) : null));
+  const [session, ob] = await Promise.all([getSession(), onboardingSteps()]);
   const obDone = ob.filter((x) => x.done).length;
   const hour = Number(new Intl.DateTimeFormat("pt-BR", { timeZone: tz, hour: "2-digit", hourCycle: "h23" }).format(new Date()));
   const hello = hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
 
-  let m: Metrics | null = null;
-  try {
-    m = await computeMetrics(period.from, period.to);
-  } catch {
-    m = null;
-  }
   const community = { group: { isCommunity: true } };
   // entradas e saídas: só os grupos escolhidos (comunidade + resultados)
   const chosen = { group: { archived: false, OR: [{ isCommunity: true }, { isResults: true }] } };
-  await ensureTeam().catch(() => null);
+  ensureTeam().catch(() => null);
   const safe = <T,>(p: Promise<T>, d: T) => p.catch(() => d);
   const [orders, latest, prods, partners, leadsP, leadsFeed, carts, recovered, waiting, chatFeed, tasksDue] = await Promise.all([
-    safe(ordersBetween(pStart, pEnd), [] as Order[]),
+    oldP ? Promise.resolve([] as Order[]) : safe(ordersBetween(pStart, pEnd), [] as Order[]),
     safe(recentOrders(12), [] as Order[]),
     safe(products(), []),
     safe(partnerStats(period.from, period.to), null),
@@ -81,6 +81,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
     db.chatMessage.findMany({ where: { fromMe: false }, orderBy: { createdAt: "desc" }, take: 8 }),
     db.task.findMany({ where: { status: { not: "feito" }, dueDate: { lte: dayRange(today).end } }, orderBy: { dueDate: "asc" }, take: 5 }),
   ]);
+  const m: Metrics | null = await mP;
   const clubAll = await db.clubMember.findMany({ where: { status: { not: "cancelado" } }, select: { paidUntil: true, joinedAt: true, status: true } }).catch(() => []);
   const clubLate = clubAll.filter((x) => !x.paidUntil || x.paidUntil.getTime() < Date.now()).length;
   const clubNew = clubAll.filter((x) => x.joinedAt >= pStart && x.joinedAt <= pEnd).length;
@@ -150,8 +151,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
   const oneDay = period.from === period.to;
   const hourOf = (iso: string) => Number(new Intl.DateTimeFormat("pt-BR", { timeZone: tz, hour: "2-digit", hourCycle: "h23" }).format(new Date(iso)));
   // período com mais de 60 dias: a Shopify não entrega os pedidos, então vendas vêm do relatório
-  const old = beyondOrdersWindow(pStart);
-  const oldSeries = old ? await salesSeries(period.from, period.to, "day").catch(() => []) : [];
+  const old = oldP;
+  const oldSeries = await seriesP;
   const nOrders = old ? m?.orders ?? 0 : valid.length;
   const salesBars = old
     ? oldSeries.map((r) => ({ label: `${r.key.slice(8)}/${r.key.slice(5, 7)}`, value: r.net }))
@@ -159,20 +160,18 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
     ? Array.from({ length: period.from === today ? hour + 1 : 24 }, (_, h) => ({ label: `${h}h`, value: valid.filter((o) => hourOf(o.createdAt) === h).reduce((a, o) => a + o.subtotal, 0) }))
     : daysBetween(period.from, period.to).map((d) => ({ label: `${d.slice(8)}/${d.slice(5, 7)}`, value: valid.filter((o) => isoDayLocal(new Date(o.createdAt)) === d).reduce((a, o) => a + o.subtotal, 0) }));
   const leadsN = leadsP.reduce((a, x) => a + x._count, 0);
-  const leadsIn = leadsP.filter((x) => x.status === "no_grupo" || x.status === "cliente").reduce((a, x) => a + x._count, 0);
   const pc = (t: string) => periodEv.find((e) => e.type === t)?._count ?? 0;
   const cartN = carts.filter((c) => c.kind === "carrinho").length;
   const cartV = carts.filter((c) => c.kind === "carrinho").reduce((a, c) => a + c.value, 0);
   const pixN = carts.filter((c) => c.kind === "pix" && c.status === "ativo").length;
   const recV = recovered.reduce((a, c) => a + (c.recoveredValue ?? c.value), 0);
   const sessions = m?.conversion?.sessions ?? null;
-  const settings = await getSettings();
-  let camps: CampStat[] | null = null;
-  try { camps = await campStats(period.from, period.to); } catch { camps = null; }
+  const settings = await settingsP;
+  const camps: CampStat[] | null = await campsP;
   const g = camps ? byGroup(camps) : null;
   const salesSpend = g ? g.vendas.spend : m?.ads ?? null;
   const roas = salesSpend && m ? m.net / salesSpend : null;
-  const perfilCs = settings.ads.cards.includes("perfil") && settings.ads.perfilCoupons.length ? await couponSales(settings.ads.perfilCoupons, period.from, period.to).catch(() => null) : null;
+  const perfilCs = await csP;
   // sem métrica de seguidor escolhida e sem seguidor vindo do Meta, mostra visitas ao perfil
   const fm = settings.ads.followMetric;
   const pVal = g ? (g.perfil.follows || (fm ? 0 : g.perfil.visits)) : 0;

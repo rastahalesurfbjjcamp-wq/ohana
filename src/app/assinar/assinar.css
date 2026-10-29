@@ -85,3 +85,11 @@
   .sub .sb-wrap > section > .sb-eyebrow, .sub .sb-wrap > section > h1, .sub .sb-wrap > section > .lede{display:none}
   .sub .sb-qr{flex-direction:column}
 }
+
+/* gerando o cupom depois do pagamento */
+.sb-gen { margin-top: 14px; padding: 18px 16px; border: 1px dashed #c9d3cd; border-radius: 14px; background: #f6faf7; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }
+.sb-gen b { font-size: 15px; }
+.sb-gen p { font-size: 13px; line-height: 1.5; margin: 0; color: #46524b; }
+.sb-gen .sb-note { color: #8a5a00; }
+.sb-spin { width: 30px; height: 30px; border-radius: 50%; border: 3px solid #dfe8e2; border-top-color: #1f7a3d; animation: sbspin .8s linear infinite; }
+@keyframes sbspin { to { transform: rotate(360deg); } }

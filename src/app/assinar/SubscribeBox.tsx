@@ -25,6 +25,34 @@ export function SubscribeBox({ fee, ready, storeUrl, clubName }: { fee: number; 
   const [left, setLeft] = useState(0);
   const [copied, setCopied] = useState(false);
   const poll = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [slow, setSlow] = useState(false);
+
+  // volta para a confirmação se a pessoa recarregar a página depois de pagar
+  useEffect(() => {
+    const id = new URLSearchParams(location.search).get("pedido");
+    if (id && /^c[a-z0-9]{20,}$/.test(id)) { setCkId(id); setDone({ code: null }); }
+  }, []);
+  // pagou: guarda o pedido no endereço da página
+  useEffect(() => {
+    if (!done || !ckId) return;
+    const u = new URL(location.href);
+    if (u.searchParams.get("pedido") !== ckId) { u.searchParams.set("pedido", ckId); history.replaceState(null, "", u.toString()); }
+  }, [done, ckId]);
+  // pagou e o cupom ainda está sendo criado: pergunta a cada 3 s
+  useEffect(() => {
+    if (!done || done.code || !ckId) return;
+    let stop = false;
+    const started = Date.now();
+    const check = async () => {
+      if (stop) return;
+      const r = await fetch(`/api/clube/status?id=${ckId}`, { cache: "no-store" }).then((x) => x.json()).catch(() => null);
+      if (r?.code) { setDone({ code: r.code }); return; }
+      if (Date.now() - started > 4 * 60_000) setSlow(true);
+      setTimeout(check, 3000);
+    };
+    const t = setTimeout(check, 1500);
+    return () => { stop = true; clearTimeout(t); };
+  }, [done, ckId]);
   const set = (k: keyof typeof f, v: string) => setF((x) => ({ ...x, [k]: v }));
 
   // confere o pagamento a cada 4 segundos enquanto o Pix está aberto
@@ -79,9 +107,20 @@ export function SubscribeBox({ fee, ready, storeUrl, clubName }: { fee: number; 
         <div className="sb-c"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="m5 12 5 5 9-10" /></svg></div>
         <h3>Assinatura confirmada</h3>
         <p>Bem-vindo ao {clubName}{first ? `, ${first}` : ""}.{done.code ? " Este é o seu cupom de membro:" : ""}</p>
-        {done.code && <div className="sb-code">{done.code}</div>}
-        <p style={{ fontSize: 13 }}>{done.code ? "Ele só funciona na sua conta da loja (o mesmo e-mail que você usou aqui)." : "Seu cupom de membro vai chegar em instantes."}</p>
-        <a className="sb-btn" style={{ marginTop: 18, textDecoration: "none" }} href={done.code ? `${storeUrl.replace(/\/$/, "")}/discount/${done.code}` : storeUrl}>Ir para a loja{done.code ? " com o cupom aplicado" : ""}</a>
+        {done.code ? (
+          <>
+            <div className="sb-code">{done.code}</div>
+            <p style={{ fontSize: 13 }}>É um cupom único e pessoal, ligado ao seu CPF e ao seu cadastro na loja. Na hora de comprar, use o mesmo e-mail{f.email ? ` (${f.email.trim()})` : ""} que você colocou aqui.</p>
+            <a className="sb-btn" style={{ marginTop: 18, textDecoration: "none" }} href={`${storeUrl.replace(/\/$/, "")}/discount/${done.code}`}>Ir para a loja com o cupom aplicado</a>
+          </>
+        ) : (
+          <div className="sb-gen" role="status" aria-live="polite">
+            <div className="sb-spin" />
+            <b>Gerando o seu cupom</b>
+            <p>Estamos criando um cupom único só para você, ligado ao seu CPF e ao seu cadastro na loja. Pode levar até 3 minutos. Não feche esta página.</p>
+            {slow && <p className="sb-note">Está demorando mais que o normal. Seu pagamento já foi confirmado e o cupom vai aparecer aqui. Se precisar sair, guarde este endereço e abra de novo depois.</p>}
+          </div>
+        )}
       </div>
     );
   }

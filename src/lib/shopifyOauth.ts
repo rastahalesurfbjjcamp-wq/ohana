@@ -3,7 +3,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { env } from "./env";
 
 export const SHOPIFY_SCOPES = [
-  "read_orders", "read_products", "read_inventory", "read_customers",
+  "read_orders", "read_products", "read_inventory", "read_customers", "write_customers",
   "read_reports", "read_analytics", "read_checkouts", "read_discounts", "write_discounts", "read_fulfillments",
 ].join(",");
 

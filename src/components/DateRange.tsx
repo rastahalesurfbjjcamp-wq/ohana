@@ -1,7 +1,8 @@
 "use client";
 // Seletor de período: atalhos + calendário de dois meses.
 // Dá para clicar no início e no fim, ou clicar e arrastar por cima dos dias.
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { startNav } from "./NavProgress";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -28,6 +29,7 @@ export function DateRange({ current, from, to, label, presets }: { current: stri
   const path = usePathname();
   const params = useSearchParams();
   const [open, setOpen] = useState(false);
+  const [pending, startTransition] = useTransition();
   const [custom, setCustom] = useState(current === "custom");
   const [a, setA] = useState<string>(from);
   const [b, setB] = useState<string | null>(to);
@@ -55,7 +57,8 @@ export function DateRange({ current, from, to, label, presets }: { current: stri
     for (const k of ["p", "de", "ate"]) sp.delete(k);
     for (const [k, v] of Object.entries(q)) sp.set(k, v);
     setOpen(false);
-    router.push(`${path}?${sp.toString()}`);
+    startNav();
+    startTransition(() => router.push(`${path}?${sp.toString()}`));
   };
 
   const months = useMemo(() => [month, new Date(month.getFullYear(), month.getMonth() + 1, 1)], [month]);
@@ -83,7 +86,7 @@ export function DateRange({ current, from, to, label, presets }: { current: stri
   return (
     <div className="dp" ref={ref}>
       <button type="button" className={`btn dp-btn${open ? " on" : ""}`} onClick={() => setOpen((o) => !o)}>
-        <CalendarDays size={16} /> {current === "custom" ? "Período" : label} <span className="dim" style={{ fontWeight: 400 }}>{from === to ? fmt(from) : `${fmt(from)} a ${fmt(to)}`}</span> <ChevronDown size={14} className="chev" />
+        <CalendarDays size={16} className={pending ? "spin" : ""} /> {current === "custom" ? "Período" : label} <span className="dim" style={{ fontWeight: 400 }}>{from === to ? fmt(from) : `${fmt(from)} a ${fmt(to)}`}</span> <ChevronDown size={14} className="chev" />
       </button>
       {open && (
         <div className="dp-pop">

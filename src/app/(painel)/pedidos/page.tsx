@@ -1,3 +1,4 @@
+import { swr } from "@/lib/cache";
 import Link from "next/link";
 import { Banknote, CreditCard, Download, ExternalLink, MessageCircle, QrCode, Search, ShoppingCart } from "lucide-react";
 import { db } from "@/lib/db";
@@ -43,13 +44,15 @@ export default async function Pedidos({ searchParams }: { searchParams: Promise<
   let carts: Checkout[] = [];
   let error: unknown = null;
   try {
-    orders = await ordersBetween(dayRange(addDays(today, -(dias - 1))).start, dayRange(today).end);
     const since = dayRange(addDays(today, -(dias - 1))).start.toISOString();
-    const d = await gql<{ abandonedCheckouts: { nodes: Checkout[] } }>(
+    // pedidos e carrinhos ao mesmo tempo; carrinhos guardados por 1 minuto
+    const ordersP = ordersBetween(dayRange(addDays(today, -(dias - 1))).start, dayRange(today).end);
+    const d = await swr(`checkouts:${since.slice(0, 10)}`, 60_000, () => gql<{ abandonedCheckouts: { nodes: Checkout[] } }>(
       `query($q:String){ abandonedCheckouts(first:100, reverse:true, sortKey:CREATED_AT, query:$q){ nodes{ id createdAt completedAt abandonedCheckoutUrl totalPriceSet{shopMoney{amount}} customer{ displayName defaultPhoneNumber{phoneNumber} } shippingAddress{ phone firstName } lineItems(first:5){ nodes{ title quantity image{ url(transform:{maxWidth:96, maxHeight:96}) } } } } } }`,
       { q: `created_at:>='${since}'` },
-    ).catch(() => null);
-    carts = (d?.abandonedCheckouts.nodes ?? []).filter((c) => !c.completedAt);
+    )).catch(() => null);
+    orders = await ordersP;
+    carts = (d?.abandonedCheckouts?.nodes ?? []).filter((c) => !c.completedAt);
   } catch (e) {
     error = e;
   }

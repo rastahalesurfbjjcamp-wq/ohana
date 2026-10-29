@@ -9,7 +9,7 @@ export async function POST(req: Request) {
     const r = redis();
     const n = await r.incr(`clube:try:${ip}`);
     if (n === 1) await r.expire(`clube:try:${ip}`, 600);
-    if (n > 8) return NextResponse.json({ error: "Muitas tentativas. Espere alguns minutos." }, { status: 429 });
+    if (n > 20) return NextResponse.json({ error: "Muitas tentativas. Espere alguns minutos." }, { status: 429 });
   } catch {
     // sem redis segue normal
   }

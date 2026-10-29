@@ -10,7 +10,7 @@ import { transcribe } from "../lib/ai";
 import { evolution } from "../lib/evolution";
 import { getSettings } from "../lib/settings";
 import { humanDelay, reserveSlot, sendMedia, sendText, sentByBot } from "../lib/send";
-import { scanClub } from "../lib/club";
+import { ensureMemberCode, scanClub } from "../lib/club";
 import { hhmmLocal, isoDayLocal, nowLocal } from "../lib/time";
 import { dueBroadcasts, leadWelcome, runBroadcast, sendPollLink, waitlistNotify } from "./jobs2";
 import { scanFirstPurchases, scanRecovery, scanRepurchase, sendDueRecovery } from "../lib/recovery";
@@ -18,7 +18,7 @@ import { runFunnels } from "../lib/funnels";
 import { assistantReply } from "../lib/assistant";
 import { refreshReferralUsage } from "../lib/referral";
 
-type Marks = { payday?: string; daily?: string; weekly?: string; sync?: number; scan?: number; repurchase?: string; referral?: number; club?: number };
+type Marks = { payday?: string; daily?: string; weekly?: string; sync?: number; scan?: number; repurchase?: string; referral?: number; club?: number; wa?: number };
 
 async function getMarks(): Promise<Marks> {
   const r = await db.setting.findUnique({ where: { key: "_marks" } });
@@ -96,6 +96,17 @@ async function tick() {
   if (hhmm >= "11:00" && marks.repurchase !== today) {
     await setMarks({ repurchase: today });
     await scanRepurchase().catch((e) => console.error("[recompra]", e));
+  }
+  // Estado real da conexão do WhatsApp a cada 2 minutos (o aviso da Evolution às vezes não chega)
+  if (!marks.wa || Date.now() - marks.wa > 2 * 60_000) {
+    await setMarks({ wa: Date.now() });
+    const state = await evolution.connectionState().catch(() => null);
+    if (state && state !== "unknown") await db.setting.upsert({ where: { key: "_whatsapp" }, create: { key: "_whatsapp", value: { state, at: new Date().toISOString() } }, update: { value: { state, at: new Date().toISOString() } } }).catch(() => null);
+  }
+  // Membros que pagaram e ainda estão sem cupom: tenta criar de novo a cada minuto
+  {
+    const semCupom = await db.clubMember.findMany({ where: { code: null, status: { not: "cancelado" } }, select: { id: true }, take: 10 }).catch(() => []);
+    for (const m of semCupom) await ensureMemberCode(m.id).catch(() => null);
   }
   // Clube de fidelidade: pontos das compras e cupom de quem atrasou, a cada 30 minutos
   if (!marks.club || Date.now() - marks.club > 30 * 60_000) {

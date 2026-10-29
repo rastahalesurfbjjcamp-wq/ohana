@@ -46,13 +46,18 @@ export async function testIntegration(p: Provider) {
       if (!r.ok) throw new Error(`A chave foi recusada (${r.status})`);
       await setStatus(p, true, "Chave válida");
     }
+    if (p === "waba") {
+      const { wabaInfo } = await import("@/lib/waba");
+      const i = await wabaInfo();
+      await setStatus(p, true, `Conectado ao número ${i.display_phone_number ?? ""}${i.verified_name ? ` (${i.verified_name})` : ""}${i.quality_rating ? ` · qualidade ${i.quality_rating}` : ""}`);
+    }
     if (p === "appmax") {
       const { appmax } = await import("@/lib/appmax");
       await appmax("GET", "/v1/subscriptions?per_page=1").catch((e) => { if (/APPMAX_NAO|credenciais/.test(String(e))) throw e; });
       await setStatus(p, true, `Conectado (${c.appmax.mode === "sandbox" ? "sandbox" : "produção"})`);
     }
   } catch (e) {
-    const msg = String(e).replace(/^Error: /, "").replace("APPMAX_NAO_CONFIGURADA", "Falta o Client ID ou o Client secret").replace("SHOPIFY_NAO_CONFIGURADA", "Falta o domínio ou o token");
+    const msg = String(e).replace(/^Error: /, "").replace("APPMAX_NAO_CONFIGURADA", "Falta o Client ID ou o Client secret").replace("SHOPIFY_NAO_CONFIGURADA", "Falta o domínio ou o token").replace("WABA_NAO_CONFIGURADA", "Falta o ID do número ou o token");
     await setStatus(p, false, msg.slice(0, 200));
   }
 }
@@ -84,5 +89,23 @@ export async function disconnect(f: FormData) {
   const p = String(f.get("provider")) as Provider;
   await removeIntegration(p);
   await setStatus(p, false, "Desconectado");
+  revalidatePath("/integracoes");
+}
+
+// Mensagem de teste pela API oficial para um número informado no painel
+export async function wabaTest(f: FormData) {
+  await admin();
+  const phone = String(f.get("phone") ?? "").replace(/\D/g, "");
+  const { wabaButtons } = await import("@/lib/waba");
+  let msg = "";
+  try {
+    if (phone.length < 12) throw new Error("Coloque o número com 55 e DDD");
+    await wabaButtons(phone, "Teste do Hub pela API oficial do WhatsApp. Se chegou com os botões, está tudo certo.", [{ id: "ok", title: "Chegou" }, { id: "nao", title: "Não chegou" }]);
+    msg = "Mensagem de teste enviada";
+    await setStatus("waba", true, msg);
+  } catch (e) {
+    msg = String(e).replace(/^Error: /, "").replace("WABA_NAO_CONFIGURADA", "Falta o ID do número ou o token");
+    await setStatus("waba", false, msg.slice(0, 200));
+  }
   revalidatePath("/integracoes");
 }
