@@ -299,3 +299,18 @@ h1 { font-family: Geist, system-ui, sans-serif; font-weight: 650; font-size: 34p
 .opp .when { font-size: 12px; color: var(--ink3); }
 .opp .big { font-family: Geist; font-weight: 650; font-size: 30px; letter-spacing: -.03em; line-height: 1; }
 @media (max-width: 860px) { .mcal .cell { min-height: 64px; } .mcal .ev { font-size: 0; height: 6px; padding: 0; } }
+
+/* Cartões com mais profundidade */
+.pnl { background: linear-gradient(180deg, #141917 0%, var(--sf) 60%); box-shadow: inset 0 1px 0 rgba(255,255,255,.035), 0 1px 2px rgba(0,0,0,.3); }
+.kpi { position: relative; overflow: hidden; transition: transform .18s, border-color .18s; }
+.kpi:hover { transform: translateY(-2px); border-color: #2a322e; }
+.kpi::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(52,194,106,.45), transparent); opacity: .6; }
+.kpi .num { font-family: Geist, system-ui; font-weight: 650; letter-spacing: -.03em; }
+.segs { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+.segc { display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border-radius: 14px; background: #101412; border: 1px solid #1f2523; color: inherit; transition: border-color .15s, background .15s, transform .15s; }
+.segc:hover { border-color: #2c3531; transform: translateY(-1px); }
+.segc.on { border-color: rgba(52,194,106,.5); background: linear-gradient(180deg, rgba(52,194,106,.1), #101412); box-shadow: 0 0 0 3px rgba(52,194,106,.08); }
+.segc .l { font-size: 12.5px; color: var(--ink2); font-weight: 550; }
+.segc b { font-family: Geist; font-size: 24px; letter-spacing: -.03em; }
+.segc .d { font-size: 11.5px; color: var(--ink3); line-height: 1.35; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.av-s { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-size: 11.5px; font-weight: 700; background: linear-gradient(135deg, #1f3a2a, #16241d); color: #8fe3ae; flex-shrink: 0; }

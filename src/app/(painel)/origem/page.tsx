@@ -5,6 +5,8 @@ import { resolvePeriod } from "@/lib/periods";
 import { ordersBetween, type Order } from "@/lib/store";
 import { brl, dayRange } from "@/lib/time";
 import { ErrorNote, Header, Kpi, Panel } from "@/components/ui";
+import { HRow } from "@/components/charts";
+import { BadgeCheck, Megaphone, Receipt, ShoppingBag } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -51,32 +53,24 @@ export default async function Origem({ searchParams }: { searchParams: Promise<{
       </Header>
       {error ? <ErrorNote error={error} /> : null}
       <div className="grid g4">
-        <Kpi label="Vendas no período" value={orders.length} sub={brl(total, 0)} />
-        <Kpi label="Meta diz que vendeu" value={m ? `${m.purchases} vendas` : "–"} sub={m ? brl(m.value, 0) : "conecte o Meta Ads"} />
-        <Kpi label="O link (UTM) confirma" value={`${metaUtm.n} vendas`} sub={brl(metaUtm.v, 0)} />
-        <Kpi label="Custo por venda confirmada" value={m && metaUtm.n ? brl(m.spend / metaUtm.n, 0) : "–"} sub={m ? `gasto ${brl(m.spend, 0)}` : undefined} />
+        <Kpi icon={<ShoppingBag size={15} />} label="Vendas no período" value={orders.length} sub={brl(total, 0)} />
+        <Kpi icon={<Megaphone size={15} />} tone="p" label="Meta diz que vendeu" value={m ? `${m.purchases} vendas` : "–"} sub={m ? brl(m.value, 0) : "conecte o Meta Ads"} />
+        <Kpi icon={<BadgeCheck size={15} />} tone="k" label="O link (UTM) confirma" value={`${metaUtm.n} vendas`} sub={brl(metaUtm.v, 0)} />
+        <Kpi icon={<Receipt size={15} />} tone="s" label="Custo por venda confirmada" value={m && metaUtm.n ? brl(m.spend / metaUtm.n, 0) : "–"} sub={m ? `gasto ${brl(m.spend, 0)}` : undefined} />
       </div>
       {m && m.purchases > metaUtm.n && (
-        <div className="note">
+        <div className="callout sun">
           O Meta conta {m.purchases} vendas, mas só {metaUtm.n} chegaram pelo link do anúncio. A diferença costuma ser gente que viu o anúncio e comprou depois por outro caminho (Instagram, grupo, direto). Para decidir verba, olhe o número confirmado.
         </div>
       )}
       <div className="grid g2" style={{ alignItems: "start" }}>
-        <Panel title="Vendas por canal" body={false}>
+        <Panel title="Vendas por canal" sub={`${orders.length} vendas · ${brl(total, 0)}`}>
           {channels.length ? (
-            <table className="tb">
-              <thead><tr><th>Canal</th><th className="r">Vendas</th><th className="r">Valor</th><th className="r">%</th></tr></thead>
-              <tbody>
-                {channels.map(([k, v]) => (
-                  <tr key={k}>
-                    <td>{k}</td>
-                    <td className="r">{v.n}</td>
-                    <td className="r"><b>{brl(v.v, 0)}</b></td>
-                    <td className="r mut">{total ? Math.round((v.v / total) * 100) : 0}%</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            channels.map(([k, v], i) => (
+              <HRow key={k} label={k} value={v.v} max={channels[0][1].v} tone={(["", "k", "p", "s", "c"] as const)[i % 5]}
+                right={<>{brl(v.v, 0)} <span className="dim" style={{ fontWeight: 400, fontSize: 12.5 }}>{total ? Math.round((v.v / total) * 100) : 0}%</span></>}
+                sub={`${v.n} venda(s) · ticket ${brl(v.v / v.n, 0)}`} />
+            ))
           ) : (
             !error && <div className="empty">Sem vendas no período.</div>
           )}

@@ -1,6 +1,8 @@
 import { customers, type Customer } from "@/lib/store";
 import { SEGMENTS, inSegment, type SegmentKey } from "@/lib/segments";
 import { brl } from "@/lib/time";
+import Link from "next/link";
+import { Crown, MessageCircle, Repeat, Send, Users } from "lucide-react";
 import { ErrorNote, Header, Kpi, Panel } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
@@ -30,20 +32,23 @@ export default async function Clientes({ searchParams }: { searchParams: Promise
       <Header title="Clientes" lede="Todo mundo que já comprou, separado em grupos para campanhas e disparos. Os grupos atualizam sozinhos com as compras da Shopify." />
       {error ? <ErrorNote error={error} /> : null}
       <div className="grid g4">
-        <Kpi label="Clientes" value={all.length.toLocaleString("pt-BR")} />
-        <Kpi label="Gasto médio por cliente (LTV)" value={brl(ltv, 0)} />
-        <Kpi label="Compraram mais de uma vez" value={`${Math.round(repeat * 100)}%`} />
-        <Kpi label="Com WhatsApp" value={all.filter((c) => c.phone).length.toLocaleString("pt-BR")} sub="podem receber disparos" />
+        <Kpi icon={<Users size={15} />} label="Clientes" value={all.length.toLocaleString("pt-BR")} />
+        <Kpi icon={<Crown size={15} />} tone="s" label="Gasto médio por cliente (LTV)" value={brl(ltv, 0)} />
+        <Kpi icon={<Repeat size={15} />} tone="k" label="Compraram mais de uma vez" value={`${Math.round(repeat * 100)}%`} />
+        <Kpi icon={<MessageCircle size={15} />} tone="p" label="Com WhatsApp" value={all.filter((c) => c.phone).length.toLocaleString("pt-BR")} sub="podem receber disparos" />
       </div>
-      <div className="tabs">
+      <div className="segs">
         {Object.entries(SEGMENTS).map(([k, v]) => (
-          <a key={k} href={q("s", k)} className={seg === k ? "on" : ""} title={v.desc}>
-            {v.label} <span className="dim">{counts[k] ?? 0}</span>
-          </a>
+          <Link key={k} href={q("s", k)} className={`segc${seg === k ? " on" : ""}`} title={v.desc}>
+            <span className="l">{v.label}</span>
+            <b>{(counts[k] ?? 0).toLocaleString("pt-BR")}</b>
+            <span className="d">{v.desc}</span>
+          </Link>
         ))}
       </div>
       <div className="grid" style={{ gridTemplateColumns: "minmax(0,3fr) minmax(220px,1fr)", alignItems: "start" }}>
-        <Panel title={`${SEGMENTS[seg].label}${uf ? ` em ${uf}` : ""}`} sub={SEGMENTS[seg].desc} body={false}>
+        <Panel title={`${SEGMENTS[seg].label}${uf ? ` em ${uf}` : ""}`} sub={`${list.length.toLocaleString("pt-BR")} pessoas · ${SEGMENTS[seg].desc}`} body={false}
+          right={list.length ? <Link className="btn pri sm" href="/disparos"><Send size={14} /> Disparar para este grupo</Link> : undefined}>
           {list.length ? (
             <div style={{ overflowX: "auto" }}>
               <table className="tb">
@@ -60,8 +65,14 @@ export default async function Clientes({ searchParams }: { searchParams: Promise
                   {list.slice(0, 200).map((c) => (
                     <tr key={c.id}>
                       <td>
-                        {c.name}
-                        <div className="dim" style={{ fontSize: 12 }}>{c.phone ?? c.email ?? ""}</div>
+                        <div className="row" style={{ gap: 10, flexWrap: "nowrap" }}>
+                          <span className="av-s">{(c.name || "?").split(" ").map((x) => x[0]).slice(0, 2).join("").toUpperCase()}</span>
+                          <div>
+                            {c.name}
+                            <div className="dim" style={{ fontSize: 12 }}>{c.phone ?? c.email ?? ""}</div>
+                          </div>
+                          {c.orders >= 3 && <span className="chip c-s" style={{ marginLeft: 4 }}><Crown size={11} /> VIP</span>}
+                        </div>
                       </td>
                       <td className="mut">{[c.city, c.state].filter(Boolean).join(" / ")}</td>
                       <td className="r">{c.orders}</td>
@@ -77,23 +88,18 @@ export default async function Clientes({ searchParams }: { searchParams: Promise
             !error && <div className="empty">Ninguém neste grupo.</div>
           )}
         </Panel>
-        <Panel title="Por estado" body={false}>
-          <table className="tb">
-            <tbody>
-              {uf && (
-                <tr><td colSpan={2}><a className="chip c-k" href={q("uf", "")}>ver todos os estados</a></td></tr>
-              )}
-              {ufs.slice(0, 27).map(([k, n]) => (
-                <tr key={k}>
-                  <td><a href={q("uf", k)} style={uf === k ? { color: "var(--lagoon)", fontWeight: 600 } : undefined}>{k}</a></td>
-                  <td className="r mut">{n}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <Panel title="Por estado" sub="Clique para filtrar">
+          {uf && <Link className="chip c-k" href={q("uf", "")} style={{ marginBottom: 8 }}>ver todos os estados</Link>}
+          {ufs.slice(0, 14).map(([k, n]) => (
+            <Link key={k} href={q("uf", k)} className="lrow" style={{ color: "inherit", padding: "8px 0" }}>
+              <b style={{ width: 28, color: uf === k ? "var(--sun)" : undefined }}>{k}</b>
+              <div className="hbar" style={{ flex: 1 }}><i className={uf === k ? "s" : ""} style={{ width: `${(n / (ufs[0]?.[1] || 1)) * 100}%` }} /></div>
+              <span className="mut end" style={{ width: 44 }}>{n}</span>
+            </Link>
+          ))}
         </Panel>
       </div>
-      <div className="note">
+      <div className="callout sun">
         Voucher de aniversário: a Shopify não guarda a data de nascimento. O formulário de leads já pede a data, e quem preencher entra na régua de aniversário quando a recuperação e o pós-venda forem ativados.
       </div>
     </>

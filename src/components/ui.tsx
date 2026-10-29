@@ -12,11 +12,11 @@ export function Header({ title, lede, children }: { title: string; lede?: string
   );
 }
 
-export function Kpi({ label, value, sub, icon }: { label: string; value: ReactNode; sub?: ReactNode; icon?: ReactNode }) {
+export function Kpi({ label, value, sub, icon, tone = "l" }: { label: string; value: ReactNode; sub?: ReactNode; icon?: ReactNode; tone?: "l" | "c" | "s" | "k" | "p" | "n" }) {
   return (
     <div className="pnl kpi">
       <small>
-        {icon}
+        {icon && <span className={`tile sm t-${tone}`} style={{ width: 28, height: 28, borderRadius: 8 }}>{icon}</span>}
         {label}
       </small>
       <span className="num">{value}</span>
