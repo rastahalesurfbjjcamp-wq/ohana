@@ -1,16 +1,17 @@
+import { DateRange } from "@/components/DateRange";
 import Link from "next/link";
 import { channelOf } from "@/lib/attribution";
 import { metaCampaigns, type CampaignRow } from "@/lib/meta";
 import { resolvePeriod } from "@/lib/periods";
 import { ordersBetween } from "@/lib/store";
 import { brl, dayRange, pct } from "@/lib/time";
-import { Header, Kpi, Panel, PeriodTabs } from "@/components/ui";
+import { Header, Kpi, Panel } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
-export default async function Campanhas({ searchParams }: { searchParams: Promise<{ p?: string }> }) {
-  const { p } = await searchParams;
-  const period = resolvePeriod(p, "7d");
+export default async function Campanhas({ searchParams }: { searchParams: Promise<{ p?: string; de?: string; ate?: string }> }) {
+  const { p , de: sp_de, ate: sp_ate } = await searchParams;
+  const period = resolvePeriod(p, "7d", sp_de, sp_ate);
   let rows: CampaignRow[] | null = null;
   let error = "";
   try {
@@ -40,7 +41,7 @@ export default async function Campanhas({ searchParams }: { searchParams: Promis
   return (
     <>
       <Header title="Campanhas" lede="Cada campanha do Meta com o que ela gastou, o que o Meta diz que vendeu e o que o link (UTM) confirma.">
-        <PeriodTabs base="/campanhas" current={period.key} keys={["ontem", "7d", "30d", "mes", "mes-passado"]} />
+        <DateRange current={period.key} from={period.from} to={period.to} label={period.label} />
       </Header>
       {rows === null && !error && (
         <div className="note">Conecte o Meta Ads em <Link href="/integracoes" style={{ textDecoration: "underline" }}>Integrações</Link> para ver as campanhas.</div>

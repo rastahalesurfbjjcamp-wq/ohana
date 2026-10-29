@@ -1,14 +1,15 @@
+import { DateRange } from "@/components/DateRange";
 import { productProfits, type ProductProfit } from "@/lib/profit";
 import { resolvePeriod } from "@/lib/periods";
 import { getSettings } from "@/lib/settings";
 import { brl, pct } from "@/lib/time";
-import { ErrorNote, Header, Kpi, Panel, PeriodTabs } from "@/components/ui";
+import { ErrorNote, Header, Kpi, Panel } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
-export default async function Produtos({ searchParams }: { searchParams: Promise<{ p?: string }> }) {
-  const { p } = await searchParams;
-  const period = resolvePeriod(p, "30d");
+export default async function Produtos({ searchParams }: { searchParams: Promise<{ p?: string; de?: string; ate?: string }> }) {
+  const { p , de: sp_de, ate: sp_ate } = await searchParams;
+  const period = resolvePeriod(p, "30d", sp_de, sp_ate);
   const s = await getSettings();
   let rows: ProductProfit[] = [];
   let error: unknown = null;
@@ -28,7 +29,7 @@ export default async function Produtos({ searchParams }: { searchParams: Promise
         title="Produtos e lucro"
         lede={`Quanto sobra de cada peça depois do custo, ${pct(s.costs.taxRate, 1)} de imposto, ${pct(s.costs.paymentFeeRate, 1)} de taxas e ${brl(s.costs.packagingPerItem)} de embalagem. Anúncios e custos fixos entram no Financeiro.`}
       >
-        <PeriodTabs base="/produtos" current={period.key} keys={["7d", "30d", "mes", "mes-passado", "90d"]} />
+        <DateRange current={period.key} from={period.from} to={period.to} label={period.label} />
       </Header>
       {error ? <ErrorNote error={error} /> : null}
       <div className="grid g4">

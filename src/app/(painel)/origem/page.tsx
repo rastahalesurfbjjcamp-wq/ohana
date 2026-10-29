@@ -1,15 +1,16 @@
+import { DateRange } from "@/components/DateRange";
 import { channelOf } from "@/lib/attribution";
 import { metaInsights } from "@/lib/meta";
 import { resolvePeriod } from "@/lib/periods";
 import { ordersBetween, type Order } from "@/lib/store";
 import { brl, dayRange } from "@/lib/time";
-import { ErrorNote, Header, Kpi, Panel, PeriodTabs } from "@/components/ui";
+import { ErrorNote, Header, Kpi, Panel } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
-export default async function Origem({ searchParams }: { searchParams: Promise<{ p?: string }> }) {
-  const { p } = await searchParams;
-  const period = resolvePeriod(p, "7d");
+export default async function Origem({ searchParams }: { searchParams: Promise<{ p?: string; de?: string; ate?: string }> }) {
+  const { p , de: sp_de, ate: sp_ate } = await searchParams;
+  const period = resolvePeriod(p, "7d", sp_de, sp_ate);
   let orders: Order[] = [];
   let error: unknown = null;
   let meta: Awaited<ReturnType<typeof metaInsights>> = null;
@@ -46,7 +47,7 @@ export default async function Origem({ searchParams }: { searchParams: Promise<{
   return (
     <>
       <Header title="Vendas por origem" lede="De onde veio cada venda, pelo link (UTM) que a pessoa clicou, comparado com o que o Meta diz que vendeu.">
-        <PeriodTabs base="/origem" current={period.key} keys={["ontem", "7d", "30d", "mes", "mes-passado"]} />
+        <DateRange current={period.key} from={period.from} to={period.to} label={period.label} />
       </Header>
       {error ? <ErrorNote error={error} /> : null}
       <div className="grid g4">
