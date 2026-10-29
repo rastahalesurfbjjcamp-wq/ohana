@@ -86,7 +86,17 @@ export default async function Calendario({ searchParams }: { searchParams: Promi
           <Link href={link({ m: today.slice(0, 7) })} className={month === today.slice(0, 7) ? "on" : ""} style={{ minWidth: 150, textAlign: "center" }}>{monthName}</Link>
           <Link href={link({ m: nextM })} aria-label="Próximo mês"><ChevronRight size={15} /></Link>
         </div>
-        {uf ? <Link className="btn" href={link({ uf: "" })}><MapPin size={15} /> {uf} · ver todos</Link> : <span className="btn" style={{ cursor: "default" }}><MapPin size={15} /> Todos os estados</span>}
+        <details className="dd">
+          <summary className="btn"><MapPin size={15} /> {uf ? `${uf}${byUf.get(uf) ? ` · ${byUf.get(uf)} clientes` : ""}` : "Todos os estados"}</summary>
+          <div className="dd-pop">
+            <Link href={link({ uf: "" })} className={!uf ? "on" : ""} style={{ gridColumn: "1 / -1" }}>Todos os estados</Link>
+            {["AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO"].map((u) => (
+              <Link key={u} href={link({ uf: u })} className={uf === u ? "on" : ""} title={byUf.get(u) ? `${byUf.get(u)} clientes` : "sem clientes"}>
+                <b>{u}</b>{byUf.get(u) ? <small>{byUf.get(u)}</small> : null}
+              </Link>
+            ))}
+          </div>
+        </details>
       </Header>
 
       <div className="cols c-3-1">

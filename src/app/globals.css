@@ -934,3 +934,22 @@ a.itile:hover { border-color: #34403b; transform: translateY(-1px); }
 .hub-logo i:nth-of-type(1) { background: #e22323; }
 .hub-logo i:nth-of-type(2) { background: #fac428; margin-left: -9px; }
 .hub-logo i:nth-of-type(3) { background: #3ca03c; margin-left: -12px; }
+.disc-pick { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.seg.sm { padding: 3px; border-radius: 11px; }
+.seg.sm button { padding: 5px 11px; font-size: 12.5px; }
+.disc-in { display: inline-flex; align-items: center; gap: 4px; height: 36px; padding: 0 10px; border-radius: 10px; border: 1px solid #2a312e; background: #0c0f0e; }
+.disc-in span { font-size: 12px; color: var(--ink3); white-space: nowrap; }
+.disc-in input { width: 46px; border: 0; background: none; color: #fff; font: 650 14px Geist, system-ui; text-align: center; outline: none; }
+.disc-in:focus-within { border-color: rgba(52,194,106,.6); }
+
+/* Menu suspenso simples */
+.dd { position: relative; }
+.dd > summary { list-style: none; cursor: pointer; }
+.dd > summary::-webkit-details-marker { display: none; }
+.dd[open] > summary { border-color: rgba(52,194,106,.6); }
+.dd-pop { position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; width: 300px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 10px; border-radius: 14px; border: 1px solid #2a312e; background: #121614; box-shadow: 0 20px 50px -12px rgba(0,0,0,.7); }
+.dd-pop a { display: flex; flex-direction: column; align-items: center; padding: 7px 4px; border-radius: 9px; color: var(--ink2); font-size: 13px; border: 1px solid transparent; }
+.dd-pop a:hover { background: #1a201d; color: #fff; }
+.dd-pop a.on { border-color: rgba(52,194,106,.5); background: rgba(52,194,106,.08); color: #fff; }
+.dd-pop a small { font-size: 10.5px; color: var(--lagoon); }
+@media (max-width: 640px) { .dd-pop { position: fixed; left: 12px; right: 12px; top: auto; width: auto; } }

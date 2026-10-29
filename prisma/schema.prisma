@@ -349,6 +349,9 @@ model Referral {
   note       String?
   instagram  String?
   discountPct Float?
+  discountType String? // percent | fixed | shipping | bxgy | other
+  discountAmount Float? // valor em R$ quando é valor fixo
+  minSubtotal Float?
   active     Boolean  @default(true)
   createdAt  DateTime @default(now())
 }

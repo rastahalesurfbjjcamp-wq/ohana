@@ -5,7 +5,8 @@ import { DateRange } from "@/components/DateRange";
 import { CopyButton } from "@/components/CopyButton";
 import { NumberInput } from "@/components/NumberInput";
 import { Bars } from "@/components/charts";
-import { ensureTeam, partnerLink, partnerMessage, partnerStats, unlinkedCodes, waLink } from "@/lib/partners";
+import { describeDisc, discOf, ensureTeam, partnerLink, partnerMessage, partnerStats, ruleDisc, sameDisc, syncPartnerDiscounts, unlinkedCodes, waLink } from "@/lib/partners";
+import { DiscPicker } from "@/components/DiscPicker";
 import { daysBetween, resolvePeriod } from "@/lib/periods";
 import { getSettings } from "@/lib/settings";
 import { addDays, brl, isoDayLocal } from "@/lib/time";
@@ -18,7 +19,7 @@ export const dynamic = "force-dynamic";
 const KIND: Record<string, string> = { atleta: "Atleta", influenciador: "Influenciador" };
 const MONTHS = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 
-export default async function Atletas({ searchParams }: { searchParams: Promise<{ p?: string; de?: string; ate?: string; novo?: string; erro?: string; criado?: string; ok?: string; k?: string; mes?: string; editar?: string; trocado?: string }> }) {
+export default async function Atletas({ searchParams }: { searchParams: Promise<{ desconto?: string; p?: string; de?: string; ate?: string; novo?: string; erro?: string; criado?: string; ok?: string; k?: string; mes?: string; editar?: string; trocado?: string }> }) {
   const sp = await searchParams;
   const period = resolvePeriod(sp.p, "30d", sp.de, sp.ate);
   const s = await getSettings();
@@ -32,6 +33,9 @@ export default async function Atletas({ searchParams }: { searchParams: Promise<
   let payStats: Awaited<ReturnType<typeof partnerStats>> | null = null;
   let error: unknown = null;
   await ensureTeam().catch(() => null);
+  await syncPartnerDiscounts().catch(() => null);
+  const rule = await ruleDisc();
+  const ruleTxt = describeDisc(rule);
   try {
     [stats, payStats] = await Promise.all([partnerStats(period.from, period.to), partnerStats(pmFrom, pmTo < today ? pmTo : today)]);
   } catch (e) {
@@ -53,13 +57,14 @@ export default async function Atletas({ searchParams }: { searchParams: Promise<
 
   return (
     <>
-      <Header title="Atletas e influenciadores" lede={`Quem divulga a loja com cupom próprio. O cliente ganha ${s.referral.percent}% de desconto e o atleta recebe ${s.referral.commission}% do que vendeu, pago todo dia 1.`}>
+      <Header title="Atletas e influenciadores" lede={`Quem divulga a loja com cupom próprio. O cliente ganha ${ruleTxt} e o atleta recebe ${s.referral.commission}% do que vendeu, pago todo dia 1.`}>
         <DateRange current={period.key} from={period.from} to={period.to} label={period.label} presets={["hoje", "ontem", "7d", "30d", "mes", "mes-passado"]} />
         <Link className="btn pri" href={sp.novo ? "/atletas" : "/atletas?novo=1"}><Plus size={16} /> Novo atleta</Link>
       </Header>
       {error ? <ErrorNote error={error} /> : null}
       {sp.criado && <div className="ok">Atleta cadastrado com o cupom {sp.criado}. O link de referência já está pronto na tabela.</div>}
       {sp.ok === "regras" && <div className="ok">Regras salvas.</div>}
+      {sp.ok === "desconto" && <div className="ok">Desconto do cupom atualizado na Shopify.</div>}
       {sp.trocado && <div className="ok">Cupom trocado para {sp.trocado}. As vendas já contam pelo cupom novo.</div>}
       {sp.erro && sp.erro !== "nome" && <div className="err">{sp.erro}</div>}
       {isPayDay && (
@@ -71,7 +76,7 @@ export default async function Atletas({ searchParams }: { searchParams: Promise<
       )}
 
       {sp.novo && (
-        <Panel title="Novo atleta ou influenciador" sub={`Se o cupom não existir, o Hub cria na Shopify com ${s.referral.percent}% de desconto. Se já existir, só vincula.`} right={<Link className="menu-b" href="/atletas"><X size={16} /></Link>}>
+        <Panel title="Novo atleta ou influenciador" sub="Se o cupom não existir, o Hub cria na Shopify com o desconto escolhido. Se já existir, só vincula." right={<Link className="menu-b" href="/atletas"><X size={16} /></Link>}>
           <form action={addPartner} className="stack">
             <div className="row" style={{ alignItems: "flex-end" }}>
               <div className="field" style={{ flex: 1, minWidth: 200 }}><label>Nome</label><input className="in" name="name" required placeholder="Bernardo Mastrangelo" autoFocus /></div>
@@ -79,10 +84,13 @@ export default async function Atletas({ searchParams }: { searchParams: Promise<
               <div className="field" style={{ width: 190 }}><label>WhatsApp</label><input className="in" name="phone" placeholder="21 99999-9999" inputMode="tel" /></div>
             </div>
             <div className="row" style={{ alignItems: "flex-end" }}>
-              <div className="field" style={{ width: 200 }}><label>Cupom (vazio = nome + {s.referral.percent})</label><input className="in" name="code" placeholder={`PITBULL${s.referral.percent}`} style={{ textTransform: "uppercase" }} /></div>
+              <div className="field" style={{ width: 200 }}><label>Cupom (vazio = nome + desconto)</label><input className="in" name="code" placeholder="PITBULL10" style={{ textTransform: "uppercase" }} /></div>
+              <div className="field"><label>Desconto para o cliente</label><DiscPicker type={rule.type} value={rule.value} min={rule.min} /></div>
+            </div>
+            <div className="row" style={{ alignItems: "flex-end" }}>
               <div className="field" style={{ width: 170 }}><label>Tipo</label><select className="in" name="kind" defaultValue="atleta"><option value="atleta">Atleta</option><option value="influenciador">Influenciador</option></select></div>
               <div className="field" style={{ width: 180 }}><label>Recebe por</label><select className="in" name="payout" defaultValue="pix"><option value="pix">Pix</option><option value="credito">Crédito na loja</option></select></div>
-              <label className="check" style={{ marginBottom: 10 }}><input type="checkbox" name="ajustar" defaultChecked /> Se o cupom já existir, deixar em {s.referral.percent}%</label>
+              <label className="check" style={{ marginBottom: 10 }}><input type="checkbox" name="ajustar" /> Se o cupom já existir, trocar o desconto dele por esse</label>
               <button className="btn pri" type="submit">Cadastrar e gerar link</button>
             </div>
             {sp.erro === "nome" && <div className="err">Coloque o nome.</div>}
@@ -95,7 +103,7 @@ export default async function Atletas({ searchParams }: { searchParams: Promise<
                   <form key={c.code} action={addPartner} className="ul-c">
                     <input type="hidden" name="code" value={c.code} />
                     <input type="hidden" name="ajustar" value="" />
-                    <div style={{ minWidth: 0 }}><span className="trk">{c.code}</span><small className="dim" style={{ display: "block", marginTop: 4 }}>{c.uses} usos · {c.percent != null ? `${c.percent}%` : "valor fixo"}</small></div>
+                    <div style={{ minWidth: 0 }}><span className="trk">{c.code}</span><small className="dim" style={{ display: "block", marginTop: 4 }}>{c.uses} usos · {describeDisc(c.disc)}</small></div>
                     <input className="in" name="name" placeholder="Nome do atleta" required style={{ height: 34 }} />
                     <button className="btn sm" type="submit">Vincular</button>
                   </form>
@@ -126,7 +134,8 @@ export default async function Atletas({ searchParams }: { searchParams: Promise<
                 <thead><tr><th>#</th><th>Atleta</th><th>Cupom</th><th className="r">Pedidos</th><th className="r">Vendeu</th><th className="r">Lucro</th><th className="r">Comissão</th><th>Link de referência</th></tr></thead>
                 <tbody>
                   {rows.map((r, i) => {
-                    const off = r.discountPct != null && r.discountPct !== s.referral.percent;
+                    const d = discOf(r);
+                    const off = !sameDisc(d, rule);
                     return (
                       <tr key={r.id} style={!r.active ? { opacity: 0.5 } : undefined}>
                         <td style={{ fontWeight: 700, color: i === 0 && r.revenue ? "var(--sun)" : undefined }}>{i === 0 && r.revenue ? <Trophy size={15} /> : i + 1}</td>
@@ -148,9 +157,21 @@ export default async function Atletas({ searchParams }: { searchParams: Promise<
                               <Link href={`/atletas?editar=${r.id}`} className="menu-b" style={{ width: 26, height: 26 }} title="Trocar o cupom"><Pencil size={13} /></Link>
                             </span>
                           )}
-                          <div style={{ fontSize: 11.5, marginTop: 4 }}>{r.discountPct == null ? <span className="dim">desconto ?</span> : off ? (
-                            <form action={fixPartnerPercent} className="row" style={{ gap: 4 }}><input type="hidden" name="id" value={r.id} /><span style={{ color: "var(--sun)" }}><AlertTriangle size={11} /> {r.discountPct}%</span><button className="fb-link" type="submit" style={{ color: "var(--lagoon)" }}>deixar {s.referral.percent}%</button></form>
-                          ) : <span className="dim">{r.discountPct}% para o cliente</span>}</div>
+                          <div style={{ fontSize: 11.5, marginTop: 4 }}>
+                            {sp.desconto === r.id ? (
+                              <form action={fixPartnerPercent} className="stack" style={{ gap: 6, marginTop: 4 }}>
+                                <input type="hidden" name="id" value={r.id} />
+                                <DiscPicker type={d.type} value={d.value} min={d.min} compact />
+                                <span className="row" style={{ gap: 4 }}><button className="btn pri sm" type="submit">Salvar na Shopify</button><Link className="btn sm ghost" href="/atletas">Cancelar</Link></span>
+                              </form>
+                            ) : (
+                              <span className="row" style={{ gap: 6 }}>
+                                <span style={{ color: off ? "var(--sun)" : undefined }} className={off ? "" : "dim"}>{off && <AlertTriangle size={11} />} {describeDisc(d)}</span>
+                                <Link href={`/atletas?desconto=${r.id}`} className="fb-link" style={{ color: "var(--lagoon)" }}>mudar</Link>
+                                {off && (d.type === "percent" || d.type === "fixed" || d.type === "shipping") && <form action={fixPartnerPercent}><input type="hidden" name="id" value={r.id} /><button className="fb-link" type="submit" style={{ color: "var(--ink3)" }}>usar o padrão</button></form>}
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="r">{r.orders}<div className="dim" style={{ fontSize: 11.5 }}>{r.pieces} peças</div></td>
                         <td className="r"><b>{brl(r.revenue, 0)}</b></td>
@@ -184,7 +205,7 @@ export default async function Atletas({ searchParams }: { searchParams: Promise<
           )}
           <Panel title="Regras do programa">
             <form action={savePartnerRules} className="stack" style={{ gap: 8 }}>
-              <div className="cfg-row"><span>Desconto para o cliente</span><NumberInput size="sm" name="percent" defaultValue={s.referral.percent} suffix="%" min={1} max={50} /></div>
+              <div className="cfg-row" style={{ flexWrap: "wrap" }}><span>Desconto padrão para o cliente</span><DiscPicker type={rule.type} value={rule.value} min={rule.min} compact /></div>
               <div className="cfg-row"><span>Comissão do atleta</span><NumberInput size="sm" name="commission" defaultValue={s.referral.commission} suffix="%" max={50} /></div>
               <div className="cfg-row"><span>Pagamento</span><b style={{ paddingRight: 8 }}>todo dia 1</b></div>
               <div><button className="btn sm" type="submit">Salvar regras</button></div>

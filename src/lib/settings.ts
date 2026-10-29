@@ -79,6 +79,9 @@ export const DEFAULTS = {
   referral: {
     enabled: true,
     percent: 10,
+    discountType: "percent",
+    fixedAmount: 10,
+    minSubtotal: 0,
     commission: 8,
     releaseDays: 7,
     shareText: "Oi {nome}! Você ganhou um código para indicar a {loja}: {codigo}. Quem usar ganha {percent}% de desconto e você acompanha suas indicações com a gente.",
@@ -140,7 +143,7 @@ export type Settings = {
     storeUrl: string;
   };
   club: { enabled: boolean; name: string; fee: number; discountPct: number; pointsPerReal: number; valuePer100: number; monthlyPoints: number; eventPoints: number; minRedeem: number; graceDays: number; earlyHours: number };
-  referral: { enabled: boolean; percent: number; commission: number; releaseDays: number; shareText: string };
+  referral: { enabled: boolean; percent: number; discountType: string; fixedAmount: number; minSubtotal: number; commission: number; releaseDays: number; shareText: string };
   assistant: { enabled: boolean; instructions: string; useOrders: boolean; useStock: boolean; useSizes: boolean; sizeTable: string; useExchange: boolean; exchangeText: string; handoff: boolean };
 };
 
