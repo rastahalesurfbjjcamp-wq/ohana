@@ -60,6 +60,11 @@ export interface Order {
   tracking: { number: string; company: string | null; url: string | null } | null;
   lines: OrderLine[];
   cancelled: boolean;
+  gateway: string | null;
+  email: string | null;
+  phone: string | null;
+  images: string[];
+  shipStatus: string | null;
 }
 
 type RawOrder = {
@@ -77,7 +82,10 @@ type RawOrder = {
     firstVisit: { source: string | null; utmParameters: Record<string, string | null> | null } | null;
     lastVisit: { source: string | null; utmParameters: Record<string, string | null> | null } | null;
   } | null;
-  fulfillments: { trackingInfo: { number: string; company: string | null; url: string | null }[] }[];
+  fulfillments: { displayStatus: string | null; trackingInfo: { number: string; company: string | null; url: string | null }[] }[];
+  paymentGatewayNames: string[] | null;
+  email: string | null;
+  phone: string | null;
   lineItems: {
     nodes: {
       title: string;
@@ -86,6 +94,7 @@ type RawOrder = {
       sku: string | null;
       discountedTotalSet: { shopMoney: { amount: string } };
       variant: { inventoryItem: { unitCost: { amount: string } | null } | null } | null;
+      image: { url: string } | null;
     }[];
   };
 };
@@ -94,8 +103,9 @@ const ORDER_FIELDS = `id name createdAt cancelledAt displayFinancialStatus displ
   currentSubtotalPriceSet{shopMoney{amount}} currentTotalPriceSet{shopMoney{amount}}
   customer{displayName} shippingAddress{provinceCode city}
   customerJourneySummary{ firstVisit{ source utmParameters{source medium campaign content} } lastVisit{ source utmParameters{source medium campaign content} } }
-  fulfillments(first:3){ trackingInfo{number company url} }
-  lineItems(first:50){ nodes{ title variantTitle quantity sku discountedTotalSet{shopMoney{amount}} variant{ inventoryItem{ unitCost{amount} } } } }`;
+  fulfillments(first:3){ displayStatus trackingInfo{number company url} }
+  paymentGatewayNames email phone
+  lineItems(first:50){ nodes{ title variantTitle quantity sku discountedTotalSet{shopMoney{amount}} variant{ inventoryItem{ unitCost{amount} } } image{ url(transform:{maxWidth:96, maxHeight:96}) } } }`;
 
 function mapOrder(o: RawOrder): Order {
   const visit = o.customerJourneySummary?.lastVisit?.utmParameters ? o.customerJourneySummary.lastVisit : o.customerJourneySummary?.firstVisit;
@@ -118,6 +128,11 @@ function mapOrder(o: RawOrder): Order {
     utm: utm && Object.keys(utm).length ? utm : null,
     tracking: tr,
     cancelled: !!o.cancelledAt,
+    gateway: o.paymentGatewayNames?.[0] ?? null,
+    email: o.email ?? null,
+    phone: o.phone ?? null,
+    images: o.lineItems.nodes.map((l) => l.image?.url).filter((x): x is string => !!x),
+    shipStatus: o.fulfillments.find((f) => f.displayStatus)?.displayStatus ?? null,
     lines: o.lineItems.nodes.map((l) => ({
       title: l.title,
       variant: l.variantTitle ?? "",

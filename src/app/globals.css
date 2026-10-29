@@ -609,3 +609,9 @@ select.in { appearance: none; padding-right: 34px; cursor: pointer; background-i
 .wa-b:hover { background: var(--lagoon); color: #04140a; }
 @media (max-width: 1200px) { .autos { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 640px) { .autos { grid-template-columns: 1fr; } }
+.thumbs { display: inline-flex; }
+.thumbs img { width: 34px; height: 34px; border-radius: 8px; object-fit: cover; background: #fff; border: 2px solid var(--sf); margin-left: -8px; }
+.thumbs img:first-child { margin-left: 0; }
+.trk { font: 600 12px ui-monospace, SFMono-Regular, Menlo, monospace; padding: 4px 8px; border-radius: 7px; background: #0c0f0e; border: 1px solid #262d2a; color: #dfe5e1; display: inline-flex; align-items: center; gap: 5px; }
+a.trk:hover { border-color: var(--lagoon); }
+.tb tr.warn td { background: rgba(239,68,68,.045); }
