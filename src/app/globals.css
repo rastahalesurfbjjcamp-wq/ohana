@@ -927,10 +927,10 @@ a.itile:hover { border-color: #34403b; transform: translateY(-1px); }
 
 /* Logo do Hub: leão + nome na mesma letra da marca + faixas reggae */
 .hub-logo { display: inline-flex; align-items: center; gap: 0; animation: splashPulse 1.8s ease-in-out infinite; }
-.hub-logo img { width: clamp(64px, 9vw, 92px); height: auto; position: relative; z-index: 1; margin-right: -6px; }
+.hub-logo img { width: clamp(40px, 5vw, 54px); height: auto; position: relative; z-index: 1; margin-right: -6px; }
 .hub-logo .hl-r { display: flex; flex-direction: column; align-items: stretch; }
-.hub-logo b { font: italic 900 clamp(26px, 4.2vw, 44px)/1 "Arial Black", "Helvetica Neue", Arial, sans-serif; text-transform: uppercase; color: #fff; letter-spacing: .01em; padding: 0 4px 6px 14px; white-space: nowrap; }
-.hub-logo i { display: block; height: clamp(6px, .9vw, 9px); margin-left: -8px; }
+.hub-logo b { font: italic 900 clamp(16px, 2.2vw, 24px)/1 "Arial Black", "Helvetica Neue", Arial, sans-serif; text-transform: uppercase; color: #fff; letter-spacing: .01em; padding: 0 3px 4px 10px; white-space: nowrap; }
+.hub-logo i { display: block; height: clamp(4px, .5vw, 5px); margin-left: -6px; }
 .hub-logo i:nth-of-type(1) { background: #e22323; }
-.hub-logo i:nth-of-type(2) { background: #fac428; margin-left: -12px; }
-.hub-logo i:nth-of-type(3) { background: #3ca03c; margin-left: -18px; }
+.hub-logo i:nth-of-type(2) { background: #fac428; margin-left: -9px; }
+.hub-logo i:nth-of-type(3) { background: #3ca03c; margin-left: -12px; }
