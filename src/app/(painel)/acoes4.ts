@@ -9,6 +9,7 @@ import { syncGroups } from "@/lib/groups";
 import { fillOrder } from "@/lib/redirect";
 import { normalizePhone } from "@/lib/segments";
 import { saveUpload } from "@/lib/uploads";
+import { saveSetting } from "@/lib/settings";
 
 async function admin() {
   const s = await getSession();
@@ -97,4 +98,44 @@ export async function leaveHub(form: FormData) {
   const id = str(form, "id");
   await db.group.update({ where: { id }, data: { isCommunity: false, isResults: false } });
   revalidatePath("/grupos");
+}
+
+/* Liga e desliga das automações (cada uma separada) */
+const AUTOS: Record<string, [string, string]> = {
+  carrinho: ["recovery", "cartEnabled"],
+  pix: ["recovery", "pixEnabled"],
+  rastreio: ["recovery", "trackingEnabled"],
+  avaliacao: ["postsale", "reviewEnabled"],
+  recompra: ["postsale", "repurchaseEnabled"],
+  boasvindas: ["leads", "welcomeEnabled"],
+  volta: ["winback", "enabled"],
+};
+export async function toggleAutomation(f: FormData) {
+  await admin();
+  const k = str(f, "key");
+  const on = str(f, "on") === "1";
+  const a = AUTOS[k];
+  if (!a) return;
+  await saveSetting(a[0] as "recovery", { [a[1]]: on } as never);
+  if (k === "carrinho" || k === "pix") {
+    // só entram carrinhos e pedidos criados depois de ligar
+    if (on) await db.setting.upsert({ where: { key: "_recovery_start" }, create: { key: "_recovery_start", value: { at: new Date().toISOString() } }, update: { value: { at: new Date().toISOString() } } });
+  }
+  revalidatePath("/recuperacao");
+}
+
+// Salva só as mensagens de uma automação (sem mexer no liga/desliga)
+export async function saveRecoveryMessages(f: FormData) {
+  await admin();
+  const kind = str(f, "kind");
+  const num = (k: string, d: number) => { const n = Number(str(f, k).replace(",", ".")); return Number.isFinite(n) && n > 0 ? n : d; };
+  const steps = (prefix: string, n: number) =>
+    Array.from({ length: n }, (_, i) => ({ delayMin: Math.max(1, Math.round(num(`${prefix}${i}_delay`, 60) * (str(f, `${prefix}${i}_unit`) === "h" ? 60 : 1))), text: str(f, `${prefix}${i}_text`) })).filter((s) => s.text);
+  if (kind === "carrinho") await saveSetting("recovery", { cartSteps: steps("cart", 3) });
+  if (kind === "pix") await saveSetting("recovery", { pixSteps: steps("pix", 2) });
+  if (kind === "rastreio") await saveSetting("recovery", { trackingText: str(f, "trackingText"), delayedDays: num("delayedDays", 10) });
+  if (kind === "avaliacao") await saveSetting("postsale", { reviewText: str(f, "reviewText"), reviewDelayDays: num("reviewDelayDays", 2), ...(str(f, "coupon") ? { coupon: str(f, "coupon").toUpperCase() } : {}) });
+  if (kind === "recompra") await saveSetting("postsale", { repurchaseText: str(f, "repurchaseText"), repurchaseDays: num("repurchaseDays", 45) });
+  revalidatePath("/recuperacao");
+  redirect(`/recuperacao?ok=1&cfg=${kind}`);
 }
