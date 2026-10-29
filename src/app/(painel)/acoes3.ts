@@ -240,3 +240,14 @@ export async function updatePartner(f: FormData) {
   await db.referral.update({ where: { id: str(f, "id") }, data: { kind: str(f, "kind") || undefined, payout: str(f, "payout") || undefined } });
   revalidatePath("/indique");
 }
+
+// Transforma as ações de um item do diagnóstico em tarefas
+export async function diagnosisToTasks(f: FormData) {
+  const s = await auth();
+  const title = str(f, "title");
+  const prio = str(f, "priority") === "alta" ? "alta" : str(f, "priority") === "baixa" ? "baixa" : "normal";
+  const actions = f.getAll("action").map(String).filter(Boolean);
+  for (const a of actions) await db.task.create({ data: { title: a, description: `Do diagnóstico: ${title}`, priority: prio, createdBy: s.name } });
+  revalidatePath("/tarefas");
+  redirect(`/diagnostico?tarefas=${actions.length}${str(f, "id") ? `&id=${str(f, "id")}` : ""}`);
+}

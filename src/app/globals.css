@@ -707,3 +707,8 @@ a.trk:hover { border-color: var(--lagoon); }
 .mxr i b { font: 650 15px Geist, system-ui; }
 .mxr small { text-align: center; font-size: 12px; color: var(--ink2); }
 @media (max-width: 1200px) { .fstrip { grid-template-columns: repeat(3, minmax(0, 1fr)); } .fs:nth-child(4) { border-left: 0; } .fs-conv { display: none; } }
+.dg { padding: 20px; display: flex; flex-direction: column; }
+.dg-a { list-style: none; display: flex; flex-direction: column; gap: 8px; margin: 14px 0 0 56px; }
+.dg-a li { display: flex; gap: 8px; align-items: flex-start; font-size: 13.5px; }
+.dg-a li svg { color: var(--lagoon); flex-shrink: 0; margin-top: 2px; }
+.dg-f { margin-top: auto; padding-top: 14px; border-top: 1px solid var(--line2); display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 18px; }

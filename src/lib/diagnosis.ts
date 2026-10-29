@@ -55,26 +55,52 @@ async function snapshot(): Promise<string> {
   return L.join("\n");
 }
 
+export interface DiagItem { title: string; detail: string; priority: "alta" | "media" | "baixa"; actions: string[]; potential: string; area: "checkout" | "celular" | "anuncios" | "instagram" | "estoque" | "comunidade" | "produto" | "outro" }
+export interface DiagData { score: number; scoreNote: string; summary: string; sources: string[]; items: DiagItem[]; good: string[] }
+
+export function parseDiagnosis(content: string): DiagData | null {
+  try {
+    const j = JSON.parse(content) as DiagData;
+    return j && Array.isArray(j.items) ? j : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function runDiagnosis() {
   const c = await creds();
   if (!c.ai.key) throw new Error("Conecte a IA em Integrações");
   const data = await snapshot();
+  const sources = ["Shopify", ...(c.meta.token ? ["Meta Ads"] : []), "Comunidade"];
   const client = new Anthropic({ apiKey: c.ai.key });
   const res = await client.messages.create({
     model: c.ai.model ?? env.anthropicModel(),
-    max_tokens: 1500,
+    max_tokens: 2500,
     system: `Você é um consultor de e-commerce de moda que analisa os números da ${env.storeName()} (${env.storeAbout()}).
-Escreva em português simples para o dono da loja, sem travessões e sem jargão. Use exatamente este formato em Markdown:
-## Resumo
-(2 ou 3 frases sobre como a loja está)
-## O que fazer primeiro
-1. **Título curto**: o problema com o número que mostra isso, e a ação concreta para esta semana.
-(de 3 a 5 itens, do maior para o menor impacto em dinheiro)
-## O que está indo bem
-(1 a 3 itens curtos)
-Use só os números fornecidos. Se faltar dado, diga qual integração conectar.`,
+Escreva em português simples para o dono da loja, sem travessões e sem jargão. Use só os números fornecidos. Se faltar dado, diga qual integração conectar.
+Responda SOMENTE com um JSON válido, sem texto antes ou depois, neste formato:
+{"score": número de 0 a 100 para a saúde da loja,
+ "scoreNote": "uma frase sobre o porquê da nota",
+ "summary": "2 ou 3 frases de resumo. Destaque os números mais importantes com **negrito**",
+ "items": [ de 3 a 6 itens, do maior para o menor impacto em dinheiro:
+   {"title": "problema curto com o número, ex.: Checkout perde 3 de cada 4 compradores",
+    "detail": "uma frase com os números que mostram isso",
+    "priority": "alta" | "media" | "baixa",
+    "actions": ["3 ações concretas e curtas para esta semana"],
+    "potential": "estimativa curta em reais por mês, ex.: R$ 12 mil por mês, ou 'difícil estimar'",
+    "area": "checkout" | "celular" | "anuncios" | "instagram" | "estoque" | "comunidade" | "produto" | "outro"} ],
+ "good": ["1 a 3 coisas que estão indo bem"]}`,
     messages: [{ role: "user", content: data }],
   });
   const text = res.content.filter((b) => b.type === "text").map((b) => (b as Anthropic.TextBlock).text).join("\n").trim();
-  return db.diagnosis.create({ data: { content: text } });
+  const json = text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1);
+  let content = text;
+  try {
+    const parsed = JSON.parse(json) as DiagData;
+    parsed.sources = sources;
+    content = JSON.stringify(parsed);
+  } catch {
+    /* guarda o texto como veio */
+  }
+  return db.diagnosis.create({ data: { content } });
 }
