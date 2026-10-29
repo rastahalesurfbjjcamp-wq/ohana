@@ -335,3 +335,13 @@ h1 { font-family: Geist, system-ui, sans-serif; font-weight: 650; font-size: 34p
 .in, select.in, textarea.in { transition: border-color .15s, box-shadow .15s; }
 .in:focus, select.in:focus, textarea.in:focus { outline: none; border-color: rgba(52,194,106,.55); box-shadow: 0 0 0 3px rgba(52,194,106,.12); }
 .chip { font-weight: 600; }
+
+/* Liga/desliga bonito no lugar da caixinha */
+.check input[type="checkbox"] { appearance: none; -webkit-appearance: none; width: 38px; height: 22px; border-radius: 22px; background: #232a27; border: 1px solid #2e3632; position: relative; cursor: pointer; transition: background .2s, border-color .2s, box-shadow .2s; flex-shrink: 0; margin: 0; }
+.check input[type="checkbox"]::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #8a948f; transition: transform .2s cubic-bezier(.3,1.4,.5,1), background .2s; box-shadow: 0 1px 3px rgba(0,0,0,.5); }
+.check input[type="checkbox"]:checked { background: linear-gradient(180deg, #3fd47a, #23a557); border-color: #34c26a; box-shadow: 0 0 14px -2px rgba(52,194,106,.55); }
+.check input[type="checkbox"]:checked::after { transform: translateX(16px); background: #fff; }
+.check input[type="radio"] { appearance: none; -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; border: 2px solid #34403b; background: #0f1312; cursor: pointer; display: grid; place-items: center; margin: 0; transition: border-color .15s; }
+.check input[type="radio"]:checked { border-color: var(--sun); }
+.check input[type="radio"]:checked::after { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--sun); box-shadow: 0 0 8px rgba(247,201,40,.6); }
+.check input:focus-visible { outline: 2px solid rgba(52,194,106,.6); outline-offset: 2px; }
