@@ -7,6 +7,7 @@ import { brl, dayRange, isoDayLocal } from "@/lib/time";
 import { addDays } from "@/lib/time";
 import { AreaChart } from "@/components/charts";
 import { AutoRefresh } from "@/components/AutoRefresh";
+import { onboardingSteps } from "@/lib/onboarding";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
   const { start } = dayRange(today);
   const from = addDays(today, -(range[2] - 1));
   const session = await getSession();
+  const ob = await onboardingSteps();
+  const obDone = ob.filter((x) => x.done).length;
   const hour = Number(new Intl.DateTimeFormat("pt-BR", { timeZone: tz, hour: "2-digit", hourCycle: "h23" }).format(new Date()));
   const hello = hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
 
@@ -103,6 +106,13 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
         </div>
       </div>
 
+      {obDone < ob.length && (
+        <Link href="/comecar" className="callout lagoon" style={{ alignItems: "center" }}>
+          <b>Falta pouco para a loja ficar pronta: {obDone} de {ob.length} passos.</b>
+          <span className="dim">Próximo: {ob.find((x) => !x.done)?.title}</span>
+          <span className="act">Continuar <ArrowRight size={14} /></span>
+        </Link>
+      )}
       <div className="cols c-2-1">
         <section className="pnl" style={{ padding: 26 }}>
           <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>

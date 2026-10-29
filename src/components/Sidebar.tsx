@@ -6,7 +6,7 @@ import {
   ArrowLeftRight, Bot, Box, CalendarClock, CalendarHeart, ChartNoAxesCombined, ChevronDown, ChevronRight, Contact,
   Gift, HeartHandshake, LayoutDashboard, LogOut, MessageCircle, MessagesSquare, Package, Percent, ReceiptText,
   RefreshCcw, Rocket, Route, Send, Settings, ShoppingBag, Sparkles, SquareCheckBig, Truck, UserPlus, Users, Vote,
-  Wallet, Warehouse, Workflow, Coins, Plug, type LucideIcon,
+  Wallet, Warehouse, Workflow, Coins, Plug, LayoutTemplate, type LucideIcon,
 } from "lucide-react";
 
 type Item = { href: string; icon: LucideIcon; label: string; badge?: number; soon?: boolean };
@@ -43,6 +43,7 @@ export function Sidebar({ name, store, connected, leaves, logout }: { name: stri
         { href: "/pedidos", icon: Package, label: "Pedidos" },
         { href: "/custos", icon: Coins, label: "Custos e impostos" },
         { href: "/recuperacao", icon: RefreshCcw, label: "Recuperação" },
+        { href: "/modelos", icon: LayoutTemplate, label: "Modelos prontos" },
         { href: "/entregas", icon: Truck, label: "Entregas" },
         { href: "/atendimento", icon: MessageCircle, label: "Atendimento" },
         { href: "/assistente", icon: Bot, label: "Assistente IA" },

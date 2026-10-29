@@ -205,3 +205,23 @@ export async function saveParsedCosts(items: { product: string; cost: number }[]
   revalidatePath("/financeiro");
   return { ok };
 }
+
+// Aplica o texto de um modelo pronto na automação certa
+export async function applyTemplate(f: FormData) {
+  await admin();
+  const { TEMPLATES } = await import("@/lib/templates");
+  const t = TEMPLATES.find((x) => x.k === str(f, "k"));
+  if (!t || !t.target || !t.texts.length) redirect("/modelos");
+  const [sec, field] = t!.target.split(".");
+  const s = (await import("@/lib/settings")).getSettings;
+  const cur = await s();
+  if (field === "cartSteps" || field === "pixSteps") {
+    const old = (cur.recovery[field] as { delayMin: number }[]) ?? [];
+    const delays = field === "cartSteps" ? [30, 720, 1440] : [20, 360];
+    await saveSetting("recovery", { [field]: t!.texts.map((text, i) => ({ delayMin: old[i]?.delayMin ?? delays[i], text })) } as never);
+  } else {
+    await saveSetting(sec as "recovery", { [field]: t!.texts[0] } as never);
+  }
+  revalidatePath("/modelos");
+  redirect(`/modelos?usado=${t!.k}`);
+}
