@@ -20,6 +20,7 @@ import { getSettings } from "@/lib/settings";
 import { saveDashCards } from "./acoes7";
 import { Heart } from "lucide-react";
 import { CardPicker } from "@/components/CardPicker";
+import { metaLabel } from "@/lib/metaLabels";
 import { RefreshButton } from "@/components/RefreshButton";
 
 const CARDS: [string, string][] = [
@@ -172,6 +173,10 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
   const salesSpend = g ? g.vendas.spend : m?.ads ?? null;
   const roas = salesSpend && m ? m.net / salesSpend : null;
   const perfilCs = settings.ads.cards.includes("perfil") && settings.ads.perfilCoupons.length ? await couponSales(settings.ads.perfilCoupons, period.from, period.to).catch(() => null) : null;
+  // sem métrica de seguidor escolhida e sem seguidor vindo do Meta, mostra visitas ao perfil
+  const fm = settings.ads.followMetric;
+  const pVal = g ? (g.perfil.follows || (fm ? 0 : g.perfil.visits)) : 0;
+  const pLabel = fm ? (metaLabel(fm).startsWith("Seguidores") ? "Seguidores" : metaLabel(fm)) : g && !g.perfil.follows && g.perfil.visits ? "Visitas no perfil" : "Seguidores";
   const per = (a: number, b: number) => (b ? brl(a / b) : "–");
   const n0 = (v: number) => v.toLocaleString("pt-BR");
   const cardOn = settings.ads.cards;
@@ -181,7 +186,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
     lucro: <Link key="lucro" href="/financeiro" className="ks"><small><TrendingUp size={14} /> Lucro</small><b className={m && m.profitBeforeFixed < 0 ? "dn" : "up"}>{m ? brl(m.profitBeforeFixed, 0) : "–"}</b><span>antes dos custos fixos</span></Link>,
     vendas: <Link key="vendas" href="/campanhas" className="ks"><small><Target size={14} /> Anúncios de venda</small><b>{salesSpend != null ? brl(salesSpend, 0) : "–"}</b><span>{roas ? `ROAS ${roas.toFixed(2).replace(".", ",")}` : "sem gasto lido"}{g && g.vendas.purchases ? ` · Meta: ${n0(g.vendas.purchases)} compras` : ""}</span></Link>,
     leads: <Link key="leads" href="/campanhas" className="ks"><small><FileText size={14} /> Leads dos anúncios</small><b>{g ? n0(g.leads.leads) : "–"}</b><span>{g ? (g.leads.spend || g.leads.leads ? `${per(g.leads.spend, g.leads.leads)} por lead · gasto ${brl(g.leads.spend, 0)}` : "nenhuma campanha de lead") : "conecte o Meta Ads"}</span></Link>,
-    perfil: <Link key="perfil" href="/campanhas" className="ks"><small><Heart size={14} /> Seguidores</small><b>{g ? n0(g.perfil.follows) : "–"}</b><span>{g ? (g.perfil.spend ? `${per(g.perfil.spend, g.perfil.follows)} cada · gasto ${brl(g.perfil.spend, 0)}` : "nenhuma campanha de perfil") : "conecte o Meta Ads"}{perfilCs?.orders ? ` · cupom ${brl(perfilCs.net, 0)} em ${perfilCs.orders} venda(s)` : ""}</span></Link>,
+    perfil: <Link key="perfil" href="/campanhas" className="ks"><small><Heart size={14} /> {pLabel}</small><b>{g ? n0(pVal) : "–"}</b><span>{g ? (g.perfil.spend ? `${per(g.perfil.spend, pVal)} cada · gasto ${brl(g.perfil.spend, 0)}` : "nenhuma campanha de perfil") : "conecte o Meta Ads"}{perfilCs?.orders ? ` · cupom ${brl(perfilCs.net, 0)} em ${perfilCs.orders} venda(s)` : ""}</span></Link>,
     gasto: <Link key="gasto" href="/campanhas" className="ks"><small><Megaphone size={14} /> Gasto em anúncios</small><b>{g ? brl(g.total.spend, 0) : m?.ads != null ? brl(m.ads, 0) : "–"}</b><span>{g ? `${g.total.campaigns} campanha(s) com gasto` : "todas as contas"}</span></Link>,
     conversao: <Link key="conversao" href="/conversao" className="ks"><small><MousePointerClick size={14} /> Conversão</small><b>{m?.conversion ? `${(m.conversion.rate * 100).toFixed(2).replace(".", ",")}%` : "–"}</b><span>{m?.conversion?.sessions != null ? `${m.conversion.sessions.toLocaleString("pt-BR")} visitas` : "visitas na loja"}</span></Link>,
     formulario: <Link key="formulario" href="/leads" className="ks"><small><FileText size={14} /> Formulário</small><b>{leadsP.reduce((a, x) => a + x._count, 0)}</b><span>{leadsP.filter((x) => x.status === "no_grupo" || x.status === "cliente").reduce((a, x) => a + x._count, 0)} já no grupo ou clientes</span></Link>,

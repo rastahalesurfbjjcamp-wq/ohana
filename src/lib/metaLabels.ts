@@ -19,6 +19,12 @@ const L: Record<string, string> = {
   "onsite_conversion.messaging_user_depth_3_message_send": "Conversas com 3+ mensagens",
   "onsite_conversion.messaging_welcome_message_view": "Mensagem de boas-vindas vista",
   omni_purchase: "Compras",
+  "onsite_conversion.messaging_conversation_replied_7d": "Conversas respondidas",
+  "onsite_conversion.post_net_like": "Curtidas no post",
+  "onsite_conversion.post_net_save": "Salvamentos (líquido)",
+  "onsite_conversion.post_net_comment": "Comentários (líquido)",
+  post_interaction_gross: "Interações com o post",
+  post_interaction_net: "Interações com o post (líquido)",
   lead: "Leads",
 };
 export const metaLabel = (k: string) => L[k] ?? (/follow/.test(k) ? `Seguidores (${k})` : k);

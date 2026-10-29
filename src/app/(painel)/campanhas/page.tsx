@@ -52,7 +52,9 @@ export default async function Campanhas({ searchParams }: { searchParams: Promis
   const feeRate = settings.costs.taxRate + settings.costs.paymentFeeRate;
   const perfilSpend = grp?.perfil.spend ?? 0;
   const perfilProfit = cs ? cs.net - cs.cogs - cs.net * feeRate - perfilSpend : null;
-  const fCount = grp ? grp.perfil.follows || 0 : 0;
+  const fm = settings.ads.followMetric;
+  const fCount = grp ? grp.perfil.follows || (fm ? 0 : grp.perfil.visits) : 0;
+  const fLabel = fm ? metaLabel(fm) : grp && !grp.perfil.follows && grp.perfil.visits ? "Visitas ao perfil" : "Seguidores";
   const [orders, leads, funnel] = await Promise.all([
     ordersBetween(start, end).catch(() => [] as Order[]),
     db.lead.findMany({ where: { createdAt: { gte: start, lt: end } } }),
@@ -228,14 +230,14 @@ export default async function Campanhas({ searchParams }: { searchParams: Promis
           <div className="ph"><div><h3>Tráfego do perfil</h3><small>Seguidores que a campanha trouxe e o que vendeu pelo cupom que o ManyChat entrega</small></div></div>
           <div className="kstrip" style={{ gridTemplateColumns: "repeat(5, minmax(0, 1fr))", padding: "0 18px 14px" }}>
             <div className="ks"><small>Gasto no perfil</small><b>{brl(perfilSpend, 0)}</b><span>{perfilCamps.length} campanha(s)</span></div>
-            <div className="ks"><small>{settings.ads.followMetric ? metaLabel(settings.ads.followMetric) : "Seguidores"}</small><b>{fCount.toLocaleString("pt-BR")}</b><span>{fCount ? `${brl(perfilSpend / fCount)} cada` : "escolha a métrica abaixo"}</span></div>
+            <div className="ks"><small>{fLabel}</small><b>{fCount.toLocaleString("pt-BR")}</b><span>{fCount ? `${brl(perfilSpend / fCount)} cada` : "escolha a métrica abaixo"}</span></div>
             <div className="ks"><small>Vendas pelo cupom</small><b>{cs ? brl(cs.net, 0) : "–"}</b><span>{cs ? `${cs.orders} pedido(s) · ${cs.codes.join(", ") || "sem cupom"}` : "sem cupom definido"}</span></div>
             <div className="ks"><small>ROAS do perfil</small><b>{cs && perfilSpend ? (cs.net / perfilSpend).toFixed(2).replace(".", ",") : "–"}</b><span>vendas do cupom ÷ gasto</span></div>
             <div className="ks"><small>Lucro do perfil</small><b className={perfilProfit != null && perfilProfit < 0 ? "dn" : "up"}>{perfilProfit != null ? brl(perfilProfit, 0) : "–"}</b><span>{cs ? `peças ${brl(cs.cogs, 0)} · taxas ${brl(cs.net * feeRate, 0)}${cs.missingCost ? ` · ${cs.missingCost} peça(s) sem custo` : ""}` : "–"}</span></div>
           </div>
           <div className="row" style={{ gap: 16, padding: "0 18px 18px", flexWrap: "wrap", alignItems: "flex-end" }}>
             <form action={saveFollowMetric} style={{ minWidth: 280 }}>
-              <div className="dim" style={{ fontSize: 12, marginBottom: 6 }}>O que conta como seguidor (igual à coluna do Gerenciador)</div>
+              <div className="dim" style={{ fontSize: 12, marginBottom: 6 }}>O que contar no lugar de seguidor (o Meta não manda seguidores pela API)</div>
               <SubmitSelect name="metric" value={settings.ads.followMetric} label="Métrica de seguidor">
                 <option value="">Automático</option>
                 {actOpts.map(([k, v]) => <option key={k} value={k}>{metaLabel(k)} · {v.toLocaleString("pt-BR")}</option>)}
