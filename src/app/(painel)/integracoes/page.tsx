@@ -215,7 +215,7 @@ export default async function Integracoes({ searchParams }: { searchParams: Prom
         <Tile p="appmax" letter="A" tone="t-s" title="Appmax (clube)" sub="assinatura mensal por Pix e cartão" />
         <div className="itile off"><span className="tile t-s" style={{ fontWeight: 800 }}>C</span><div style={{ flex: 1 }}><b>Correios e transportadoras</b><small>rastreio que a Olist manda para a Shopify</small></div><span className={`chip ${status.shopify?.ok ? "c-l" : "c-n"}`}>{status.shopify?.ok ? "Pela Shopify" : "Precisa da Shopify"}</span></div>
       </div>
-      {open === "shopify" && <Detail />}
+      {(open === "shopify" || open === "appmax") && <Detail />}
 
       <h3 className="isec">Anúncios</h3>
       <div className="igrid">
