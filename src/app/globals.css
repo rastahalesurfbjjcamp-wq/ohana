@@ -869,3 +869,5 @@ a.itile:hover { border-color: #34403b; transform: translateY(-1px); }
 .tpl-i b { font-size: 15px; } .tpl-i p { font-size: 12.5px; color: var(--ink3); line-height: 1.45; }
 @media (max-width: 1300px) { .tpl-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 640px) { .tpl-grid { grid-template-columns: 1fr; } }
+.ul-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 8px; }
+.ul-c { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: center; padding: 10px; border-radius: 12px; border: 1px solid #222826; background: #0f1312; }

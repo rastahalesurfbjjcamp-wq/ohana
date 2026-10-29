@@ -66,7 +66,7 @@ export const DEFAULTS = {
   referral: {
     enabled: true,
     percent: 10,
-    commission: 10,
+    commission: 8,
     releaseDays: 7,
     shareText: "Oi {nome}! Você ganhou um código para indicar a {loja}: {codigo}. Quem usar ganha {percent}% de desconto e você acompanha suas indicações com a gente.",
   },

@@ -65,6 +65,7 @@ export interface Order {
   phone: string | null;
   images: string[];
   shipStatus: string | null;
+  codes: string[];
 }
 
 type RawOrder = {
@@ -84,6 +85,7 @@ type RawOrder = {
   } | null;
   fulfillments: { displayStatus: string | null; trackingInfo: { number: string; company: string | null; url: string | null }[] }[];
   paymentGatewayNames: string[] | null;
+  discountCodes: string[] | null;
   email: string | null;
   phone: string | null;
   lineItems: {
@@ -104,7 +106,7 @@ const ORDER_FIELDS = `id name createdAt cancelledAt displayFinancialStatus displ
   customer{displayName} shippingAddress{provinceCode city phone}
   customerJourneySummary{ firstVisit{ source utmParameters{source medium campaign content term} } lastVisit{ source utmParameters{source medium campaign content term} } }
   fulfillments(first:3){ displayStatus trackingInfo{number company url} }
-  paymentGatewayNames email phone
+  paymentGatewayNames email phone discountCodes
   lineItems(first:50){ nodes{ title variantTitle quantity sku discountedTotalSet{shopMoney{amount}} variant{ inventoryItem{ unitCost{amount} } } image{ url(transform:{maxWidth:96, maxHeight:96}) } } }`;
 
 function mapOrder(o: RawOrder): Order {
@@ -129,6 +131,7 @@ function mapOrder(o: RawOrder): Order {
     tracking: tr,
     cancelled: !!o.cancelledAt,
     gateway: o.paymentGatewayNames?.[0] ?? null,
+    codes: (o.discountCodes ?? []).map((c) => c.toUpperCase()),
     email: o.email ?? null,
     phone: o.phone ?? o.shippingAddress?.phone ?? null,
     images: o.lineItems.nodes.map((l) => l.image?.url).filter((x): x is string => !!x),

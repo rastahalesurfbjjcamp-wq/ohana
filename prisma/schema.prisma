@@ -347,6 +347,9 @@ model Referral {
   payout     String   @default("credito") // pix | credito
   clicks     Int      @default(0)
   note       String?
+  instagram  String?
+  discountPct Float?
+  active     Boolean  @default(true)
   createdAt  DateTime @default(now())
 }
 
@@ -411,4 +414,18 @@ model Waitlist {
 
   @@unique([phone, product, variant])
   @@index([product])
+}
+
+// Pagamento de comissão de atleta ou influenciador (todo dia 1, do mês anterior)
+model Payout {
+  id         String    @id @default(cuid())
+  referralId String
+  month      String    // AAAA-MM das vendas
+  sales      Float     @default(0)
+  amount     Float
+  paidAt     DateTime  @default(now())
+  method     String    @default("pix")
+  createdBy  String?
+
+  @@unique([referralId, month])
 }

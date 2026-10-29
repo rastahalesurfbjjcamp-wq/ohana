@@ -17,7 +17,7 @@ import { runFunnels } from "../lib/funnels";
 import { assistantReply } from "../lib/assistant";
 import { refreshReferralUsage } from "../lib/referral";
 
-type Marks = { daily?: string; weekly?: string; sync?: number; scan?: number; repurchase?: string; referral?: number };
+type Marks = { payday?: string; daily?: string; weekly?: string; sync?: number; scan?: number; repurchase?: string; referral?: number };
 
 async function getMarks(): Promise<Marks> {
   const r = await db.setting.findUnique({ where: { key: "_marks" } });
@@ -74,6 +74,16 @@ async function tick() {
   if (s.report.weeklyEnabled && nowLocal().getDay() === s.report.weeklyDay && hhmm >= s.report.weeklyTime && marks.weekly !== today) {
     await setMarks({ weekly: today });
     await postToResults(await weeklyReport());
+  }
+  // Dia 1: lembrete para pagar as comissões dos atletas do mês anterior
+  if (today.slice(8) === "01" && hhmm >= "09:00" && marks.payday !== today) {
+    await setMarks({ payday: today });
+    const partners = await db.referral.count({ where: { kind: { in: ["atleta", "influenciador"] }, active: true } });
+    if (partners) {
+      const prev = new Date(Date.UTC(Number(today.slice(0, 4)), Number(today.slice(5, 7)) - 2, 1)).toISOString().slice(0, 7);
+      await db.task.create({ data: { title: `Pagar comissões dos atletas de ${prev.slice(5)}/${prev.slice(0, 4)}`, description: "Veja os valores em Atletas e influenciadores e marque cada um como pago.", priority: "alta", dueDate: new Date() } });
+      await postToResults(`*Dia de pagar os atletas*\nAs comissões de ${prev.slice(5)}/${prev.slice(0, 4)} estão em Atletas e influenciadores, no painel.`).catch(() => {});
+    }
   }
 
   // Recuperação e primeira compra a cada 5 minutos

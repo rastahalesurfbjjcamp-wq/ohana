@@ -18,7 +18,7 @@ const KIND: Record<string, string> = { atleta: "Atleta", comunidade: "Comunidade
 export default async function Indique({ searchParams }: { searchParams: Promise<{ ok?: string; gerados?: string; erro?: string; k?: string; convidar?: string; criado?: string; regras?: string }> }) {
   const sp = await searchParams;
   const s = await getSettings();
-  const all = await db.referral.findMany({ orderBy: [{ revenue: "desc" }, { uses: "desc" }, { createdAt: "desc" }] });
+  const all = await db.referral.findMany({ where: { kind: { notIn: ["atleta", "influenciador"] } }, orderBy: [{ revenue: "desc" }, { uses: "desc" }, { createdAt: "desc" }] });
   const k = sp.k && KIND[sp.k] ? sp.k : "todos";
   const refs = (k === "todos" ? all : all.filter((r) => r.kind === k)).slice(0, 200);
   const uses = all.reduce((a, r) => a + r.uses, 0);
