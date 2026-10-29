@@ -74,6 +74,18 @@ export const evolution = {
     return call("DELETE", `/instance/logout/${inst()}`);
   },
 
+  // Número do WhatsApp conectado
+  async ownerPhone(): Promise<string | null> {
+    try {
+      const r = await call<{ ownerJid?: string; owner?: string; instance?: { owner?: string } }[]>("GET", `/instance/fetchInstances?instanceName=${inst()}`);
+      const i = Array.isArray(r) ? r[0] : (r as unknown as { ownerJid?: string; owner?: string; instance?: { owner?: string } });
+      const jid = i?.ownerJid ?? i?.owner ?? i?.instance?.owner ?? "";
+      return jid ? jid.split("@")[0].split(":")[0].replace(/\D/g, "") : null;
+    } catch {
+      return null;
+    }
+  },
+
   async fetchAllGroups(withParticipants = true): Promise<EvoGroup[]> {
     return call("GET", `/group/fetchAllGroups/${inst()}?getParticipants=${withParticipants}`);
   },
@@ -135,4 +147,8 @@ export interface EvoGroup {
   desc?: string;
   size?: number;
   participants?: EvoParticipant[];
+  isCommunity?: boolean;
+  isCommunityAnnounce?: boolean;
+  linkedParent?: string | null;
+  announce?: boolean;
 }

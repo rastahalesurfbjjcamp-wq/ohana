@@ -7,7 +7,7 @@ import { env } from "./env";
 export type Provider = "shopify" | "meta" | "ai" | "transcribe";
 
 export interface Creds {
-  shopify: { domain?: string; token?: string };
+  shopify: { domain?: string; token?: string; clientId?: string; clientSecret?: string };
   meta: { token?: string; adAccount?: string };
   ai: { key?: string; model?: string };
   transcribe: { key?: string; url?: string; model?: string };
@@ -15,7 +15,7 @@ export interface Creds {
 
 // Campos que são segredo (guardados criptografados e nunca mostrados inteiros)
 const SECRET: Record<Provider, string[]> = {
-  shopify: ["token"],
+  shopify: ["token", "clientSecret"],
   meta: ["token"],
   ai: ["key"],
   transcribe: ["key"],
@@ -69,7 +69,7 @@ export async function creds(): Promise<Creds> {
     s = {};
   }
   const value: Creds = {
-    shopify: { domain: s.shopify?.domain || env.shopifyDomain(), token: s.shopify?.token || env.shopifyToken() },
+    shopify: { domain: s.shopify?.domain || env.shopifyDomain(), token: s.shopify?.token || env.shopifyToken(), clientId: s.shopify?.clientId || process.env.SHOPIFY_CLIENT_ID, clientSecret: s.shopify?.clientSecret || process.env.SHOPIFY_CLIENT_SECRET },
     meta: { token: s.meta?.token || env.metaToken(), adAccount: s.meta?.adAccount || env.metaAdAccount() },
     ai: { key: s.ai?.key || env.anthropicKey(), model: s.ai?.model || env.anthropicModel() },
     transcribe: { key: s.transcribe?.key || env.transcribeKey(), url: s.transcribe?.url || env.transcribeUrl(), model: s.transcribe?.model || env.transcribeModel() },

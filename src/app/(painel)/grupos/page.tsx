@@ -1,124 +1,120 @@
 import Link from "next/link";
-import { RefreshCw } from "lucide-react";
+import { Megaphone, RefreshCw, ShieldCheck, Users } from "lucide-react";
 import { db } from "@/lib/db";
 import { Bar, Header, Kpi, Panel } from "@/components/ui";
 import { saveGroupSelection, syncGroupsAction } from "../actions";
 
 export const dynamic = "force-dynamic";
 
-export default async function Grupos({ searchParams }: { searchParams: Promise<{ ok?: string }> }) {
+type G = Awaited<ReturnType<typeof db.group.findMany>>[number];
+
+function Row({ g, nested }: { g: G; nested?: boolean }) {
+  const isAnnounce = g.kind === "avisos";
+  return (
+    <tr>
+      <td style={{ width: 110 }}>
+        <label className="check"><input type="checkbox" name="community" value={g.id} defaultChecked={g.isCommunity} /></label>
+      </td>
+      <td style={{ width: 100 }}>
+        <label className="check"><input type="radio" name="results" value={g.id} defaultChecked={g.isResults} /></label>
+      </td>
+      <td style={{ paddingLeft: nested ? 40 : undefined }}>
+        <div className="row" style={{ gap: 8 }}>
+          {isAnnounce ? <Megaphone size={14} className="dim" /> : null}
+          <b style={{ fontWeight: 550 }}>{isAnnounce ? `Avisos: ${g.name}` : g.name}</b>
+          {g.iAmAdmin && <span className="chip c-l"><ShieldCheck size={12} /> admin</span>}
+          {g.isResults && <span className="chip c-s">resultados</span>}
+        </div>
+        {isAnnounce && <div className="dim" style={{ fontSize: 12 }}>Mensagem aqui chega em todo mundo da comunidade</div>}
+      </td>
+      <td style={{ width: 200 }}>
+        <div className="row" style={{ gap: 10, flexWrap: "nowrap" }}>
+          <div style={{ flex: 1 }}><Bar value={g.size} max={g.capacity} /></div>
+          <span className="mut">{g.size}</span>
+        </div>
+      </td>
+      <td style={{ width: 100 }}>
+        <input className="in" name={`cap_${g.id}`} defaultValue={g.capacity} style={{ width: 80, height: 32 }} inputMode="numeric" />
+      </td>
+    </tr>
+  );
+}
+
+export default async function Grupos({ searchParams }: { searchParams: Promise<{ ok?: string; v?: string }> }) {
   const sp = await searchParams;
-  const [groups, wa] = await Promise.all([
-    db.group.findMany({ where: { archived: false }, orderBy: [{ isResults: "desc" }, { isCommunity: "desc" }, { size: "desc" }] }),
+  const view = sp.v ?? "admin";
+  const [all, wa] = await Promise.all([
+    db.group.findMany({ where: { archived: false }, orderBy: [{ size: "desc" }] }),
     db.setting.findUnique({ where: { key: "_whatsapp" } }),
   ]);
   const connected = (wa?.value as { state?: string } | undefined)?.state === "open";
-  const community = groups.filter((g) => g.isCommunity);
-  const members = community.reduce((s, g) => s + g.size, 0);
-  const cap = community.reduce((s, g) => s + g.capacity, 0);
-  const full = community.filter((g) => g.size >= g.capacity * 0.95).length;
-  const firstTime = groups.length > 0 && !community.length && !groups.some((g) => g.isResults);
+  const selected = all.filter((g) => g.isCommunity || g.isResults);
+  const groups = view === "selecionados" ? selected : view === "todos" ? all : all.filter((g) => g.iAmAdmin || g.isCommunity || g.isResults);
+  const communities = all.filter((g) => g.kind === "comunidade");
+  const shown = new Set<string>();
+  const blocks: { title: string; parent?: G; items: G[] }[] = [];
+  for (const c of communities) {
+    const items = groups.filter((g) => g.parentJid === c.jid);
+    if (!items.length) continue;
+    items.sort((a, b) => (a.kind === "avisos" ? -1 : b.kind === "avisos" ? 1 : b.size - a.size));
+    items.forEach((g) => shown.add(g.id));
+    blocks.push({ title: c.name, parent: c, items });
+  }
+  const loose = groups.filter((g) => !shown.has(g.id) && g.kind !== "comunidade");
+  if (loose.length) blocks.push({ title: "Grupos fora de comunidade", items: loose });
+  const members = selected.filter((g) => g.isCommunity).reduce((s, g) => s + g.size, 0);
+  const firstTime = all.length > 0 && !selected.length;
 
   return (
     <>
-      <Header title="Grupos" lede="Todos os grupos do WhatsApp conectado. Escolha quais o Hub vai gerenciar e qual é o grupo de resultados.">
+      <Header title="Grupos" lede="Suas comunidades e grupos do WhatsApp. Por padrão aparecem só os que você administra. Marque os que o Hub vai cuidar: o resto fica de fora.">
         <form action={syncGroupsAction}>
-          <button className="btn" type="submit">
-            <RefreshCw size={15} /> Atualizar lista
-          </button>
+          <button className="btn" type="submit"><RefreshCw size={15} /> Atualizar lista</button>
         </form>
       </Header>
-      {sp.ok && <div className="ok">Seleção salva.</div>}
-      {firstTime && (
-        <div className="note">
-          WhatsApp conectado. Agora marque abaixo os grupos da comunidade (entradas e saídas, mensagem de volta, agendamentos) e escolha um grupo de resultados (relatório diário e comandos). Os outros grupos ficam de fora.
-        </div>
-      )}
-      {!groups.length && (
+      {sp.ok && <div className="ok">Seleção salva. O Hub agora trabalha só com os grupos marcados.</div>}
+      {firstTime && <div className="note">Marque os grupos da comunidade (entradas e saídas, mensagem de volta, agendamentos, disparos) e escolha um grupo de resultados (relatório e comandos).</div>}
+      {!all.length && (
         <Panel title="Nenhum grupo ainda">
           <div className="stack">
-            <p className="mut">
-              {connected
-                ? "O número está conectado. Clique em Atualizar lista para puxar os grupos."
-                : "Primeiro conecte o WhatsApp lendo o QR code em Configurações. Os grupos aparecem aqui logo depois."}
-            </p>
-            {!connected && (
-              <div>
-                <Link className="btn pri" href="/configuracoes">Conectar WhatsApp</Link>
-              </div>
-            )}
+            <p className="mut">{connected ? "O número está conectado. Clique em Atualizar lista para puxar os grupos." : "Primeiro conecte o WhatsApp em Configurações. Os grupos aparecem aqui logo depois."}</p>
+            {!connected && <div><Link className="btn pri" href="/configuracoes">Conectar WhatsApp</Link></div>}
           </div>
         </Panel>
       )}
-      {groups.length > 0 && (
+      {all.length > 0 && (
         <>
           <div className="grid g4">
-            <Kpi label="Grupos gerenciados" value={community.length} sub={`de ${groups.length} no número`} />
-            <Kpi label="Pessoas nos grupos" value={members.toLocaleString("pt-BR")} />
-            <Kpi label="Lotação" value={cap ? `${Math.round((members / cap) * 100)}%` : "–"} sub={cap ? `${(cap - members).toLocaleString("pt-BR")} vagas` : undefined} />
-            <Kpi label="Grupos lotados" value={full} sub="95% ou mais" />
+            <Kpi icon={<Users size={15} />} label="Grupos selecionados" value={selected.filter((g) => g.isCommunity).length} sub={`de ${all.filter((g) => g.iAmAdmin).length} onde você é admin`} />
+            <Kpi label="Pessoas nos selecionados" value={members.toLocaleString("pt-BR")} />
+            <Kpi label="Comunidades" value={communities.length} />
+            <Kpi label="Grupo de resultados" value={all.find((g) => g.isResults)?.name ?? "–"} />
+          </div>
+          <div className="tabs">
+            <a href="/grupos?v=admin" className={view === "admin" ? "on" : ""}>Onde sou admin</a>
+            <a href="/grupos?v=selecionados" className={view === "selecionados" ? "on" : ""}>Selecionados ({selected.length})</a>
+            <a href="/grupos?v=todos" className={view === "todos" ? "on" : ""}>Todos ({all.length})</a>
           </div>
           <form action={saveGroupSelection}>
-            <Panel
-              title="Escolha dos grupos"
-              sub="Comunidade: o Hub acompanha e manda mensagens. Resultados: só um, recebe o relatório e os comandos."
-              right={<button className="btn pri" type="submit">Salvar seleção</button>}
-              body={false}
-            >
-              <table className="tb">
-                <thead>
-                  <tr>
-                    <th style={{ width: 110 }}>Comunidade</th>
-                    <th style={{ width: 100 }}>Resultados</th>
-                    <th>Grupo</th>
-                    <th style={{ width: 220 }}>Lotação</th>
-                    <th style={{ width: 110 }}>Limite</th>
-                    <th style={{ width: 120 }}>Convite</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {groups.map((g) => (
-                    <tr key={g.id}>
-                      <td>
-                        <label className="check">
-                          <input type="checkbox" name="community" value={g.id} defaultChecked={g.isCommunity} />
-                        </label>
-                      </td>
-                      <td>
-                        <label className="check">
-                          <input type="radio" name="results" value={g.id} defaultChecked={g.isResults} />
-                        </label>
-                      </td>
-                      <td>
-                        <b style={{ fontWeight: 550 }}>{g.name}</b>
-                        {g.isResults && <span className="chip c-s" style={{ marginLeft: 8 }}>resultados</span>}
-                        {!g.isCommunity && !g.isResults && <span className="dim" style={{ marginLeft: 8, fontSize: 12 }}>fora do Hub</span>}
-                      </td>
-                      <td>
-                        <div className="row" style={{ gap: 10, flexWrap: "nowrap" }}>
-                          <div style={{ flex: 1 }}>
-                            <Bar value={g.size} max={g.capacity} />
-                          </div>
-                          <span className="mut">{g.size}</span>
-                        </div>
-                      </td>
-                      <td>
-                        <input className="in" name={`cap_${g.id}`} defaultValue={g.capacity} style={{ width: 90, height: 32 }} inputMode="numeric" />
-                      </td>
-                      <td>
-                        {g.inviteCode ? (
-                          <a className="chip c-k" href={`https://chat.whatsapp.com/${g.inviteCode}`} target="_blank" rel="noreferrer">
-                            abrir link
-                          </a>
-                        ) : (
-                          <span className="dim" style={{ fontSize: 12 }}>precisa ser admin</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </Panel>
+            {/* mantém marcados os grupos que não aparecem neste filtro */}
+            {all.filter((g) => !groups.includes(g)).map((g) => (
+              <span key={g.id}>
+                {g.isCommunity && <input type="hidden" name="community" value={g.id} />}
+                {g.isResults && <input type="hidden" name="results" value={g.id} />}
+              </span>
+            ))}
+            <div className="stack">
+              {blocks.map((b) => (
+                <Panel key={b.title} title={b.parent ? `Comunidade: ${b.title}` : b.title} sub={b.parent ? `${b.items.length} grupo(s) nesta comunidade` : undefined} body={false}
+                  right={<button className="btn pri sm" type="submit">Salvar seleção</button>}>
+                  <table className="tb">
+                    <thead><tr><th>Cuidar</th><th>Resultados</th><th>Grupo</th><th>Lotação</th><th>Limite</th></tr></thead>
+                    <tbody>{b.items.map((g) => <Row key={g.id} g={g} nested={!!b.parent} />)}</tbody>
+                  </table>
+                </Panel>
+              ))}
+              {!blocks.length && <Panel title="Nada neste filtro"><p className="mut">Nenhum grupo onde o número conectado é admin. Veja em “Todos”.</p></Panel>}
+            </div>
           </form>
         </>
       )}

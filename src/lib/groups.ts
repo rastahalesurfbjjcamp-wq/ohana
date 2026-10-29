@@ -19,13 +19,18 @@ async function upsertContact(phone: string, name?: string | null) {
 // Na primeira vez não gera eventos (só fotografa quem já está).
 export async function syncGroups() {
   const groups: EvoGroup[] = await evolution.fetchAllGroups(true);
+  const me = await evolution.ownerPhone();
   let created = 0;
   for (const g of groups) {
     const existing = await db.group.findUnique({ where: { jid: g.id } });
+    const mine = (g.participants ?? []).find((p) => me && participantPhone(p) === me);
+    const iAmAdmin = !!mine && typeof mine === "object" && !!(mine as { admin?: string | null }).admin;
+    const kind = g.isCommunity ? "comunidade" : g.isCommunityAnnounce ? "avisos" : "grupo";
+    const meta = { name: g.subject ?? g.id, description: g.desc, size: g.size ?? g.participants?.length ?? 0, iAmAdmin, kind, parentJid: g.linkedParent ?? null };
     const group = await db.group.upsert({
       where: { jid: g.id },
-      create: { jid: g.id, name: g.subject ?? g.id, description: g.desc, size: g.size ?? g.participants?.length ?? 0 },
-      update: { name: g.subject ?? g.id, description: g.desc, size: g.size ?? g.participants?.length ?? 0, archived: false },
+      create: { jid: g.id, ...meta },
+      update: { ...meta, archived: false },
     });
     if (!existing) created++;
 
@@ -61,6 +66,8 @@ export async function syncGroups() {
       }
     }
   }
+  // Grupos de que o número saiu ficam arquivados
+  if (groups.length) await db.group.updateMany({ where: { jid: { notIn: groups.map((g) => g.id) }, archived: false }, data: { archived: true, isCommunity: false, isResults: false } });
   return { total: groups.length, created };
 }
 

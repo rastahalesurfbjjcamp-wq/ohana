@@ -3,13 +3,23 @@ import { db } from "@/lib/db";
 import { creds, mask, storedProviders, type Provider } from "@/lib/integrations";
 import { Header } from "@/components/ui";
 import { disconnect, retest, saveProvider } from "./actions";
+import { callbackUrl } from "@/lib/shopifyOauth";
 
 export const dynamic = "force-dynamic";
 
 type Field = { name: string; label: string; secret?: boolean; placeholder?: string; current?: string };
 type Card = { p: Provider; title: string; what: string; fields: Field[]; steps: string[] };
 
-export default async function Integracoes() {
+const SHOPIFY_MSG: Record<string, [string, boolean]> = {
+  conectada: ["Shopify conectada com sucesso.", true],
+  "faltam-dados": ["Preencha o endereço da loja, o Client ID e o Client secret do app antes de conectar.", false],
+  "sessao-expirou": ["A conexão demorou demais. Clique em Conectar de novo.", false],
+  "assinatura-invalida": ["A Shopify respondeu com uma assinatura que não confere. Confira o Client secret.", false],
+  falhou: ["A Shopify não liberou o acesso. Tente de novo.", false],
+};
+
+export default async function Integracoes({ searchParams }: { searchParams: Promise<{ shopify?: string }> }) {
+  const sp = await searchParams;
   const [c, stored, statusRow, wa] = await Promise.all([
     creds(),
     storedProviders(),
@@ -26,12 +36,13 @@ export default async function Integracoes() {
       what: "Pedidos, produtos, estoque, clientes, conversão e origem das vendas.",
       fields: [
         { name: "domain", label: "Endereço da loja na Shopify", placeholder: "minhaloja.myshopify.com", current: c.shopify.domain },
-        { name: "token", label: "Token de acesso da Admin API", secret: true, placeholder: "shpat_...", current: mask(c.shopify.token) },
+        { name: "clientId", label: "Client ID do app", placeholder: "do Dev Dashboard da Shopify", current: c.shopify.clientId },
+        { name: "clientSecret", label: "Client secret do app", secret: true, placeholder: "do Dev Dashboard da Shopify", current: mask(c.shopify.clientSecret) },
       ],
       steps: [
-        "No admin da Shopify: Configurações, Apps e canais de vendas, Desenvolver apps, Criar um app (nome: Hub).",
-        "Configurar escopos da Admin API e marcar: read_orders, read_all_orders, read_products, read_inventory, read_customers, read_reports, read_analytics, read_checkouts.",
-        "Instalar app, copiar o token de acesso da Admin API (começa com shpat_) e colar aqui.",
+        "Em dev.shopify.com, crie um app (nome: Hub).",
+        `Na versão do app, em URLs de redirecionamento, coloque: ${callbackUrl()}`,
+        "Em Configurações do app, copie o Client ID e o Client secret e cole aqui. Salve e clique em Conectar com a Shopify.",
       ],
     },
     {
@@ -93,6 +104,9 @@ export default async function Integracoes() {
                   </div>
                   <span className={`chip ${st?.ok ? "c-l" : configured ? "c-s" : "c-n"}`}>{st?.ok ? "conectado" : configured ? "não testado" : "não conectado"}</span>
                 </div>
+                {card.p === "shopify" && sp.shopify && SHOPIFY_MSG[sp.shopify] && (
+                  <div className={SHOPIFY_MSG[sp.shopify][1] ? "ok" : "err"}>{SHOPIFY_MSG[sp.shopify][0]}</div>
+                )}
                 {st && <div className={st.ok ? "ok" : "err"}>{st.msg}</div>}
                 <form action={saveProvider} className="stack" autoComplete="off">
                   <input type="hidden" name="provider" value={card.p} />
@@ -115,9 +129,12 @@ export default async function Integracoes() {
                     </div>
                   ))}
                   <div className="row">
-                    <button className="btn pri" type="submit">Salvar e testar</button>
+                    <button className="btn pri" type="submit">{card.p === "shopify" ? "Salvar" : "Salvar e testar"}</button>
                   </div>
                 </form>
+                {card.p === "shopify" && c.shopify.clientId && c.shopify.clientSecret && (
+                  <a className="btn pri" href="/api/shopify/install" style={{ justifyContent: "center" }}>Conectar com a Shopify</a>
+                )}
                 <div className="row">
                   <form action={retest}><input type="hidden" name="provider" value={card.p} /><button className="btn sm">Testar de novo</button></form>
                   {stored.has(card.p) && (

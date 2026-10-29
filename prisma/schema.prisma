@@ -36,6 +36,9 @@ model Group {
   isCommunity Boolean  @default(false) // escolhido no painel: entra nas métricas, na mensagem de volta e nos disparos
   isResults   Boolean  @default(false) // grupo de resultados (relatório e comandos)
   inviteCode  String?
+  iAmAdmin    Boolean  @default(false) // o número conectado é admin
+  kind        String   @default("grupo") // grupo | comunidade | avisos
+  parentJid   String?  // comunidade a que o grupo pertence
   archived    Boolean  @default(false)
   updatedAt   DateTime @updatedAt
   createdAt   DateTime @default(now())
