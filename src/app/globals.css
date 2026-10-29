@@ -924,3 +924,13 @@ a.itile:hover { border-color: #34403b; transform: translateY(-1px); }
 .splash-img { width: 64px; height: auto; display: block; margin: 0 auto; animation: splashPulse 1.8s ease-in-out infinite; filter: drop-shadow(0 6px 30px rgba(52,194,106,.18)); }
 .splash-hub { margin-top: 16px; font-family: Elite, "Special Elite", monospace; font-size: clamp(28px, 4.5vw, 40px); line-height: 1; letter-spacing: .04em; background: linear-gradient(90deg, #f7c928 0%, #fff 35%, #34c26a 70%, #f7c928 100%); background-size: 300% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: splashShine 2.4s linear infinite; }
 .splash-hub::after { content: ""; display: block; width: 120px; height: 6px; margin: 12px auto 0; border-radius: 2px; background: linear-gradient(180deg, #e22323 0 33%, #fac428 33% 66%, #3ca03c 66%); }
+
+/* Logo do Hub: leão + nome na mesma letra da marca + faixas reggae */
+.hub-logo { display: inline-flex; align-items: center; gap: 0; animation: splashPulse 1.8s ease-in-out infinite; }
+.hub-logo img { width: clamp(64px, 9vw, 92px); height: auto; position: relative; z-index: 1; margin-right: -6px; }
+.hub-logo .hl-r { display: flex; flex-direction: column; align-items: stretch; }
+.hub-logo b { font: italic 900 clamp(26px, 4.2vw, 44px)/1 "Arial Black", "Helvetica Neue", Arial, sans-serif; text-transform: uppercase; color: #fff; letter-spacing: .01em; padding: 0 4px 6px 14px; white-space: nowrap; }
+.hub-logo i { display: block; height: clamp(6px, .9vw, 9px); margin-left: -8px; }
+.hub-logo i:nth-of-type(1) { background: #e22323; }
+.hub-logo i:nth-of-type(2) { background: #fac428; margin-left: -12px; }
+.hub-logo i:nth-of-type(3) { background: #3ca03c; margin-left: -18px; }
