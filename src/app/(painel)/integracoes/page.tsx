@@ -8,6 +8,7 @@ import { creds, mask, storedProviders, type Provider } from "@/lib/integrations"
 import { Header } from "@/components/ui";
 import { disconnect, retest, saveProvider } from "./actions";
 import { callbackUrl } from "@/lib/shopifyOauth";
+import { env } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
 
@@ -62,6 +63,21 @@ export default async function Integracoes({ searchParams }: { searchParams: Prom
         "No Gerenciador de Negócios: Configurações do negócio, Usuários do sistema, Adicionar (função Administrador).",
         "Atribuir ativos: a conta de anúncios, com acesso de leitura.",
         "Gerar novo token com a permissão ads_read, sem prazo de validade, e colar aqui. O ID da conta aparece no Gerenciador de Anúncios.",
+      ],
+    },
+    {
+      p: "appmax",
+      title: "Appmax (assinatura do clube)",
+      what: "Cobrança mensal do clube de fidelidade por Pix e cartão, na própria página de assinatura.",
+      fields: [
+        { name: "clientId", label: "Client ID", placeholder: "credenciais de API da Appmax", current: c.appmax.clientId },
+        { name: "clientSecret", label: "Client secret", secret: true, placeholder: "credenciais de API da Appmax", current: mask(c.appmax.clientSecret) },
+        { name: "mode", label: "Ambiente (producao ou sandbox)", placeholder: "producao", current: c.appmax.mode },
+      ],
+      steps: [
+        "No painel da Appmax, gere as credenciais de API (Client ID e Client secret) da loja e cole aqui.",
+        `Cadastre o endereço de avisos (webhook): ${env.appUrl().replace(/\/$/, "")}/api/webhooks/appmax, com os eventos de pedido (Pix pago, aprovado, Pix expirado) e de assinatura (cobrança paga, recusada, cancelamento).`,
+        `A página de assinatura fica em ${env.appUrl().replace(/\/$/, "")}/assinar. Para testar antes, use o ambiente sandbox.`,
       ],
     },
     {
@@ -196,6 +212,7 @@ export default async function Integracoes({ searchParams }: { searchParams: Prom
       <div className="igrid">
         <Tile p="shopify" letter="S" tone="t-l" title="Shopify" sub="pedidos, carrinhos, clientes, estoque, cupons" />
         <div className="itile off"><span className="tile t-p" style={{ fontWeight: 800 }}>A</span><div style={{ flex: 1 }}><b>Gateway de pagamento</b><small>Pix e cartão chegam pela Shopify</small></div><span className={`chip ${status.shopify?.ok ? "c-l" : "c-n"}`}>{status.shopify?.ok ? "Pela Shopify" : "Precisa da Shopify"}</span></div>
+        <Tile p="appmax" letter="A" tone="t-s" title="Appmax (clube)" sub="assinatura mensal por Pix e cartão" />
         <div className="itile off"><span className="tile t-s" style={{ fontWeight: 800 }}>C</span><div style={{ flex: 1 }}><b>Correios e transportadoras</b><small>rastreio que a Olist manda para a Shopify</small></div><span className={`chip ${status.shopify?.ok ? "c-l" : "c-n"}`}>{status.shopify?.ok ? "Pela Shopify" : "Precisa da Shopify"}</span></div>
       </div>
       {open === "shopify" && <Detail />}

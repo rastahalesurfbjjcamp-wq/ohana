@@ -138,7 +138,7 @@ export async function createReward(memberId: string, points: number, by?: string
 }
 
 // Mensalidade paga: estende a validade, religa o cupom de membro e dá os pontos do mês
-export async function registerPayment(memberId: string, months: number, by?: string) {
+export async function registerPayment(memberId: string, months: number, by?: string, ref?: string) {
   const s = (await getSettings()).club;
   const m = await db.clubMember.findUnique({ where: { id: memberId } });
   if (!m) throw new Error("Membro não encontrado");
@@ -151,7 +151,7 @@ export async function registerPayment(memberId: string, months: number, by?: str
     await db.clubMember.update({ where: { id: m.id }, data: { codeActive: true } });
   }
   const month = new Date().toISOString().slice(0, 7);
-  for (let i = 0; i < months; i++) await addPoints(m.id, s.monthlyPoints, "mensalidade", `${month}-${i}`, `Mensalidade paga`, by);
+  for (let i = 0; i < months; i++) await addPoints(m.id, s.monthlyPoints, "mensalidade", ref ? `${ref}-${i}` : `${month}-${i}-${Date.now()}`, `Mensalidade paga`, by);
   return until;
 }
 
@@ -220,4 +220,23 @@ export function clubMessage(m: { name: string; code: string | null; points: numb
     "3. Nos eventos, é só falar o seu CPF para resgatar os pontos ou entrar.",
     `Seu saldo hoje: ${m.points} pontos.`,
   ].filter((x, i, a) => x !== "" || a[i - 1] !== "").join("\n");
+}
+
+// Troca pontos por uma peça do catálogo: cupom de 100% só para aquele produto, uso único, só na conta do membro
+export async function createPrizeReward(memberId: string, prizeId: string, by?: string) {
+  const [m, p] = await Promise.all([db.clubMember.findUnique({ where: { id: memberId } }), db.clubPrize.findUnique({ where: { id: prizeId } })]);
+  if (!m || !p || !p.active) throw new Error("Recompensa não encontrada");
+  if (m.points < p.points) throw new Error(`Faltam ${p.points - m.points} pontos para essa peça`);
+  if (!p.productId) throw new Error("Essa recompensa não está ligada a um produto da loja");
+  const code = `PECA${rand(6)}`;
+  const id = await discountCreate({
+    title: `Resgate ${p.title} - ${m.name}`, code, startsAt: new Date().toISOString(), context: contextFor(m.customerId),
+    usageLimit: 1, appliesOncePerCustomer: true,
+    customerGets: { value: { percentage: 1 }, items: { products: { productsToAdd: [p.productId] } } },
+    combinesWith: { orderDiscounts: false, productDiscounts: false, shippingDiscounts: true }, tags: ["clube", "resgate", "peca"],
+  });
+  const r = await db.clubReward.create({ data: { memberId, code, discountId: id, value: 0, points: p.points } });
+  await addPoints(memberId, -p.points, "resgate", r.id, `${p.title} (cupom ${code})`, by);
+  await db.clubEvent.create({ data: { memberId, kind: "resgate", text: `Trocou ${p.points} pontos por ${p.title}` } }).catch(() => null);
+  return r;
 }

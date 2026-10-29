@@ -46,8 +46,13 @@ export async function testIntegration(p: Provider) {
       if (!r.ok) throw new Error(`A chave foi recusada (${r.status})`);
       await setStatus(p, true, "Chave válida");
     }
+    if (p === "appmax") {
+      const { appmax } = await import("@/lib/appmax");
+      await appmax("GET", "/v1/subscriptions?per_page=1").catch((e) => { if (/APPMAX_NAO|credenciais/.test(String(e))) throw e; });
+      await setStatus(p, true, `Conectado (${c.appmax.mode === "sandbox" ? "sandbox" : "produção"})`);
+    }
   } catch (e) {
-    const msg = String(e).replace(/^Error: /, "").replace("SHOPIFY_NAO_CONFIGURADA", "Falta o domínio ou o token");
+    const msg = String(e).replace(/^Error: /, "").replace("APPMAX_NAO_CONFIGURADA", "Falta o Client ID ou o Client secret").replace("SHOPIFY_NAO_CONFIGURADA", "Falta o domínio ou o token");
     await setStatus(p, false, msg.slice(0, 200));
   }
 }
@@ -62,6 +67,7 @@ export async function saveProvider(f: FormData) {
     if (!values.domain.includes(".")) values.domain = `${values.domain}.myshopify.com`;
   }
   if (p === "meta" && values.adAccount) values.adAccount = values.adAccount.replace(/\D/g, "");
+  if (p === "appmax" && values.mode) values.mode = /sand/i.test(values.mode) ? "sandbox" : "producao";
   await saveIntegration(p, values);
   await testIntegration(p);
   revalidatePath("/integracoes");

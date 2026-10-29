@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { addPoints, cpfValid, createMemberCode, createReward, digits, findShopifyCustomer, registerPayment, scanClub, setCodeActive, tagCustomer } from "@/lib/club";
+import { addPoints, cpfValid, createMemberCode, createPrizeReward, createReward, digits, findShopifyCustomer, registerPayment, scanClub, setCodeActive, tagCustomer } from "@/lib/club";
 import { getSettings, saveSetting } from "@/lib/settings";
 import { normalizePhone } from "@/lib/segments";
 
@@ -146,4 +146,60 @@ export async function scanClubNow() {
   }
   revalidatePath("/clube");
   redirect(`/clube?somados=${r.points}`);
+}
+
+/* Catálogo de recompensas */
+export async function savePrize(f: FormData) {
+  await admin();
+  const title = str(f, "title");
+  const points = Math.round(Number(str(f, "points").replace(/\D/g, "")) || 0);
+  const productId = str(f, "productId") || null;
+  if (!title || points <= 0) redirect("/clube?premios=1&erro=" + encodeURIComponent("Coloque o nome e os pontos"));
+  const image = str(f, "image") || null;
+  const id = str(f, "id");
+  if (id) await db.clubPrize.update({ where: { id }, data: { title, points, productId, image } });
+  else await db.clubPrize.create({ data: { title, points, productId, image } });
+  revalidatePath("/clube");
+  redirect("/clube?premios=1&ok=1");
+}
+export async function togglePrize(f: FormData) {
+  await admin();
+  const p = await db.clubPrize.findUnique({ where: { id: str(f, "id") } });
+  if (p) await db.clubPrize.update({ where: { id: p.id }, data: { active: !p.active } });
+  revalidatePath("/clube");
+  redirect("/clube?premios=1");
+}
+export async function redeemPrize(f: FormData) {
+  const u = await user();
+  const q = str(f, "q");
+  let code = "";
+  try {
+    code = (await createPrizeReward(str(f, "id"), str(f, "prize"), u.name)).code;
+  } catch (e) {
+    redirect(back(q, `erro=${msg(e)}`));
+  }
+  revalidatePath("/clube");
+  redirect(back(q, `cupom=${code}`));
+}
+
+// Cancela também a cobrança na Appmax
+export async function cancelSubscription(f: FormData) {
+  await admin();
+  const q = str(f, "q");
+  const m = await db.clubMember.findUnique({ where: { id: str(f, "id") } });
+  if (!m) redirect(back(q, "erro=membro"));
+  try {
+    if (m!.subscriptionId) {
+      const { cancelSubscription: cancelAt } = await import("@/lib/appmax");
+      await cancelAt(m!.subscriptionId, "Cancelado pelo painel do Hub");
+    }
+    if (m!.discountId) await setCodeActive(m!.discountId, false).catch(() => null);
+    await db.clubMember.update({ where: { id: m!.id }, data: { status: "cancelado", canceledAt: new Date(), codeActive: false } });
+    await db.clubEvent.create({ data: { memberId: m!.id, kind: "cancelou", text: "Assinatura cancelada pelo painel" } });
+  } catch (e) {
+    rethrow(e);
+    redirect(back(q, `erro=${msg(e)}`));
+  }
+  revalidatePath("/clube");
+  redirect(back(q, "ok=cancelado"));
 }

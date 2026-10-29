@@ -450,8 +450,18 @@ model ClubMember {
   points     Int       @default(0) // saldo
   note       String?
   joinedAt   DateTime  @default(now())
+  provider   String?   // appmax | manual
+  subscriptionId String?
+  payMethod  String?   // pix | cartao
+  cardLast4  String?
+  lastChargeAt DateTime?
+  lastChargeStatus String? // pago | falhou
+  failReason String?
+  nextChargeAt DateTime?
+  canceledAt DateTime?
   entries    ClubPoints[]
   rewards    ClubReward[]
+  events     ClubEvent[]
 
   @@index([phone])
   @@index([email])
@@ -483,4 +493,50 @@ model ClubReward {
   orderName  String?
   createdAt  DateTime   @default(now())
   member     ClubMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+}
+
+// Tentativa de assinatura pela página pública (Pix ou cartão)
+model ClubCheckout {
+  id         String    @id @default(cuid())
+  name       String
+  cpf        String
+  phone      String?
+  email      String
+  method     String    // pix | cartao
+  orderId    Int?
+  status     String    @default("pendente") // pendente | pago | recusado | expirado | erro
+  pixEmv     String?
+  pixQr      String?
+  pixExpires DateTime?
+  cardLast4  String?
+  error      String?
+  memberId   String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([orderId])
+}
+
+// O que aconteceu com a assinatura de cada membro
+model ClubEvent {
+  id        String     @id @default(cuid())
+  memberId  String
+  kind      String     // assinou | pagou | falhou | cancelou | pausou | voltou | resgate
+  text      String
+  value     Float?
+  createdAt DateTime   @default(now())
+  member    ClubMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+}
+
+// Catálogo de recompensas: peças que podem ser trocadas por pontos
+model ClubPrize {
+  id        String   @id @default(cuid())
+  title     String
+  points    Int
+  productId String?  // produto na Shopify
+  image     String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
 }

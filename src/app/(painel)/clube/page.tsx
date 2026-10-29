@@ -11,14 +11,17 @@ import { ConfirmButton } from "@/components/ConfirmButton";
 import { clubMessage, digits, findMembers, findShopifyCustomer, fmtCpf, maskCpf, memberState } from "@/lib/club";
 import { waLink } from "@/lib/partners";
 import { normalizePhone } from "@/lib/segments";
-import { addMember, adjustPoints, cancelMember, eventCheckin, payMember, redeemPoints, saveClubRules, scanClubNow, updateMember } from "../acoes6";
+import { addMember, adjustPoints, cancelMember, cancelSubscription, eventCheckin, payMember, redeemPoints, redeemPrize, saveClubRules, savePrize, scanClubNow, togglePrize, updateMember } from "../acoes6";
+import { env } from "@/lib/env";
+import { hasAppmax } from "@/lib/appmax";
+import { products } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
 const REASON: Record<string, string> = { compra: "Compra", estorno: "Estorno", mensalidade: "Mensalidade", resgate: "Resgate", evento: "Evento", ajuste: "Ajuste", bonus: "Bônus" };
-const OK: Record<string, string> = { pago: "Mensalidade registrada. O cupom de membro está ligado.", entrada: "Entrada no evento registrada.", ajuste: "Pontos ajustados.", regras: "Regras salvas.", "1": "Salvo." };
+const OK: Record<string, string> = { cancelado: "Assinatura cancelada. O cupom de membro foi desligado.", pago: "Mensalidade registrada. O cupom de membro está ligado.", entrada: "Entrada no evento registrada.", ajuste: "Pontos ajustados.", regras: "Regras salvas.", "1": "Salvo." };
 
-export default async function Clube({ searchParams }: { searchParams: Promise<{ q?: string; novo?: string; erro?: string; ok?: string; cupom?: string; criado?: string; regras?: string; somados?: string; f?: string; editar?: string }> }) {
+export default async function Clube({ searchParams }: { searchParams: Promise<{ premios?: string; q?: string; novo?: string; erro?: string; ok?: string; cupom?: string; criado?: string; regras?: string; somados?: string; f?: string; editar?: string }> }) {
   const sp = await searchParams;
   const { club: c, postsale } = await getSettings();
   const store = postsale.storeUrl;
@@ -41,11 +44,26 @@ export default async function Clube({ searchParams }: { searchParams: Promise<{ 
   const money = (p: number) => brl((p / 100) * c.valuePer100);
   const redeemMax = detail ? Math.floor(detail.points / c.minRedeem) * c.minRedeem : 0;
   const newCoupon = sp.cupom && detail ? detail.rewards.find((r) => r.code === sp.cupom) : null;
+  const [prizes, events, appmaxOn, pendingCk, prods] = await Promise.all([
+    db.clubPrize.findMany({ orderBy: { points: "asc" } }),
+    db.clubEvent.findMany({ orderBy: { createdAt: "desc" }, take: 10, include: { member: { select: { name: true, cpf: true, phone: true, email: true } } } }),
+    hasAppmax(),
+    db.clubCheckout.count({ where: { status: "pendente", createdAt: { gte: new Date(Date.now() - 864e5) } } }),
+    sp.premios ? products().catch(() => []) : Promise.resolve([]),
+  ]);
+  const subs = all.filter((m) => m.subscriptionId || m.provider === "appmax");
+  const subLink = `${env.appUrl().replace(/\/$/, "")}/assinar`;
+  const pixN = subs.filter((m) => m.status !== "cancelado" && m.payMethod === "pix").length;
+  const cardN = subs.filter((m) => m.status !== "cancelado" && m.payMethod === "cartao").length;
+  const in7 = subs.filter((m) => m.status !== "cancelado" && m.nextChargeAt && m.nextChargeAt.getTime() < Date.now() + 7 * 864e5);
+  const canceledMonth = all.filter((m) => m.canceledAt && m.canceledAt.getTime() > Date.now() - 30 * 864e5).length;
+  const EVK: Record<string, string> = { assinou: "t-l", pagou: "t-l", falhou: "t-s", cancelou: "t-c", pausou: "t-n", voltou: "t-k", resgate: "t-p" };
 
   return (
     <>
       <Header title="Clube de fidelidade" lede={`${c.name}: mensalidade de ${brl(c.fee)}, ${c.discountPct}% de desconto em toda compra, acesso antecipado e pontos que viram desconto ou entrada nos eventos.`}>
         <form action={scanClubNow}><button className="btn" type="submit" title="Puxa as compras dos últimos 30 dias e soma os pontos"><RefreshCw size={15} /> Atualizar pontos</button></form>
+        <Link className="btn" href={sp.premios ? "/clube" : "/clube?premios=1"}><Gift size={15} /> Recompensas</Link>
         <Link className="btn" href={sp.regras ? "/clube" : "/clube?regras=1"}><Settings2 size={15} /> Regras</Link>
         <Link className="btn pri" href={sp.novo ? "/clube" : "/clube?novo=1"}><Plus size={16} /> Novo membro</Link>
       </Header>
@@ -104,6 +122,80 @@ export default async function Clube({ searchParams }: { searchParams: Promise<{ 
         <div className="pnl kpi"><small>Receita por mês</small><span className="num">{brl(active.reduce((a, m) => a + (m.fee || c.fee), 0), 0)}</span><div className="sub">mensalidades dos membros em dia</div></div>
         <div className={`pnl kpi ${late.length ? "warnk" : ""}`}><small>Em atraso</small><span className="num" style={late.length ? { color: "var(--sun)" } : undefined}>{late.length}</span><div className="sub">cupom desligado depois de {c.graceDays} dias</div></div>
         <div className="pnl kpi"><small>Pontos em aberto</small><span className="num">{pts.toLocaleString("pt-BR")}</span><div className="sub">valem {money(pts)} em desconto</div></div>
+      </div>
+
+      {sp.premios && (
+        <Panel title="Recompensas" sub="Peças que o membro troca por pontos. Ao trocar, sai um cupom de 100% só para aquela peça, de uso único." right={<Link className="menu-b" href="/clube" aria-label="Fechar"><X size={16} /></Link>}>
+          <form action={savePrize} className="row" style={{ alignItems: "flex-end" }}>
+            <div className="field" style={{ flex: 1, minWidth: 200 }}><label>Peça da loja</label>
+              <select className="in" name="productId" defaultValue="">
+                <option value="">Escolha o produto</option>
+                {prods.filter((p) => p.status === "ACTIVE").map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
+              </select>
+            </div>
+            <div className="field" style={{ flex: 1, minWidth: 180 }}><label>Nome que aparece</label><input className="in" name="title" placeholder="Ex.: Rashguard Original Rasta" required /></div>
+            <div className="field" style={{ width: 150 }}><label>Pontos</label><input className="in" name="points" inputMode="numeric" placeholder="4600" required /></div>
+            <button className="btn pri" type="submit"><Plus size={15} /> Adicionar</button>
+          </form>
+          <p className="dim" style={{ fontSize: 12.5, margin: "10px 0 4px" }}>Referência: com {c.pointsPerReal === 1 ? "1 ponto" : `${c.pointsPerReal} pontos`} por real e 100 pontos valendo {brl(c.valuePer100)}, uma peça de R$ 200 equivale a {Math.round((200 / c.valuePer100) * 100).toLocaleString("pt-BR")} pontos. Pode colocar menos para a peça sair mais fácil.</p>
+          {prizes.length > 0 && (
+            <div style={{ overflowX: "auto", marginTop: 8 }}>
+              <table className="tb">
+                <thead><tr><th>Recompensa</th><th className="r">Pontos</th><th>Situação</th><th /></tr></thead>
+                <tbody>{prizes.map((p) => (
+                  <tr key={p.id} style={!p.active ? { opacity: 0.5 } : undefined}>
+                    <td><b style={{ fontWeight: 600 }}>{p.title}</b>{!p.productId && <div style={{ fontSize: 12, color: "var(--sun)" }}>sem produto ligado</div>}</td>
+                    <td className="r">{p.points.toLocaleString("pt-BR")}</td>
+                    <td>{p.active ? "No catálogo" : "Escondida"}</td>
+                    <td><form action={togglePrize}><input type="hidden" name="id" value={p.id} /><button className="btn sm ghost" type="submit">{p.active ? "Esconder" : "Mostrar"}</button></form></td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            </div>
+          )}
+        </Panel>
+      )}
+
+      <div className="cols c-2-1" style={{ alignItems: "start" }}>
+        <Panel title="Assinaturas pela página" sub={appmaxOn ? `Cobrança automática pela Appmax${pendingCk ? ` · ${pendingCk} pagamento(s) esperando agora` : ""}` : "Conecte a Appmax em Integrações para receber pela página"} body={false}
+          right={<span className="row" style={{ gap: 6 }}><CopyButton text={subLink} className="btn sm" label="Copiar link" /><a className="btn sm ghost" href="/assinar" target="_blank" rel="noreferrer">Abrir página</a></span>}>
+          <div className="kstrip" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))", padding: "0 18px 14px" }}>
+            <div className="ks"><small>Pix x cartão</small><b style={{ fontSize: 20 }}>{pixN} / {cardN}</b><span>assinantes ativos</span></div>
+            <div className="ks"><small>Próximos 7 dias</small><b style={{ fontSize: 20 }}>{brl(in7.reduce((a, m) => a + (m.fee || c.fee), 0), 0)}</b><span>{in7.length} cobrança(s)</span></div>
+            <div className={`ks${subs.some((m) => m.lastChargeStatus === "falhou" && m.status !== "cancelado") ? " warn" : ""}`}><small>Cobrança recusada</small><b style={{ fontSize: 20 }}>{subs.filter((m) => m.lastChargeStatus === "falhou" && m.status !== "cancelado").length}</b><span>tentando de novo</span></div>
+            <div className="ks"><small>Cancelaram</small><b style={{ fontSize: 20 }}>{canceledMonth}</b><span>nos últimos 30 dias</span></div>
+          </div>
+          {subs.length ? (
+            <div style={{ overflowX: "auto" }}>
+              <table className="tb">
+                <thead><tr><th>Membro</th><th>Situação</th><th>Pagamento</th><th>Próxima cobrança</th><th>Última</th><th /></tr></thead>
+                <tbody>{subs.map((m) => {
+                  const s2 = st(m);
+                  const tone = m.status === "cancelado" ? "c-n" : m.lastChargeStatus === "falhou" ? "c-s" : s2.tone === "l" ? "c-l" : s2.tone === "c" ? "c-c" : "c-s";
+                  const label = m.status === "cancelado" ? "Cancelada" : m.lastChargeStatus === "falhou" ? "Cobrança recusada" : s2.label;
+                  return (
+                    <tr key={m.id}>
+                      <td><Link href={`/clube?q=${encodeURIComponent(m.cpf ?? m.phone ?? m.email ?? m.name)}`} style={{ color: "inherit", fontWeight: 600 }}>{m.name}</Link><div className="dim" style={{ fontSize: 12 }}>{m.phone ? formatPhone(m.phone) : m.email}</div></td>
+                      <td><span className={`chip ${tone}`}>{label}</span></td>
+                      <td>{m.payMethod === "cartao" ? `Cartão ${m.cardLast4 ? `•• ${m.cardLast4}` : ""}` : m.payMethod === "pix" ? "Pix" : "Manual"}{m.failReason && m.lastChargeStatus === "falhou" && <div className="dim" style={{ fontSize: 12 }}>{m.failReason}</div>}</td>
+                      <td>{m.status === "cancelado" ? `cancelou ${m.canceledAt ? fmt.format(m.canceledAt) : ""}` : m.nextChargeAt ? fmt.format(m.nextChargeAt) : m.paidUntil ? fmt.format(m.paidUntil) : "–"}</td>
+                      <td>{m.lastChargeAt ? fmtH.format(m.lastChargeAt) : "–"}</td>
+                      <td>{m.status !== "cancelado" && m.subscriptionId && <form action={cancelSubscription}><input type="hidden" name="id" value={m.id} /><ConfirmButton className="btn sm ghost" message={`Cancelar a assinatura de ${m.name.split(" ")[0]} na Appmax? Ela para de ser cobrada e o cupom desliga.`}>Cancelar</ConfirmButton></form>}</td>
+                    </tr>
+                  );
+                })}</tbody>
+              </table>
+            </div>
+          ) : <div className="empty" style={{ padding: 20 }}>Ninguém assinou pela página ainda. Mande o link no grupo e no Instagram.</div>}
+        </Panel>
+        <Panel title="Acontecendo agora" body={false}>
+          {events.length ? events.map((e) => (
+            <Link key={e.id} href={`/clube?q=${encodeURIComponent(e.member.cpf ?? e.member.phone ?? e.member.email ?? e.member.name)}`} className="lrow" style={{ color: "inherit", padding: "11px 18px" }}>
+              <span className={`tile sm ${EVK[e.kind] ?? "t-n"}`}><Crown size={14} /></span>
+              <div style={{ minWidth: 0, flex: 1 }}><div className="t" style={{ fontSize: 13.5 }}>{e.member.name.split(" ")[0]}: {e.text}</div><div className="s">{fmtH.format(e.createdAt)}{e.value ? ` · ${brl(e.value)}` : ""}</div></div>
+            </Link>
+          )) : <div className="empty" style={{ padding: 20 }}>Os pagamentos, recusas e cancelamentos aparecem aqui.</div>}
+        </Panel>
       </div>
 
       <section className="pnl" style={{ padding: 22 }}>
@@ -192,6 +284,16 @@ export default async function Clube({ searchParams }: { searchParams: Promise<{ 
                     <div className="dim" style={{ fontSize: 12, marginBottom: 10 }}>{c.eventPoints ? `usa ${c.eventPoints} pontos` : state.k === "em_dia" || state.k === "vencendo" ? "grátis para membro em dia" : "mensalidade em atraso"}</div>
                     <button className="btn sm" type="submit" disabled={!c.eventPoints && !(state.k === "em_dia" || state.k === "vencendo")}>Registrar entrada</button>
                   </form>
+                  {prizes.some((p) => p.active) && (
+                    <form action={redeemPrize} className="pnl" style={{ padding: 16 }}>
+                      <input type="hidden" name="id" value={detail.id} /><input type="hidden" name="q" value={q} />
+                      <div className="row" style={{ gap: 8, marginBottom: 8 }}><span className="tile sm t-p"><Gift size={15} /></span><b>Trocar por peça</b></div>
+                      <select className="in" name="prize" style={{ height: 36, marginBottom: 10 }}>
+                        {prizes.filter((p) => p.active).map((p) => <option key={p.id} value={p.id} disabled={p.points > detail.points}>{p.title} · {p.points.toLocaleString("pt-BR")} pts{p.points > detail.points ? " (faltam pontos)" : ""}</option>)}
+                      </select>
+                      <ConfirmButton className="btn sm" message="Gerar o cupom da peça e descontar os pontos?">Gerar cupom da peça</ConfirmButton>
+                    </form>
+                  )}
                   <form action={payMember} className="pnl" style={{ padding: 16 }}>
                     <input type="hidden" name="id" value={detail.id} /><input type="hidden" name="q" value={q} />
                     <div className="row" style={{ gap: 8, marginBottom: 8 }}><span className="tile sm t-s"><Crown size={15} /></span><b>Mensalidade</b></div>

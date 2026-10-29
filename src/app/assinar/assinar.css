@@ -1,0 +1,87 @@
+/* Página pública de assinatura do clube: clara, simples, com cara de pagamento seguro */
+.sub { --ink:#141714; --ink2:#545a56; --ink3:#8a908c; --line:#e6e4dd; --bg:#f5f3ee; --card:#fff; --ok:#1d7a45; min-height:100vh; background:var(--bg); color:var(--ink); font:15px/1.5 Geist,system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+.sub *{box-sizing:border-box}
+.sub .sb-top{height:64px;display:flex;align-items:center;justify-content:space-between;max-width:1080px;margin:0 auto;padding:0 24px}
+.sub .sb-logo{display:flex;align-items:center;gap:9px;color:var(--ink)}
+.sub .sb-logo img{width:30px;filter:invert(1)}
+.sub .sb-logo b{font:italic 900 15px/1 "Arial Black",Arial,sans-serif;text-transform:uppercase}
+.sub .sb-sec{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ink2)}
+.sub .sb-sec svg{color:var(--ok)}
+.sub .sb-rule{height:3px;background:linear-gradient(90deg,#d42a2a 0 33.3%,#f0b924 33.3% 66.6%,#2f8f3a 66.6%)}
+.sub .sb-wrap{max-width:1080px;margin:0 auto;padding:40px 24px 64px;display:grid;grid-template-columns:1fr 440px;gap:56px;align-items:start}
+.sub .sb-eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3);font-weight:600}
+.sub h1{font:400 40px/1.1 Elite,serif;margin:10px 0 14px;color:var(--ink)}
+.sub .lede{color:var(--ink2);font-size:16px;max-width:460px;margin:0}
+.sub .sb-plan{margin-top:30px;border-top:1px solid var(--line)}
+.sub .sb-li{display:grid;grid-template-columns:28px 1fr;gap:12px;padding:16px 0;border-bottom:1px solid var(--line)}
+.sub .sb-li svg{margin-top:2px}
+.sub .sb-li b{display:block;font-weight:600;font-size:15px}
+.sub .sb-li span{color:var(--ink2);font-size:13.5px}
+.sub .sb-pts{margin-top:26px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 20px}
+.sub .sb-pts h4{font-size:13px;font-weight:600;margin:0 0 12px;display:flex;justify-content:space-between}
+.sub .sb-pts h4 small{color:var(--ink3);font-weight:500}
+.sub .sb-pr{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:9px 0;border-top:1px dashed var(--line);font-size:14px}
+.sub .sb-pr:first-of-type{border-top:0}
+.sub .sb-pr em{font-style:normal;font-weight:650;font-variant-numeric:tabular-nums;white-space:nowrap}
+.sub .sb-pr .sb-t{color:var(--ink2)}
+.sub .sb-box{background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:0 1px 2px rgba(20,23,20,.04),0 12px 40px -18px rgba(20,23,20,.18)}
+.sub .sb-sum{padding:22px 24px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:12px}
+.sub .sb-sum .sb-n{font-weight:600}
+.sub .sb-sum .sb-n small{display:block;color:var(--ink3);font-weight:500;font-size:12.5px}
+.sub .sb-sum .sb-v{text-align:right;font-variant-numeric:tabular-nums}
+.sub .sb-sum .sb-v b{font-size:22px;letter-spacing:-.02em}
+.sub .sb-sum .sb-v small{display:block;color:var(--ink3);font-size:12px}
+.sub .sb-body{padding:22px 24px 24px}
+.sub .sb-st{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);font-weight:600;margin:4px 0 10px}
+.sub .sb-f{display:flex;flex-direction:column;gap:5px;margin-bottom:12px;min-width:0}
+.sub .sb-f label{font-size:12.5px;color:var(--ink2);font-weight:500}
+.sub .sb-in{height:46px;width:100%;border:1px solid #d9d7cf;border-radius:10px;background:#fff;padding:0 12px;font:16px Geist,sans-serif;color:var(--ink);outline:none;transition:border-color .15s,box-shadow .15s}
+.sub .sb-in:focus{border-color:var(--ink);box-shadow:0 0 0 3px rgba(20,23,20,.08)}
+.sub .sb-in.sb-bad{border-color:#c0392b;box-shadow:0 0 0 3px rgba(192,57,43,.08)}
+.sub .sb-two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sub .sb-tabs{display:grid;grid-template-columns:1fr 1fr;border:1px solid #d9d7cf;border-radius:12px;overflow:hidden;margin-bottom:14px}
+.sub .sb-tab{padding:12px 14px;display:flex;align-items:center;gap:10px;font-weight:600;font-size:14px;color:var(--ink2);background:#faf9f6;border:0;cursor:pointer;text-align:left;font-family:inherit}
+.sub .sb-tab+.sb-tab{border-left:1px solid #d9d7cf}
+.sub .sb-tab.sb-on{background:#fff;color:var(--ink);box-shadow:inset 0 -2px 0 var(--ink)}
+.sub .sb-tab small{display:block;font-weight:500;font-size:11.5px;color:var(--ink3)}
+.sub .sb-cardnum{position:relative}
+.sub .sb-brand-tag{position:absolute;right:10px;top:50%;transform:translateY(-50%);font:700 10px Geist;color:#555;border:1px solid #e3e1da;border-radius:4px;padding:2px 5px;background:#fff}
+.sub .sb-note{font-size:12.5px;color:var(--ink2);background:#f7f6f2;border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;gap:9px;margin:4px 0 14px}
+.sub .sb-btn{width:100%;height:52px;border:0;border-radius:12px;background:var(--ink);color:#fff;font:600 15.5px Geist,sans-serif;display:flex;align-items:center;justify-content:center;gap:9px;cursor:pointer}
+.sub .sb-btn:disabled{opacity:.55;cursor:default}
+.sub .sb-err{background:#fdf0ee;border:1px solid #f1c7c0;color:#9b2c1f;border-radius:10px;padding:10px 12px;font-size:13.5px;margin-bottom:12px}
+.sub .sb-legal{font-size:11.5px;color:var(--ink3);margin-top:12px;text-align:center}
+.sub .sb-trust{display:flex;justify-content:center;gap:18px;flex-wrap:wrap;margin-top:16px;padding-top:14px;border-top:1px solid var(--line);font-size:11.5px;color:var(--ink2)}
+.sub .sb-trust span{display:flex;align-items:center;gap:5px}
+.sub .sb-ov{position:fixed;inset:0;background:rgba(20,23,20,.45);backdrop-filter:blur(3px);display:grid;place-items:center;z-index:50;padding:12px}
+.sub .sb-modal{width:400px;max-width:100%;background:#fff;border-radius:18px;padding:26px;box-shadow:0 30px 80px -20px rgba(0,0,0,.35)}
+.sub .sb-mh{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.sub .sb-mh h3{font-size:18px;font-weight:650;margin:0}
+.sub .sb-mh small{color:var(--ink3);font-size:13px}
+.sub .sb-x{width:32px;height:32px;border-radius:8px;border:1px solid var(--line);display:grid;place-items:center;color:var(--ink2);background:#fff;cursor:pointer;flex-shrink:0}
+.sub .sb-qr{border:1px solid var(--line);border-radius:14px;padding:14px;margin:18px 0 14px;display:flex;gap:16px;align-items:center}
+.sub .sb-qr img{width:150px;height:150px;image-rendering:pixelated}
+.sub .sb-qr ol{font-size:13px;color:var(--ink2);padding-left:16px;margin:0;display:grid;gap:6px}
+.sub .sb-cc{display:flex;border:1px solid #d9d7cf;border-radius:10px;overflow:hidden}
+.sub .sb-cc code{flex:1;min-width:0;font:12px ui-monospace,monospace;color:var(--ink2);padding:13px 12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sub .sb-cc button{border:0;border-left:1px solid #d9d7cf;background:#faf9f6;font:600 13px Geist;padding:0 14px;cursor:pointer;color:var(--ink)}
+.sub .sb-wait{display:flex;align-items:center;gap:9px;margin-top:16px;font-size:13px;color:var(--ink2)}
+.sub .sb-pulse{width:8px;height:8px;border-radius:99px;background:#e0a100;box-shadow:0 0 0 4px rgba(224,161,0,.18);flex-shrink:0;animation:subp 1.4s ease-in-out infinite}
+@keyframes subp{50%{box-shadow:0 0 0 7px rgba(224,161,0,.08)}}
+.sub .sb-exp{margin-left:auto;font-variant-numeric:tabular-nums;color:var(--ink3)}
+.sub .sb-ok{text-align:center;padding:12px 2px}
+.sub .sb-ok .sb-c{width:56px;height:56px;border-radius:99px;background:#e8f4ec;color:var(--ok);display:grid;place-items:center;margin:0 auto 14px}
+.sub .sb-ok h3{font-size:20px;margin:0}
+.sub .sb-ok p{color:var(--ink2);font-size:14px;margin:6px 0 0}
+.sub .sb-code{margin:18px 0;border:1px dashed #b9c9bd;border-radius:12px;padding:14px;font:700 20px ui-monospace,monospace;letter-spacing:.04em;background:#f6faf7;word-break:break-all}
+.sub .sb-spin{width:16px;height:16px;border-radius:99px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;animation:spin .8s linear infinite}
+.sub .sb-mhead{display:none}
+@media(max-width:860px){
+  .sub .sb-wrap{grid-template-columns:1fr;gap:26px;padding:16px 14px 48px}
+  .sub .sb-top{padding:0 14px}
+  .sub .sb-box{order:-1}
+  .sub .sb-mhead{display:block;padding:18px 14px 0}
+  .sub .sb-mhead h1{font-size:30px}
+  .sub .sb-wrap > section > .sb-eyebrow, .sub .sb-wrap > section > h1, .sub .sb-wrap > section > .lede{display:none}
+  .sub .sb-qr{flex-direction:column}
+}
