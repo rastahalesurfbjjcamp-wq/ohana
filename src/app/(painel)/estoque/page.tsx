@@ -115,8 +115,8 @@ export default async function Estoque({ searchParams }: { searchParams: Promise<
       </Header>
       {error ? <ErrorNote error={error} /> : null}
       <div className="grid g4">
-        <Kpi icon={<Coins size={15} />} label="Valor em estoque (custo)" value={brl(costValue, 0)} sub={missingCost ? `${missingCost} peças sem custo ficaram de fora` : `${pieces.toLocaleString("pt-BR")} peças`} />
-        <Kpi icon={<Tag size={15} />} tone="k" label="Valor em estoque (venda)" value={brl(saleValue, 0)} sub={costValue ? `margem bruta de ${brl(saleValue - costValue, 0)}` : `${pieces.toLocaleString("pt-BR")} peças`} />
+        <Kpi icon={<Coins size={15} />} label="Valor em estoque (custo)" value={brl(costValue, 0)} sub={missingCost ? <span style={{ color: "var(--sun)" }}>{missingCost.toLocaleString("pt-BR")} peças sem custo cadastrado ficaram de fora</span> : `${pieces.toLocaleString("pt-BR")} peças`} />
+        <Kpi icon={<Tag size={15} />} tone="k" label="Valor em estoque (venda)" value={brl(saleValue, 0)} sub={`${pieces.toLocaleString("pt-BR")} peças a preço de venda`} />
         <Kpi icon={<PackageX size={15} />} tone="c" label="Tamanhos zerados que vendem" value={<span className={zeroSelling.length ? "dn" : ""}>{zeroSelling.length}</span>} sub={zeroSelling.length ? `uns ${brl(lost, 0)} por semana sem vender` : "nenhum"} />
         <Kpi icon={<Hourglass size={15} />} tone="s" label="Acaba em menos de 7 dias" value={<span style={ending.length ? { color: "var(--sun)" } : undefined}>{ending.length}</span>} sub={waitingTotal ? `${waitingTotal} pessoas esperando reposição` : "no ritmo atual de venda"} />
       </div>
@@ -147,7 +147,7 @@ export default async function Estoque({ searchParams }: { searchParams: Promise<
                       {sizes.map((s) => {
                         const c = r.cells.find((x) => x.size === s);
                         if (!c) return <td key={s}><span className="sz na">–</span></td>;
-                        const tone = c.stock <= 0 ? "z" : c.stock <= 2 || (c.sold30 > 0 && c.stock / (c.sold30 / 30) < 15) ? "w" : "ok";
+                        const tone = c.stock <= 0 ? "z" : c.stock <= 2 || (c.sold30 > 0 && c.stock / (c.sold30 / 30) < 15) ? "w" : "g";
                         return (
                           <td key={s}>
                             <span className={`sz ${tone}`} title={`${c.sold30} vendidos em 30 dias`}>

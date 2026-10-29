@@ -341,6 +341,10 @@ model Referral {
   discountId String?
   uses       Int      @default(0)
   revenue    Float    @default(0)
+  kind       String   @default("cliente") // atleta | comunidade | cliente
+  payout     String   @default("credito") // pix | credito
+  clicks     Int      @default(0)
+  note       String?
   createdAt  DateTime @default(now())
 }
 

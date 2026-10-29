@@ -105,7 +105,12 @@ export async function saveAssistant(f: FormData) {
 /* Indique e ganhe */
 export async function saveReferral(f: FormData) {
   await auth();
-  await saveSetting("referral", { enabled: on(f, "enabled"), percent: Math.min(50, Math.max(1, num(f, "percent", 10))), shareText: str(f, "shareText") });
+  await saveSetting("referral", {
+    ...(f.has("shareText") ? { shareText: str(f, "shareText"), enabled: on(f, "enabled") } : {}),
+    ...(f.has("percent") ? { percent: Math.min(50, Math.max(1, num(f, "percent", 10))) } : {}),
+    ...(f.has("commission") ? { commission: Math.min(50, Math.max(0, num(f, "commission", 10))) } : {}),
+    ...(f.has("releaseDays") ? { releaseDays: Math.max(0, num(f, "releaseDays", 7)) } : {}),
+  });
   revalidatePath("/indique");
   redirect("/indique?ok=1");
 }
@@ -172,7 +177,7 @@ export async function sendReferralCodes() {
   const { getSettings } = await import("@/lib/settings");
   const { shareMessage } = await import("@/lib/referral");
   const s = await getSettings();
-  const refs = await db.referral.findMany({ where: { uses: 0 } });
+  const refs = await db.referral.findMany({ where: { uses: 0, NOT: { phone: { startsWith: "sem-" } } } });
   // Envia aos poucos pelo mesmo sistema de disparos
   const b = await db.broadcast.create({
     data: {
@@ -207,4 +212,31 @@ export async function saveQuickReplies(f: FormData) {
   const items = str(f, "items").split(/\n-{3,}\n|\n\n/).map((x) => x.trim()).filter(Boolean).slice(0, 30);
   await db.setting.upsert({ where: { key: "_quick_replies" }, create: { key: "_quick_replies", value: { items } }, update: { value: { items } } });
   revalidatePath("/atendimento");
+}
+
+// Cadastra um parceiro (atleta, alguém da comunidade ou cliente) com cupom próprio na Shopify
+export async function invitePartner(f: FormData) {
+  await auth();
+  const { createDiscount } = await import("@/lib/referral");
+  const { getSettings } = await import("@/lib/settings");
+  const { normalizePhone } = await import("@/lib/segments");
+  const s = await getSettings();
+  const name = str(f, "name");
+  if (!name) redirect("/indique?convidar=1&erro=nome");
+  const phone = normalizePhone(str(f, "phone")) ?? `sem-${Date.now()}`;
+  const base = (str(f, "code") || name.split(" ")[0]).normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Za-z0-9]/g, "").toUpperCase().slice(0, 14);
+  const code = /\d$/.test(base) ? base : `${base}${s.referral.percent}`;
+  try {
+    const discountId = await createDiscount(code, s.referral.percent);
+    await db.referral.create({ data: { phone, name, code, discountId, kind: str(f, "kind") || "atleta", payout: str(f, "payout") || "pix", note: str(f, "note") || null } });
+  } catch (e) {
+    redirect(`/indique?convidar=1&erro=${encodeURIComponent(String(e).replace(/^Error: /, "").slice(0, 160))}`);
+  }
+  revalidatePath("/indique");
+  redirect(`/indique?criado=${code}`);
+}
+export async function updatePartner(f: FormData) {
+  await auth();
+  await db.referral.update({ where: { id: str(f, "id") }, data: { kind: str(f, "kind") || undefined, payout: str(f, "payout") || undefined } });
+  revalidatePath("/indique");
 }

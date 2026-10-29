@@ -122,6 +122,9 @@ export async function toggleAutomation(f: FormData) {
     if (on) await db.setting.upsert({ where: { key: "_recovery_start" }, create: { key: "_recovery_start", value: { at: new Date().toISOString() } }, update: { value: { at: new Date().toISOString() } } });
   }
   revalidatePath("/recuperacao");
+  revalidatePath("/pos-venda");
+  revalidatePath("/leads");
+  revalidatePath("/entradas");
 }
 
 // Salva só as mensagens de uma automação (sem mexer no liga/desliga)
@@ -136,6 +139,9 @@ export async function saveRecoveryMessages(f: FormData) {
   if (kind === "rastreio") await saveSetting("recovery", { trackingText: str(f, "trackingText"), delayedDays: num("delayedDays", 10) });
   if (kind === "avaliacao") await saveSetting("postsale", { reviewText: str(f, "reviewText"), reviewDelayDays: num("reviewDelayDays", 2), ...(str(f, "coupon") ? { coupon: str(f, "coupon").toUpperCase() } : {}) });
   if (kind === "recompra") await saveSetting("postsale", { repurchaseText: str(f, "repurchaseText"), repurchaseDays: num("repurchaseDays", 45) });
+  if (str(f, "storeUrl")) await saveSetting("postsale", { storeUrl: str(f, "storeUrl") });
   revalidatePath("/recuperacao");
-  redirect(`/recuperacao?ok=1&cfg=${kind}`);
+  revalidatePath("/pos-venda");
+  const back = str(f, "back");
+  redirect(back.startsWith("/") ? `${back}${back.includes("?") ? "&" : "?"}ok=1` : `/recuperacao?ok=1&cfg=${kind}`);
 }

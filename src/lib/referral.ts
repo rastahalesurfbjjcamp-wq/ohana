@@ -10,7 +10,7 @@ function codeFor(name: string, percent: number) {
   return `${base}${percent}${Math.floor(Math.random() * 90 + 10)}`;
 }
 
-async function createDiscount(code: string, percent: number) {
+export async function createDiscount(code: string, percent: number) {
   const d = await gql<{ discountCodeBasicCreate: { codeDiscountNode: { id: string } | null; userErrors: { message: string }[] } }>(
     `mutation($input: DiscountCodeBasicInput!){ discountCodeBasicCreate(basicCodeDiscount:$input){ codeDiscountNode{ id } userErrors{ message } } }`,
     {
