@@ -111,3 +111,20 @@ export async function salesBetween(start: Date, end: Date): Promise<SalesSummary
 export async function conversionForDay(isoDay: string) {
   return swr(`conv:${isoDay}`, 300_000, () => conversionForDayRaw(isoDay));
 }
+
+// Consulta ShopifyQL (mesmos números dos relatórios da Shopify). Devolve linhas com o nome de cada coluna.
+export async function shopifyql(q: string): Promise<Record<string, string>[]> {
+  type R = { shopifyqlQuery: { tableData?: { columns: { name: string }[]; rows: unknown[] } | null; parseErrors: string[] } };
+  const data = await gql<R>(`query($q:String!){ shopifyqlQuery(query:$q){ tableData{ columns{ name } rows } parseErrors } }`, { q });
+  const r = data.shopifyqlQuery;
+  if (r.parseErrors?.length) throw new Error(`ShopifyQL: ${r.parseErrors.join("; ")}`);
+  const cols = r.tableData?.columns.map((c) => c.name) ?? [];
+  return (r.tableData?.rows ?? []).map((row) => {
+    if (Array.isArray(row)) return Object.fromEntries(cols.map((c, i) => [c, String(row[i] ?? "")]));
+    return Object.fromEntries(Object.entries(row as Record<string, unknown>).map(([k, v]) => [k, String(v ?? "")]));
+  });
+}
+
+export async function shopCreatedAt(): Promise<string> {
+  return swr("shop-created", 86_400_000, async () => (await gql<{ shop: { createdAt: string } }>(`{ shop { createdAt } }`)).shop.createdAt.slice(0, 10));
+}

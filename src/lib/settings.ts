@@ -33,7 +33,7 @@ export const DEFAULTS = {
     maxDelayMs: 12000,
   },
   leads: {
-    welcomeEnabled: true,
+    welcomeEnabled: false, // mensagem automática para o lead: começa desligada
     // {nome} vira o primeiro nome e {link} o link que leva ao grupo com vaga
     welcomeText: "Oi {nome}, aqui é da {loja}! Seu cadastro no Grupo VIP foi feito. Entre no grupo por este link: {link}",
   },

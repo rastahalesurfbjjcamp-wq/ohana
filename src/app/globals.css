@@ -1081,3 +1081,12 @@ a.itile:hover { border-color: #34403b; transform: translateY(-1px); }
 .dd-chk:hover { background: #1a201d; color: #fff; }
 .dd-chk input { width: 16px; height: 16px; accent-color: #34c26a; }
 .dd-list .btn { margin-top: 8px; justify-content: center; }
+
+/* Histórico de vendas */
+.hist-k { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.hist-k .ks b { font-size: 22px; white-space: nowrap; }
+@media (max-width: 1300px) { .hist-k { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .hist-k { grid-template-columns: repeat(2, minmax(0, 1fr)); } .hist-k .ks b { font-size: 19px; } }
+.tbw { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; }
+.hst .tb td, .hst .tb th { white-space: nowrap; }
+.hst .tb tfoot td { border-top: 1px solid var(--line); padding-top: 12px; }

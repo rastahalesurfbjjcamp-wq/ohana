@@ -7,6 +7,7 @@ import {
   Gift, HeartHandshake, LayoutDashboard, LogOut, MessageCircle, MessagesSquare, Package, Percent, ReceiptText,
   RefreshCcw, Rocket, Route, Send, Settings, ShoppingBag, Sparkles, SquareCheckBig, Truck, UserPlus, Users, Vote,
   Wallet, Warehouse, Workflow, Coins, Plug, LayoutTemplate, Medal, Crown, Calculator, Menu, X, RefreshCw, type LucideIcon,
+  History,
 } from "lucide-react";
 
 type Item = { href: string; icon: LucideIcon; label: string; badge?: number; soon?: boolean };
@@ -37,6 +38,7 @@ export function Sidebar({ name, store, connected, leaves, logout }: { name: stri
       label: "Vendas",
       icon: ShoppingBag,
       items: [
+        { href: "/historico", icon: History, label: "Histórico de vendas" },
         { href: "/financeiro", icon: Wallet, label: "Financeiro" },
         { href: "/produtos", icon: Box, label: "Produtos e lucro" },
         { href: "/precificacao", icon: Calculator, label: "Precificação" },
