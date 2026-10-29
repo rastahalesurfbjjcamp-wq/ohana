@@ -60,18 +60,18 @@ export default async function Clube({ searchParams }: { searchParams: Promise<{ 
               <div className="field" style={{ flex: 1, minWidth: 200 }}><label>Nome do clube</label><input className="in" name="name" defaultValue={c.name} /></div>
               <label className="check" style={{ alignSelf: "flex-end", paddingBottom: 10 }}><input type="checkbox" name="enabled" defaultChecked={c.enabled} /> Somar pontos automaticamente</label>
             </div>
-            <div className="grid g4" style={{ gap: 8 }}>
-              <div className="cfg-row"><span>Mensalidade</span><NumberInput size="sm" name="fee" defaultValue={c.fee} prefix="R$" decimals={2} /></div>
-              <div className="cfg-row"><span>Desconto do membro</span><NumberInput size="sm" name="discountPct" defaultValue={c.discountPct} suffix="%" max={50} /></div>
-              <div className="cfg-row"><span>Pontos por R$ 1 gasto</span><NumberInput size="sm" name="pointsPerReal" defaultValue={c.pointsPerReal} decimals={1} /></div>
-              <div className="cfg-row"><span>100 pontos valem</span><NumberInput size="sm" name="valuePer100" defaultValue={c.valuePer100} prefix="R$" decimals={2} /></div>
-              <div className="cfg-row"><span>Pontos por mensalidade</span><NumberInput size="sm" name="monthlyPoints" defaultValue={c.monthlyPoints} /></div>
-              <div className="cfg-row"><span>Mínimo para resgatar</span><NumberInput size="sm" name="minRedeem" defaultValue={c.minRedeem} suffix="pts" /></div>
-              <div className="cfg-row"><span>Entrada em evento</span><NumberInput size="sm" name="eventPoints" defaultValue={c.eventPoints} suffix="pts" /></div>
-              <div className="cfg-row"><span>Tolerância no atraso</span><NumberInput size="sm" name="graceDays" defaultValue={c.graceDays} suffix="dias" /></div>
-              <div className="cfg-row"><span>Acesso antecipado</span><NumberInput size="sm" name="earlyHours" defaultValue={c.earlyHours} suffix="horas" /></div>
+            <div className="rule-grid">
+              <div className="rule"><span>Mensalidade</span><NumberInput name="fee" defaultValue={c.fee} prefix="R$" decimals={2} step={1} /><small>quanto o membro paga por mês</small></div>
+              <div className="rule"><span>Desconto do membro</span><NumberInput name="discountPct" defaultValue={c.discountPct} suffix="%" max={50} /><small>em toda compra na loja</small></div>
+              <div className="rule"><span>Pontos por R$ 1 gasto</span><NumberInput name="pointsPerReal" defaultValue={c.pointsPerReal} decimals={1} step={0.5} /><small>R$ 200 em compras = {Math.round(200 * c.pointsPerReal)} pontos</small></div>
+              <div className="rule"><span>Valor de 100 pontos</span><NumberInput name="valuePer100" defaultValue={c.valuePer100} prefix="R$" decimals={2} step={1} /><small>desconto que o membro ganha ao trocar</small></div>
+              <div className="rule"><span>Pontos por mensalidade paga</span><NumberInput name="monthlyPoints" defaultValue={c.monthlyPoints} step={10} suffix="pts" /><small>bônus a cada mês em dia</small></div>
+              <div className="rule"><span>Mínimo para resgatar</span><NumberInput name="minRedeem" defaultValue={c.minRedeem} step={50} suffix="pts" /><small>vale {brl((c.minRedeem / 100) * c.valuePer100)} de desconto</small></div>
+              <div className="rule"><span>Entrada em evento</span><NumberInput name="eventPoints" defaultValue={c.eventPoints} step={50} suffix="pts" /><small>0 = grátis para membro em dia</small></div>
+              <div className="rule"><span>Tolerância no atraso</span><NumberInput name="graceDays" defaultValue={c.graceDays} suffix="dias" /><small>depois disso o cupom desliga</small></div>
+              <div className="rule"><span>Acesso antecipado</span><NumberInput name="earlyHours" defaultValue={c.earlyHours ?? 48} step={12} suffix="horas" /><small>antes de abrir para todo mundo</small></div>
             </div>
-            <p className="dim" style={{ fontSize: 12.5 }}>Entrada em evento com 0 pontos é grátis para membro em dia. Passou da tolerância, o cupom de membro é desligado sozinho e volta quando a mensalidade for registrada. Mudar o desconto vale para os próximos membros.</p>
+            <p className="dim" style={{ fontSize: 12.5 }}>Passou da tolerância, o cupom de membro é desligado sozinho e volta quando a mensalidade for registrada. Mudar o desconto vale para os próximos membros.</p>
             <div><button className="btn pri sm" type="submit">Salvar regras</button></div>
           </form>
         </Panel>

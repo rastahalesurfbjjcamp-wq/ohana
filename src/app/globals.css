@@ -888,3 +888,12 @@ a.itile:hover { border-color: #34403b; transform: translateY(-1px); }
 @media (min-width: 861px) { .psim { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); } .psim-out { position: sticky; top: 16px; } }
 .psim-sc { display: grid; gap: 10px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
 @media (max-width: 560px) { .psim-sc { grid-template-columns: 1fr; } }
+
+/* Campos de número sem apertar */
+.num-in { flex-shrink: 0; }
+.cfg-row > span:first-child { flex: 1; min-width: 0; line-height: 1.3; }
+.rule-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; }
+.rule { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: 14px; border: 1px solid #222826; background: #0f1312; }
+.rule > span { font-size: 13px; color: var(--ink2); font-weight: 550; }
+.rule small { font-size: 11.5px; color: var(--ink3); line-height: 1.35; }
+.rule .num-in { width: 100%; }

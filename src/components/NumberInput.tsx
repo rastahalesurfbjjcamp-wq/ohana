@@ -31,9 +31,12 @@ export function NumberInput({
   };
   const release = () => { if (hold.current) clearInterval(hold.current); hold.current = null; };
   const n = v === "" ? NaN : toNum(v);
+  // largura mínima que cabe o número inteiro, o prefixo e o sufixo
+  const chars = Math.max(v.length, String(placeholder ?? "").length, 3);
+  const minW = (size === "sm" ? 60 : 76) + 22 + chars * (size === "sm" ? 8.5 : 9.5) + ((prefix?.length ?? 0) + (suffix?.length ?? 0)) * 7.5 + (prefix ? 4 : 0) + (suffix ? 4 : 0);
 
   return (
-    <div className={`num-in${size === "sm" ? " sm" : ""}`} style={width ? { width } : undefined}>
+    <div className={`num-in${size === "sm" ? " sm" : ""}`} style={width ? { width, minWidth: Math.min(width, minW) } : { minWidth: minW }}>
       <button type="button" aria-label="Diminuir" disabled={!isNaN(n) && min !== undefined && n <= min}
         onPointerDown={() => press(-1)} onPointerUp={release} onPointerLeave={release}><Minus size={14} /></button>
       <div className="mid">
