@@ -99,3 +99,24 @@ export async function undoPayout(f: FormData) {
   await db.payout.deleteMany({ where: { referralId: str(f, "id"), month: str(f, "month") } });
   revalidatePath("/atletas");
 }
+
+// Troca o cupom de um atleta: vincula o que já existe na Shopify (ou cria) e as vendas passam a contar por ele
+export async function changePartnerCode(f: FormData) {
+  await admin();
+  const s = await getSettings();
+  const id = str(f, "id");
+  const code = str(f, "code").replace(/\s+/g, "").toUpperCase();
+  if (!code) redirect(`/atletas?editar=${id}`);
+  const other = await db.referral.findFirst({ where: { code: { equals: code, mode: "insensitive" }, NOT: { id } } });
+  if (other) redirect(`/atletas?editar=${id}&erro=${encodeURIComponent(`O cupom ${code} já está ligado a ${other.name ?? "outra pessoa"}`)}`);
+  try {
+    const existing = await findShopifyCode(code);
+    const discountId = existing ? existing.id : await createDiscount(code, s.referral.percent);
+    await db.referral.update({ where: { id }, data: { code, discountId, discountPct: existing ? existing.percent : s.referral.percent } });
+  } catch (e) {
+    if (String(e).includes("NEXT_REDIRECT")) throw e;
+    redirect(`/atletas?editar=${id}&erro=${msg(e)}`);
+  }
+  revalidatePath("/atletas");
+  redirect(`/atletas?trocado=${code}`);
+}

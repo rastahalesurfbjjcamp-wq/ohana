@@ -75,7 +75,7 @@ export function partnerLink(storeUrl: string, code: string, path = "/") {
 export async function unlinkedCodes(): Promise<{ code: string; title: string; uses: number; percent: number | null }[]> {
   const linked = new Set((await db.referral.findMany({ select: { code: true } })).map((r) => r.code.toUpperCase()));
   const d = await gql<{ discountNodes: { nodes: { discount: { __typename: string; title?: string; status?: string; asyncUsageCount?: number; codes?: { nodes: { code: string }[] }; customerGets?: { value?: { percentage?: number } } } }[] } }>(
-    `query{ discountNodes(first:120, reverse:true, query:"status:active"){ nodes{ discount{ __typename ... on DiscountCodeBasic { title status asyncUsageCount codes(first:1){ nodes{ code } } customerGets{ value{ ... on DiscountPercentage { percentage } } } } } } } }`,
+    `query{ discountNodes(first:250, reverse:true, query:"status:active"){ nodes{ discount{ __typename ... on DiscountCodeBasic { title status asyncUsageCount codes(first:1){ nodes{ code } } customerGets{ value{ ... on DiscountPercentage { percentage } } } } } } } }`,
   ).catch(() => null);
   const generic = /^(IG-EMAIL|BLACK|VOLT|OFF\d|QUERO|CARRINHO|FINALIZE|BEMVINDO|C[óo]pia|RASTA\d|VIP$)/i;
   return (d?.discountNodes.nodes ?? [])
@@ -83,5 +83,5 @@ export async function unlinkedCodes(): Promise<{ code: string; title: string; us
     .map((n) => ({ code: n.discount.codes!.nodes[0].code, title: n.discount.title ?? "", uses: n.discount.asyncUsageCount ?? 0, percent: n.discount.customerGets?.value?.percentage != null ? Math.round(n.discount.customerGets.value.percentage * 100) : null }))
     .filter((c) => !linked.has(c.code.toUpperCase()) && !generic.test(c.code))
     .sort((a, b) => b.uses - a.uses)
-    .slice(0, 12);
+    .slice(0, 16);
 }

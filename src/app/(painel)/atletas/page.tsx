@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertTriangle, BadgeDollarSign, CalendarCheck, Coins, Instagram, Link2, Plus, ShoppingBag, Trophy, X } from "lucide-react";
+import { AlertTriangle, Pencil, BadgeDollarSign, CalendarCheck, Coins, Instagram, Link2, Plus, ShoppingBag, Trophy, X } from "lucide-react";
 import { db } from "@/lib/db";
 import { DateRange } from "@/components/DateRange";
 import { CopyButton } from "@/components/CopyButton";
@@ -11,14 +11,14 @@ import { getSettings } from "@/lib/settings";
 import { addDays, brl, isoDayLocal } from "@/lib/time";
 import { formatPhone } from "@/lib/phone";
 import { ErrorNote, Header, Kpi, Panel } from "@/components/ui";
-import { addPartner, fixPartnerPercent, markPayout, savePartnerRules, undoPayout } from "../acoes5";
+import { addPartner, changePartnerCode, fixPartnerPercent, markPayout, savePartnerRules, undoPayout } from "../acoes5";
 
 export const dynamic = "force-dynamic";
 
 const KIND: Record<string, string> = { atleta: "Atleta", influenciador: "Influenciador" };
 const MONTHS = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 
-export default async function Atletas({ searchParams }: { searchParams: Promise<{ p?: string; de?: string; ate?: string; novo?: string; erro?: string; criado?: string; ok?: string; k?: string; mes?: string }> }) {
+export default async function Atletas({ searchParams }: { searchParams: Promise<{ p?: string; de?: string; ate?: string; novo?: string; erro?: string; criado?: string; ok?: string; k?: string; mes?: string; editar?: string; trocado?: string }> }) {
   const sp = await searchParams;
   const period = resolvePeriod(sp.p, "30d", sp.de, sp.ate);
   const s = await getSettings();
@@ -59,6 +59,7 @@ export default async function Atletas({ searchParams }: { searchParams: Promise<
       {error ? <ErrorNote error={error} /> : null}
       {sp.criado && <div className="ok">Atleta cadastrado com o cupom {sp.criado}. O link de referência já está pronto na tabela.</div>}
       {sp.ok === "regras" && <div className="ok">Regras salvas.</div>}
+      {sp.trocado && <div className="ok">Cupom trocado para {sp.trocado}. As vendas já contam pelo cupom novo.</div>}
       {sp.erro && sp.erro !== "nome" && <div className="err">{sp.erro}</div>}
       {isPayDay && (
         <div className="callout sun">
@@ -133,7 +134,19 @@ export default async function Atletas({ searchParams }: { searchParams: Promise<
                           <div className="dim" style={{ fontSize: 12 }}>{KIND[r.kind] ?? r.kind}{r.instagram ? <> · <Instagram size={11} /> {r.instagram}</> : ""}{r.phone.startsWith("sem-") ? "" : ` · ${formatPhone(r.phone)}`}</div>
                         </td>
                         <td>
-                          <span className="trk" style={i === 0 && r.revenue ? { color: "var(--sun)" } : undefined}>{r.code}</span>
+                          {sp.editar === r.id ? (
+                            <form action={changePartnerCode} className="row" style={{ gap: 4, flexWrap: "nowrap" }}>
+                              <input type="hidden" name="id" value={r.id} />
+                              <input className="in" name="code" defaultValue={r.code} autoFocus style={{ width: 130, height: 32, textTransform: "uppercase", fontFamily: "ui-monospace, monospace" }} />
+                              <button className="btn pri sm" type="submit">Salvar</button>
+                              <Link className="menu-b" href="/atletas" aria-label="Cancelar"><X size={14} /></Link>
+                            </form>
+                          ) : (
+                            <span className="row" style={{ gap: 6, flexWrap: "nowrap" }}>
+                              <span className="trk" style={i === 0 && r.revenue ? { color: "var(--sun)" } : undefined}>{r.code}</span>
+                              <Link href={`/atletas?editar=${r.id}`} className="menu-b" style={{ width: 26, height: 26 }} title="Trocar o cupom"><Pencil size={13} /></Link>
+                            </span>
+                          )}
                           <div style={{ fontSize: 11.5, marginTop: 4 }}>{r.discountPct == null ? <span className="dim">desconto ?</span> : off ? (
                             <form action={fixPartnerPercent} className="row" style={{ gap: 4 }}><input type="hidden" name="id" value={r.id} /><span style={{ color: "var(--sun)" }}><AlertTriangle size={11} /> {r.discountPct}%</span><button className="fb-link" type="submit" style={{ color: "var(--lagoon)" }}>deixar {s.referral.percent}%</button></form>
                           ) : <span className="dim">{r.discountPct}% para o cliente</span>}</div>
