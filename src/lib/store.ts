@@ -56,7 +56,7 @@ export interface Order {
   state: string | null;
   city: string | null;
   firstSource: string | null;
-  utm: { source?: string; medium?: string; campaign?: string; content?: string } | null;
+  utm: { source?: string; medium?: string; campaign?: string; content?: string; term?: string } | null;
   tracking: { number: string; company: string | null; url: string | null } | null;
   lines: OrderLine[];
   cancelled: boolean;
@@ -102,7 +102,7 @@ type RawOrder = {
 const ORDER_FIELDS = `id name createdAt cancelledAt displayFinancialStatus displayFulfillmentStatus
   currentSubtotalPriceSet{shopMoney{amount}} currentTotalPriceSet{shopMoney{amount}}
   customer{displayName} shippingAddress{provinceCode city phone}
-  customerJourneySummary{ firstVisit{ source utmParameters{source medium campaign content} } lastVisit{ source utmParameters{source medium campaign content} } }
+  customerJourneySummary{ firstVisit{ source utmParameters{source medium campaign content term} } lastVisit{ source utmParameters{source medium campaign content term} } }
   fulfillments(first:3){ displayStatus trackingInfo{number company url} }
   paymentGatewayNames email phone
   lineItems(first:50){ nodes{ title variantTitle quantity sku discountedTotalSet{shopMoney{amount}} variant{ inventoryItem{ unitCost{amount} } } image{ url(transform:{maxWidth:96, maxHeight:96}) } } }`;

@@ -40,6 +40,8 @@ export async function POST(req: NextRequest) {
       utmSource: body.utm_source?.toString().slice(0, 60) || null,
       utmMedium: body.utm_medium?.toString().slice(0, 60) || null,
       utmCampaign: body.utm_campaign?.toString().slice(0, 80) || null,
+      utmContent: body.utm_content?.toString().slice(0, 80) || null,
+      utmTerm: body.utm_term?.toString().slice(0, 80) || null,
     },
     update: { name: name ?? undefined },
   });

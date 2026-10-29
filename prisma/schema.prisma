@@ -179,6 +179,8 @@ model Lead {
   utmSource String?
   utmMedium String?
   utmCampaign String?
+  utmContent String?
+  utmTerm   String?
   status    String   @default("novo") // novo | no_grupo | cliente | descadastrado
   welcomeSent Boolean @default(false)
   createdAt DateTime @default(now())

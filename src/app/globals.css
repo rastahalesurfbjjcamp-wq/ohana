@@ -688,3 +688,22 @@ a.trk:hover { border-color: var(--lagoon); }
 .rv:hover { border-color: #34403b; transform: translateY(-1px); }
 .rv p { font-size: 13.5px; line-height: 1.45; font-weight: 550; }
 .rv small { font-size: 12px; color: var(--ink3); }
+
+/* Campanhas: funil em faixa e árvore */
+.fstrip { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); border-radius: 18px; border: 1px solid var(--line); background: linear-gradient(180deg, #141917, var(--sf)); overflow: visible; }
+.fs { position: relative; padding: 16px 18px; border-left: 1px solid var(--line2); display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.fs:first-child { border-left: 0; }
+.fs small { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink2); }
+.fs b { font: 650 26px Geist, system-ui; letter-spacing: -.03em; }
+.fs > span { font-size: 12px; color: var(--ink3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fs-conv { position: absolute; left: -19px; top: 26px; z-index: 2; font-size: 11px; font-weight: 700; padding: 3px 7px; border-radius: 10px; background: #1a1f1d; border: 1px solid #2c3531; color: #fff; }
+.ctree .ct-c { font-weight: 650; }
+.ctree .ct-s { font-weight: 550; color: #dfe5e1; }
+.ctree .ct-a { color: var(--ink2); }
+.ctree tr.d0 td { background: #121715; }
+.mxr { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; height: 170px; align-items: end; }
+.mxr > div { height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: stretch; gap: 6px; }
+.mxr i { display: flex; justify-content: center; padding-top: 8px; border-radius: 8px 8px 4px 4px; }
+.mxr i b { font: 650 15px Geist, system-ui; }
+.mxr small { text-align: center; font-size: 12px; color: var(--ink2); }
+@media (max-width: 1200px) { .fstrip { grid-template-columns: repeat(3, minmax(0, 1fr)); } .fs:nth-child(4) { border-left: 0; } .fs-conv { display: none; } }

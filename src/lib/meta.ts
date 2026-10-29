@@ -86,3 +86,37 @@ export async function metaCampaigns(sinceIso: string, untilIso: string): Promise
     value: pick(r.action_values),
   }));
 }
+
+// Nível anúncio: campanha, conjunto e anúncio com gasto, cliques, leads e compras que o Meta conta
+export interface AdRow { campaignId: string; adsetId: string; adId: string; campaign: string; adset: string; ad: string; spend: number; clicks: number; leads: number; purchases: number; value: number }
+export async function metaAds(sinceIso: string, untilIso: string): Promise<AdRow[] | null> {
+  const { token, adAccount } = (await creds()).meta;
+  if (!token || !adAccount) return null;
+  const act = adAccount.startsWith("act_") ? adAccount : `act_${adAccount}`;
+  const out: AdRow[] = [];
+  let url: string | null = `${GRAPH}/${act}/insights?${new URLSearchParams({
+    fields: "campaign_id,adset_id,ad_id,campaign_name,adset_name,ad_name,spend,inline_link_clicks,actions,action_values",
+    level: "ad",
+    time_range: JSON.stringify({ since: sinceIso, until: untilIso }),
+    limit: "500",
+    access_token: token,
+  })}`;
+  type A = { action_type: string; value: string }[];
+  const val = (a: A | undefined, types: string[]) => Number(types.map((t) => a?.find((x) => x.action_type === t)).find(Boolean)?.value ?? 0);
+  while (url) {
+    const res: Response = await fetch(url, { cache: "no-store" });
+    if (!res.ok) throw new Error(`Meta Ads respondeu ${res.status}`);
+    const json = (await res.json()) as { data?: { campaign_id: string; adset_id: string; ad_id: string; campaign_name: string; adset_name: string; ad_name: string; spend?: string; inline_link_clicks?: string; actions?: A; action_values?: A }[]; paging?: { next?: string } };
+    for (const r of json.data ?? []) {
+      out.push({
+        campaignId: r.campaign_id, adsetId: r.adset_id, adId: r.ad_id, campaign: r.campaign_name, adset: r.adset_name, ad: r.ad_name,
+        spend: Number(r.spend ?? 0), clicks: Number(r.inline_link_clicks ?? 0),
+        leads: val(r.actions, ["lead", "onsite_conversion.lead_grouped", "offsite_conversion.fb_pixel_lead", "complete_registration"]),
+        purchases: val(r.actions, ["omni_purchase", "offsite_conversion.fb_pixel_purchase", "purchase"]),
+        value: val(r.action_values, ["omni_purchase", "offsite_conversion.fb_pixel_purchase", "purchase"]),
+      });
+    }
+    url = json.paging?.next ?? null;
+  }
+  return out;
+}

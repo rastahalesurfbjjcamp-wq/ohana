@@ -104,7 +104,7 @@ document.getElementById("hub-vip").addEventListener("submit", async function (e)
   e.preventDefault();
   var d = Object.fromEntries(new FormData(this));
   var u = new URLSearchParams(location.search);
-  ["utm_source","utm_medium","utm_campaign"].forEach(function (k) { if (u.get(k)) d[k] = u.get(k); });
+  ["utm_source","utm_medium","utm_campaign","utm_content","utm_term"].forEach(function (k) { if (u.get(k)) d[k] = u.get(k); });
   var r = await fetch("${api}", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(d) });
   var j = await r.json();
   if (j.ok) location.href = j.link; else alert(j.error || "Confira seu WhatsApp");
