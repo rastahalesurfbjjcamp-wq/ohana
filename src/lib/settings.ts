@@ -72,6 +72,13 @@ export const DEFAULTS = {
   assistant: {
     enabled: false,
     instructions: "Responda como a equipe da Rasta Hale, de forma simples e simpática. Trocas em até 7 dias pelo WhatsApp. Envio em até 2 dias úteis pela Olist.",
+    useOrders: true,
+    useStock: true,
+    useSizes: false,
+    sizeTable: "",
+    useExchange: false,
+    exchangeText: "",
+    handoff: true,
   },
   costs: {
     taxRate: 0.06, // imposto sobre o faturamento
@@ -113,7 +120,7 @@ export type Settings = {
     storeUrl: string;
   };
   referral: { enabled: boolean; percent: number; commission: number; releaseDays: number; shareText: string };
-  assistant: { enabled: boolean; instructions: string };
+  assistant: { enabled: boolean; instructions: string; useOrders: boolean; useStock: boolean; useSizes: boolean; sizeTable: string; useExchange: boolean; exchangeText: string; handoff: boolean };
 };
 
 export async function getSettings(): Promise<Settings> {

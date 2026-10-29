@@ -77,25 +77,7 @@ export async function assistantReply(phone: string, audioId?: string | null) {
   if (msgs[0]?.role === "assistant") msgs.shift();
   if (!msgs.length) return;
 
-  const [cat, order] = await Promise.all([catalog(), lastOrderOf(phone)]);
-  const system = `Você é o atendimento da ${env.storeName()} no WhatsApp (${env.storeAbout()}).
-Regras da loja, definidas pelo dono:
-${s.assistant.instructions}
-
-Produtos ativos, preços e tamanhos disponíveis agora:
-${cat}
-
-${order}
-
-Como responder:
-- Português simples e simpático, frases curtas, como uma pessoa da equipe. Sem travessões, sem listas longas, no máximo um emoji se fizer sentido.
-- Use só as informações acima. Se não souber, não invente.
-- Se for troca, devolução, reclamação, problema com pedido, pedido de desconto especial ou algo que você não consiga resolver, responda só com uma frase curta avisando que vai chamar alguém da equipe e termine a mensagem com [HUMANO].
-- Nunca peça dados de cartão ou senhas.`;
-
-  const client = new Anthropic({ apiKey: c.ai.key });
-  const res = await client.messages.create({ model: c.ai.model ?? env.anthropicModel(), max_tokens: 400, system, messages: msgs });
-  let text = res.content.filter((b) => b.type === "text").map((b) => (b as Anthropic.TextBlock).text).join("\n").trim();
+  let text = await generateReply(msgs, phone);
   if (!text) return;
   const handoff = text.includes("[HUMANO]");
   text = text.replace("[HUMANO]", "").trim();
@@ -109,4 +91,29 @@ Como responder:
     const lastClient = history.filter((m) => !m.fromMe).pop()?.text ?? "";
     for (const g of groups) await sendText(g.jid, `*Atendimento precisa de você*\n${thread.name ?? phone}: "${lastClient.slice(0, 200)}"\nResponda pelo painel em Atendimento.`);
   }
+}
+
+// Monta o que o assistente sabe (conforme as chaves ligadas no painel) e gera a resposta
+export async function generateReply(msgs: Anthropic.MessageParam[], phone: string | null): Promise<string> {
+  const s = await getSettings();
+  const c = await creds();
+  if (!c.ai.key) throw new Error("Conecte a IA em Integrações");
+  const a = s.assistant;
+  const [cat, order] = await Promise.all([a.useStock ? catalog() : Promise.resolve(""), a.useOrders && phone ? lastOrderOf(phone) : Promise.resolve("")]);
+  const parts = [
+    `Você é o atendimento da ${env.storeName()} no WhatsApp (${env.storeAbout()}).`,
+    `Regras da loja, definidas pelo dono:\n${a.instructions}`,
+    a.useStock ? `Produtos ativos, preços e tamanhos disponíveis agora:\n${cat}` : "",
+    a.useSizes && a.sizeTable ? `Tabela de medidas:\n${a.sizeTable}` : "",
+    a.useExchange && a.exchangeText ? `Trocas e devoluções:\n${a.exchangeText}` : "",
+    order,
+    `Como responder:
+- Português simples e simpático, frases curtas, como uma pessoa da equipe. Sem travessões, sem listas longas, no máximo um emoji se fizer sentido.
+- Use só as informações acima. Se não souber, não invente.
+${a.handoff ? "- Se for reclamação, problema com pedido, pedido atrasado, pedido de desconto especial, o cliente pedir uma pessoa ou algo que você não consiga resolver, responda só com uma frase curta avisando que vai chamar alguém da equipe e termine a mensagem com [HUMANO]." : ""}
+- Nunca peça dados de cartão ou senhas.`,
+  ].filter(Boolean);
+  const client = new Anthropic({ apiKey: c.ai.key });
+  const res = await client.messages.create({ model: c.ai.model ?? env.anthropicModel(), max_tokens: 400, system: parts.join("\n\n"), messages: msgs });
+  return res.content.filter((b) => b.type === "text").map((b) => (b as Anthropic.TextBlock).text).join("\n").trim();
 }

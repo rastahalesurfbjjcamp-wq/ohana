@@ -712,3 +712,8 @@ a.trk:hover { border-color: var(--lagoon); }
 .dg-a li { display: flex; gap: 8px; align-items: flex-start; font-size: 13.5px; }
 .dg-a li svg { color: var(--lagoon); flex-shrink: 0; margin-top: 2px; }
 .dg-f { margin-top: auto; padding-top: 14px; border-top: 1px solid var(--line2); display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 18px; }
+.bub.typing { display: flex; gap: 4px; padding: 12px 14px; }
+.bub.typing span { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,.6); animation: blink 1.2s infinite; }
+.bub.typing span:nth-child(2) { animation-delay: .2s; } .bub.typing span:nth-child(3) { animation-delay: .4s; }
+@keyframes blink { 0%, 80%, 100% { opacity: .25; } 40% { opacity: 1; } }
+.know { display: flex; flex-direction: column; gap: 8px; }

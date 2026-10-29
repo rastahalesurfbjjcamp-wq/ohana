@@ -109,6 +109,7 @@ const AUTOS: Record<string, [string, string]> = {
   recompra: ["postsale", "repurchaseEnabled"],
   boasvindas: ["leads", "welcomeEnabled"],
   volta: ["winback", "enabled"],
+  assistente: ["assistant", "enabled"],
 };
 export async function toggleAutomation(f: FormData) {
   await admin();
@@ -123,6 +124,7 @@ export async function toggleAutomation(f: FormData) {
   }
   revalidatePath("/recuperacao");
   revalidatePath("/pos-venda");
+  revalidatePath("/assistente");
   revalidatePath("/leads");
   revalidatePath("/entradas");
 }
@@ -144,4 +146,37 @@ export async function saveRecoveryMessages(f: FormData) {
   revalidatePath("/pos-venda");
   const back = str(f, "back");
   redirect(back.startsWith("/") ? `${back}${back.includes("?") ? "&" : "?"}ok=1` : `/recuperacao?ok=1&cfg=${kind}`);
+}
+
+/* Assistente: o que ele sabe */
+export async function saveAssistantKnowledge(f: FormData) {
+  await admin();
+  const on = (k: string) => f.get(k) === "on";
+  await saveSetting("assistant", {
+    useOrders: on("useOrders"), useStock: on("useStock"), useSizes: on("useSizes"), useExchange: on("useExchange"), handoff: on("handoff"),
+    sizeTable: str(f, "sizeTable"), exchangeText: str(f, "exchangeText"), instructions: str(f, "instructions"),
+  });
+  revalidatePath("/assistente");
+  redirect("/assistente?ok=1");
+}
+
+// Conversa de teste no painel: a IA responde mas nada é enviado no WhatsApp
+export async function testAssistant(history: { fromMe: boolean; text: string }[]): Promise<{ reply?: string; error?: string }> {
+  await admin();
+  try {
+    const { generateReply } = await import("@/lib/assistant");
+    const msgs: { role: "user" | "assistant"; content: string }[] = [];
+    for (const m of history.slice(-14)) {
+      const role = m.fromMe ? "assistant" : "user";
+      const last = msgs[msgs.length - 1];
+      if (last && last.role === role) last.content += `\n${m.text}`;
+      else msgs.push({ role, content: m.text });
+    }
+    while (msgs[0]?.role === "assistant") msgs.shift();
+    if (!msgs.length) return { error: "Escreva uma mensagem" };
+    const reply = await generateReply(msgs, null);
+    return { reply: reply.replace("[HUMANO]", "\n(aqui ele passaria para a equipe)").trim() };
+  } catch (e) {
+    return { error: String(e).replace(/^Error: /, "").slice(0, 200) };
+  }
 }
