@@ -94,7 +94,7 @@ export default async function Integracoes() {
                   <span className={`chip ${st?.ok ? "c-l" : configured ? "c-s" : "c-n"}`}>{st?.ok ? "conectado" : configured ? "não testado" : "não conectado"}</span>
                 </div>
                 {st && <div className={st.ok ? "ok" : "err"}>{st.msg}</div>}
-                <form action={saveProvider} className="stack">
+                <form action={saveProvider} className="stack" autoComplete="off">
                   <input type="hidden" name="provider" value={card.p} />
                   {card.fields.map((f) => (
                     <div className="field" key={f.name}>
@@ -102,8 +102,13 @@ export default async function Integracoes() {
                       <input
                         className="in"
                         name={f.name}
-                        type={f.secret ? "password" : "text"}
+                        type="text"
                         autoComplete="off"
+                        spellCheck={false}
+                        data-1p-ignore
+                        data-lpignore="true"
+                        data-form-type="other"
+                        style={f.secret ? ({ WebkitTextSecurity: "disc" } as React.CSSProperties) : undefined}
                         placeholder={f.secret && f.current ? `${f.current} (deixe vazio para manter)` : f.placeholder}
                         defaultValue={f.secret ? "" : f.current ?? ""}
                       />
