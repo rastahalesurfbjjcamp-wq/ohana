@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { AlertTriangle, Pencil, BadgeDollarSign, CalendarCheck, Coins, Instagram, Link2, Plus, ShoppingBag, Trophy, X } from "lucide-react";
+import { AlertTriangle, MessageCircle, Pencil, BadgeDollarSign, CalendarCheck, Coins, Instagram, Link2, Plus, ShoppingBag, Trophy, X } from "lucide-react";
 import { db } from "@/lib/db";
 import { DateRange } from "@/components/DateRange";
 import { CopyButton } from "@/components/CopyButton";
 import { NumberInput } from "@/components/NumberInput";
 import { Bars } from "@/components/charts";
-import { partnerLink, partnerStats, unlinkedCodes } from "@/lib/partners";
+import { ensureTeam, partnerLink, partnerMessage, partnerStats, unlinkedCodes, waLink } from "@/lib/partners";
 import { daysBetween, resolvePeriod } from "@/lib/periods";
 import { getSettings } from "@/lib/settings";
 import { addDays, brl, isoDayLocal } from "@/lib/time";
@@ -31,6 +31,7 @@ export default async function Atletas({ searchParams }: { searchParams: Promise<
   let stats: Awaited<ReturnType<typeof partnerStats>> | null = null;
   let payStats: Awaited<ReturnType<typeof partnerStats>> | null = null;
   let error: unknown = null;
+  await ensureTeam().catch(() => null);
   try {
     [stats, payStats] = await Promise.all([partnerStats(period.from, period.to), partnerStats(pmFrom, pmTo < today ? pmTo : today)]);
   } catch (e) {
@@ -155,7 +156,13 @@ export default async function Atletas({ searchParams }: { searchParams: Promise<
                         <td className="r"><b>{brl(r.revenue, 0)}</b></td>
                         <td className="r"><span className={r.profit < 0 ? "dn" : "up"} style={{ fontWeight: 650 }}>{brl(r.profit, 0)}</span></td>
                         <td className="r" style={{ color: "var(--sun)", fontWeight: 650 }}>{brl(r.commission)}</td>
-                        <td><CopyButton text={partnerLink(store, r.code)} className="btn sm" label="Copiar link" /></td>
+                        <td>
+                          <div className="row" style={{ gap: 6, flexWrap: "nowrap" }}>
+                            <CopyButton text={partnerLink(store, r.code)} className="btn sm" label="Copiar link" />
+                            <CopyButton text={partnerMessage(r, partnerLink(store, r.code), s.referral.commission)} className="btn sm ghost" label="Copiar explicação" />
+                            <a className="btn sm ghost" href={waLink(r.phone, partnerMessage(r, partnerLink(store, r.code), s.referral.commission))} target="_blank" rel="noreferrer" title="Abrir no WhatsApp com a mensagem pronta (você confere e envia)"><MessageCircle size={14} /></a>
+                          </div>
+                        </td>
                       </tr>
                     );
                   })}
@@ -170,6 +177,11 @@ export default async function Atletas({ searchParams }: { searchParams: Promise<
           <Panel title="Vendas por dia" sub={`Pelos cupons dos atletas · ${period.label.toLowerCase()}`}>
             <Bars items={bars} format={(v) => brl(v, 0)} height={180} />
           </Panel>
+          {rows[0] && (
+            <Panel title="Mensagem para o atleta" sub="Explica como funciona. Copie ou abra no WhatsApp pela tabela">
+              <div className="code" style={{ fontSize: 12.5, whiteSpace: "pre-wrap", lineHeight: 1.55 }}>{partnerMessage(rows[0], partnerLink(store, rows[0].code), s.referral.commission)}</div>
+            </Panel>
+          )}
           <Panel title="Regras do programa">
             <form action={savePartnerRules} className="stack" style={{ gap: 8 }}>
               <div className="cfg-row"><span>Desconto para o cliente</span><NumberInput size="sm" name="percent" defaultValue={s.referral.percent} suffix="%" min={1} max={50} /></div>

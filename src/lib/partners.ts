@@ -85,3 +85,51 @@ export async function unlinkedCodes(): Promise<{ code: string; title: string; us
     .sort((a, b) => b.uses - a.uses)
     .slice(0, 16);
 }
+
+// Time que já usa cupom na loja: entra sozinho na primeira vez que a tela abre
+const TEAM = [
+  { name: "Mestre Azul", code: "MESTREAZUL", instagram: null },
+  { name: "Bernardo Mastrangelo", code: "Mastrangelo", instagram: "bernardomastrangelo" },
+  { name: "Bernardo Goulart", code: "BGOULART", instagram: "bgoulart_bjj" },
+];
+export async function ensureTeam() {
+  const flag = await db.setting.findUnique({ where: { key: "_partners_seeded" } });
+  if (flag) return;
+  for (const t of TEAM) {
+    try {
+      if (await db.referral.findFirst({ where: { code: { equals: t.code, mode: "insensitive" } } })) continue;
+      const found = await findShopifyCode(t.code).catch(() => null);
+      await db.referral.create({ data: { name: t.name, code: found ? t.code : t.code.toUpperCase(), phone: `sem-${t.code.toLowerCase()}`, discountId: found?.id ?? null, discountPct: found?.percent ?? null, kind: "atleta", payout: "pix", instagram: t.instagram } });
+    } catch {
+      // segue para o próximo
+    }
+  }
+  await db.setting.upsert({ where: { key: "_partners_seeded" }, create: { key: "_partners_seeded", value: { at: new Date().toISOString() } }, update: {} });
+}
+
+// Mensagem pronta para mandar ao atleta explicando como funciona
+export function partnerMessage(p: { name: string | null; code: string; discountPct: number | null; payout: string }, link: string, commission: number) {
+  const first = (p.name ?? "").split(" ")[0] || "tudo certo";
+  const desc = p.discountPct ? `${p.discountPct}% de desconto` : "desconto";
+  const pay = p.payout === "credito" ? "em crédito na loja" : "por Pix";
+  return [
+    `Fala, ${first}! Seu cupom da Rasta Hale está ativo.`,
+    "",
+    `Cupom: ${p.code}`,
+    `Link: ${link}`,
+    "",
+    "Como funciona:",
+    `1. Quem compra pelo seu link ou com o cupom ${p.code} ganha ${desc}. O link já abre a loja com o cupom aplicado.`,
+    `2. Você ganha ${commission}% de comissão sobre o valor dos produtos de cada venda com o seu cupom (frete não entra).`,
+    "3. Pedido cancelado ou devolvido não conta.",
+    `4. A comissão do mês é paga todo dia 1 do mês seguinte, ${pay}.`,
+    "",
+    "Dica: deixa o link na bio, usa nos stories e fala o cupom nos vídeos e nos treinos.",
+    "Qualquer dúvida é só chamar.",
+  ].join("\n");
+}
+
+export function waLink(phone: string, text: string) {
+  const num = phone.startsWith("sem-") ? "" : phone.replace(/\D/g, "");
+  return `https://wa.me/${num}?text=${encodeURIComponent(text)}`;
+}
