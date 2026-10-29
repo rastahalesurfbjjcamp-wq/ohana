@@ -3,11 +3,12 @@ import { swr } from "./cache";
 import { creds } from "./integrations";
 
 const API_VERSION = "2025-10";
+const QL_VERSION = "2026-10";
 
-async function gql<T>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
+async function gql<T>(query: string, variables: Record<string, unknown> = {}, version = API_VERSION): Promise<T> {
   const { domain, token } = (await creds()).shopify;
   if (!domain || !token) throw new Error("SHOPIFY_NAO_CONFIGURADA");
-  const res = await fetch(`https://${domain}/admin/api/${API_VERSION}/graphql.json`, {
+  const res = await fetch(`https://${domain}/admin/api/${version}/graphql.json`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Shopify-Access-Token": token },
     body: JSON.stringify({ query, variables }),
@@ -119,7 +120,7 @@ export async function shopifyql(q: string, tries = 4): Promise<Record<string, st
   } catch (e) {
     // a Shopify limita consultas de relatório; espera e tenta de novo
     if (tries > 1 && /THROTTLE|Rate limited/i.test(String(e))) {
-      await new Promise((r) => setTimeout(r, (5 - tries) * 2000));
+      await new Promise((r) => setTimeout(r, (5 - tries) * 3000));
       return shopifyql(q, tries - 1);
     }
     throw e;
@@ -128,7 +129,8 @@ export async function shopifyql(q: string, tries = 4): Promise<Record<string, st
 
 async function shopifyqlOnce(q: string): Promise<Record<string, string>[]> {
   type R = { shopifyqlQuery: { tableData?: { columns: { name: string }[]; rows: unknown[] } | null; parseErrors: string[] } };
-  const data = await gql<R>(`query($q:String!){ shopifyqlQuery(query:$q){ tableData{ columns{ name } rows } parseErrors } }`, { q });
+  // relatórios usam a versão mais nova da API (nomes de colunas iguais aos da Shopify hoje)
+  const data = await gql<R>(`query($q:String!){ shopifyqlQuery(query:$q){ tableData{ columns{ name } rows } parseErrors } }`, { q }, QL_VERSION);
   const r = data.shopifyqlQuery;
   if (r.parseErrors?.length) throw new Error(`ShopifyQL: ${r.parseErrors.join("; ")}`);
   const cols = r.tableData?.columns.map((c) => c.name) ?? [];
