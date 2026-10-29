@@ -123,7 +123,7 @@ export async function createLaunch(f: FormData) {
   const groupJids = f.getAll("groups").map(String).filter(Boolean);
   if (!name || !opens || !groupJids.length) redirect("/lancamento?erro=1");
   const opensAt = await localToDate(opens);
-  const launch = await db.launch.create({ data: { name, opensAt, groupJids, productKey: str(f, "productKey").toLowerCase() || null, createdBy: s.name } });
+  const launch = await db.launch.create({ data: { name, opensAt, groupJids, productKey: str(f, "productKey").toLowerCase() || null, goal: Math.round(num(f, "goal", 0)) || null, liveUrl: str(f, "liveUrl") || null, about: str(f, "about") || null, closesAt: str(f, "closesAt") ? await localToDate(str(f, "closesAt")) : null, createdBy: s.name } });
   const plan: [string, number][] = [
     ["warm7", -7 * 24 * 60],
     ["warm3", -3 * 24 * 60],
@@ -250,4 +250,16 @@ export async function diagnosisToTasks(f: FormData) {
   for (const a of actions) await db.task.create({ data: { title: a, description: `Do diagnóstico: ${title}`, priority: prio, createdBy: s.name } });
   revalidatePath("/tarefas");
   redirect(`/diagnostico?tarefas=${actions.length}${str(f, "id") ? `&id=${str(f, "id")}` : ""}`);
+}
+
+// Botão "Estamos ao vivo": manda o link agora para os grupos do lançamento, marcando todos
+export async function goLive(f: FormData) {
+  const s = await auth();
+  const l = await db.launch.findUnique({ where: { id: str(f, "id") } });
+  if (!l) redirect("/lancamento");
+  const text = str(f, "text") || `Estamos ao vivo! ${l!.liveUrl ?? ""}`.trim();
+  await db.scheduledMessage.create({ data: { text, groupJids: l!.groupJids, sendAt: new Date(), mentionAll: true, createdBy: s.name, launchId: l!.id } });
+  await db.launch.update({ where: { id: l!.id }, data: { status: "aberto" } });
+  revalidatePath("/lancamento");
+  redirect(`/lancamento?id=${l!.id}&live=1`);
 }

@@ -358,6 +358,9 @@ model Launch {
   closesAt  DateTime?
   productKey String?
   groupJids String[]
+  goal      Int?     // meta de pessoas no grupo
+  liveUrl   String?  // link da live ou da coleção
+  about     String?
   status    String   @default("planejado") // planejado | aberto | encerrado
   createdBy String?
   createdAt DateTime @default(now())
