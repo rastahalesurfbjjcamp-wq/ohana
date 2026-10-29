@@ -166,12 +166,33 @@ export async function sendReportNow(formData: FormData) {
 /* Custos */
 export async function saveCostRates(formData: FormData) {
   await admin();
+  const pixFee = num(formData, "pixFee") / 100;
+  const cardFee = num(formData, "cardFee") / 100;
+  // Mistura real de Pix e cartão dos últimos 30 dias, para a taxa média sair certa
+  let pixShare = 0.4;
+  try {
+    const { ordersBetween } = await import("@/lib/store");
+    const { dayRange } = await import("@/lib/time");
+    const today = isoDayLocal();
+    const orders = (await ordersBetween(dayRange(addDays(today, -29)).start, dayRange(today).end)).filter((o) => !o.cancelled && o.financial === "PAID");
+    const pix = orders.filter((o) => /pix/i.test(o.gateway ?? "")).reduce((a, o) => a + o.total, 0);
+    const total = orders.reduce((a, o) => a + o.total, 0);
+    if (total > 0) pixShare = pix / total;
+  } catch {
+    /* sem Shopify: usa 40% */
+  }
   await saveSetting("costs", {
     taxRate: num(formData, "taxRate") / 100,
-    paymentFeeRate: num(formData, "paymentFeeRate") / 100,
+    regime: str(formData, "regime") || "simples",
+    pixFee,
+    cardFee,
+    pixShare,
+    gatewayName: str(formData, "gatewayName") || "gateway",
+    paymentFeeRate: Math.round((pixFee * pixShare + cardFee * (1 - pixShare)) * 10000) / 10000,
     packagingPerItem: num(formData, "packagingPerItem"),
   });
   revalidatePath("/custos");
+  redirect("/custos?ok=1");
 }
 
 export async function addCost(formData: FormData) {
@@ -197,7 +218,7 @@ export async function addCost(formData: FormData) {
     },
   });
   revalidatePath("/custos");
-  redirect("/custos");
+  redirect(kind === "STOCK_LOT" ? "/custos?ok=lote" : "/custos?ok=custo");
 }
 
 export async function deleteCost(formData: FormData) {

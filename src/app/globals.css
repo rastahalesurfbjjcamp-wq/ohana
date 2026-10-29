@@ -758,3 +758,8 @@ a.trk:hover { border-color: var(--lagoon); }
 .statk b { display: block; font: 650 26px Geist, system-ui; letter-spacing: -.03em; line-height: 1.1; }
 .statk small { font-size: 12.5px; color: var(--ink3); }
 @media (max-width: 1000px) { .kb { grid-template-columns: 1fr; } .kb-acts { opacity: 1; } }
+.g2f { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px 16px; margin-top: 8px; }
+.g2f .num-in { width: 100%; }
+.costl { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--line2); font-size: 14px; }
+.costl small { display: block; font-size: 12px; margin-top: 2px; }
+.addline { display: flex; align-items: center; gap: 8px; margin-top: 12px; padding: 10px 12px; border-radius: 14px; border: 1.5px dashed #2a322e; background: #0e1211; }

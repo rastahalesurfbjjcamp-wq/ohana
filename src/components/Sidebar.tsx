@@ -41,7 +41,7 @@ export function Sidebar({ name, store, connected, leaves, logout }: { name: stri
         { href: "/produtos", icon: Box, label: "Produtos e lucro" },
         { href: "/estoque", icon: Warehouse, label: "Estoque" },
         { href: "/pedidos", icon: Package, label: "Pedidos" },
-        { href: "/custos", icon: Coins, label: "Custos e lotes" },
+        { href: "/custos", icon: Coins, label: "Custos e impostos" },
         { href: "/recuperacao", icon: RefreshCcw, label: "Recuperação" },
         { href: "/entregas", icon: Truck, label: "Entregas" },
         { href: "/atendimento", icon: MessageCircle, label: "Atendimento" },

@@ -85,6 +85,11 @@ export const DEFAULTS = {
     taxRate: 0.06, // imposto sobre o faturamento
     paymentFeeRate: 0.045, // média das taxas de pagamento
     packagingPerItem: 4,
+    regime: "simples",
+    pixFee: 0.0099,
+    cardFee: 0.0499,
+    gatewayName: "Appmax",
+    pixShare: 0.4,
   },
 } as const;
 
@@ -100,7 +105,7 @@ export type Settings = {
     items: Record<keyof (typeof DEFAULTS)["report"]["items"], boolean>;
   };
   sending: { maxPerHour: number; minDelayMs: number; maxDelayMs: number };
-  costs: { taxRate: number; paymentFeeRate: number; packagingPerItem: number };
+  costs: { taxRate: number; paymentFeeRate: number; packagingPerItem: number; regime: string; pixFee: number; cardFee: number; gatewayName: string; pixShare: number };
   leads: { welcomeEnabled: boolean; welcomeText: string };
   recovery: {
     cartEnabled: boolean;
