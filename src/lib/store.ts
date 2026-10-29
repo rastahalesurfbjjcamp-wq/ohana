@@ -23,14 +23,7 @@ export async function gql<T>(query: string, variables: Record<string, unknown> =
   return json.data as T;
 }
 
-const cache = new Map<string, { at: number; value: unknown }>();
-async function cached<T>(key: string, ttlMs: number, fn: () => Promise<T>): Promise<T> {
-  const hit = cache.get(key);
-  if (hit && Date.now() - hit.at < ttlMs) return hit.value as T;
-  const value = await fn();
-  cache.set(key, { at: Date.now(), value });
-  return value;
-}
+import { swr as cached } from "./cache";
 
 const money = (m?: { shopMoney?: { amount: string } } | { amount: string } | null) =>
   Number((m && ("shopMoney" in m ? m.shopMoney?.amount : (m as { amount: string }).amount)) ?? 0);

@@ -1,4 +1,5 @@
 // Leitura de vendas da Shopify (Admin GraphQL).
+import { swr } from "./cache";
 import { creds } from "./integrations";
 
 const API_VERSION = "2025-10";
@@ -51,7 +52,7 @@ type OrdersPage = {
 };
 
 // Vendas entre duas datas (UTC)
-export async function salesBetween(start: Date, end: Date): Promise<SalesSummary> {
+async function salesBetweenRaw(start: Date, end: Date): Promise<SalesSummary> {
   const q = `created_at:>='${start.toISOString()}' created_at:<'${end.toISOString()}' -status:cancelled`;
   let after: string | null = null;
   const out: SalesSummary = { orders: 0, gross: 0, net: 0, lines: [] };
@@ -84,7 +85,7 @@ export async function salesBetween(start: Date, end: Date): Promise<SalesSummary
 }
 
 // Conversão do dia via ShopifyQL. Se a loja ou a versão da API não liberar, devolve null.
-export async function conversionForDay(isoDay: string): Promise<{ sessions: number; rate: number } | null> {
+async function conversionForDayRaw(isoDay: string): Promise<{ sessions: number; rate: number } | null> {
   try {
     type R = { shopifyqlQuery: { tableData?: { rows?: unknown[] }; parseErrors?: unknown[] } };
     const data = await gql<R>(
@@ -101,4 +102,12 @@ export async function conversionForDay(isoDay: string): Promise<{ sessions: numb
   } catch {
     return null;
   }
+}
+
+export async function salesBetween(start: Date, end: Date): Promise<SalesSummary> {
+  return swr(`sales:${start.toISOString()}:${end.toISOString()}`, 90_000, () => salesBetweenRaw(start, end));
+}
+
+export async function conversionForDay(isoDay: string) {
+  return swr(`conv:${isoDay}`, 300_000, () => conversionForDayRaw(isoDay));
 }

@@ -1,9 +1,10 @@
 // Gasto do Meta Ads (Graph API).
+import { swr } from "./cache";
 import { creds } from "./integrations";
 
 const GRAPH = "https://graph.facebook.com/v23.0";
 
-export async function metaSpend(sinceIso: string, untilIso: string): Promise<number | null> {
+async function metaSpendRaw(sinceIso: string, untilIso: string): Promise<number | null> {
   const { token, adAccount: account } = (await creds()).meta;
   if (!token || !account) return null;
   const act = account.startsWith("act_") ? account : `act_${account}`;
@@ -19,7 +20,7 @@ export async function metaSpend(sinceIso: string, untilIso: string): Promise<num
 }
 
 // Gasto e compras que o próprio Meta diz ter gerado
-export async function metaInsights(sinceIso: string, untilIso: string, level: "account" | "campaign" = "account") {
+async function metaInsightsRaw(sinceIso: string, untilIso: string, level: "account" | "campaign" = "account") {
   const { token, adAccount: account } = (await creds()).meta;
   if (!token || !account) return null;
   const act = account.startsWith("act_") ? account : `act_${account}`;
@@ -58,7 +59,7 @@ export interface CampaignRow {
   value: number;
 }
 
-export async function metaCampaigns(sinceIso: string, untilIso: string): Promise<CampaignRow[] | null> {
+async function metaCampaignsRaw(sinceIso: string, untilIso: string): Promise<CampaignRow[] | null> {
   const { token, adAccount } = (await creds()).meta;
   if (!token || !adAccount) return null;
   const act = adAccount.startsWith("act_") ? adAccount : `act_${adAccount}`;
@@ -89,7 +90,7 @@ export async function metaCampaigns(sinceIso: string, untilIso: string): Promise
 
 // Nível anúncio: campanha, conjunto e anúncio com gasto, cliques, leads e compras que o Meta conta
 export interface AdRow { campaignId: string; adsetId: string; adId: string; campaign: string; adset: string; ad: string; spend: number; clicks: number; leads: number; purchases: number; value: number }
-export async function metaAds(sinceIso: string, untilIso: string): Promise<AdRow[] | null> {
+async function metaAdsRaw(sinceIso: string, untilIso: string): Promise<AdRow[] | null> {
   const { token, adAccount } = (await creds()).meta;
   if (!token || !adAccount) return null;
   const act = adAccount.startsWith("act_") ? adAccount : `act_${adAccount}`;
@@ -119,4 +120,20 @@ export async function metaAds(sinceIso: string, untilIso: string): Promise<AdRow
     url = json.paging?.next ?? null;
   }
   return out;
+}
+
+export async function metaSpend(sinceIso: string, untilIso: string): Promise<number | null> {
+  return swr(`spend:${sinceIso}:${untilIso}`, 300_000, () => metaSpendRaw(sinceIso, untilIso));
+}
+
+export async function metaInsights(sinceIso: string, untilIso: string, level: "account" | "campaign" = "account") {
+  return swr(`ins:${sinceIso}:${untilIso}:${level}`, 300_000, () => metaInsightsRaw(sinceIso, untilIso, level));
+}
+
+export async function metaCampaigns(sinceIso: string, untilIso: string) {
+  return swr(`camp:${sinceIso}:${untilIso}`, 300_000, () => metaCampaignsRaw(sinceIso, untilIso));
+}
+
+export async function metaAds(sinceIso: string, untilIso: string) {
+  return swr(`ads:${sinceIso}:${untilIso}`, 300_000, () => metaAdsRaw(sinceIso, untilIso));
 }

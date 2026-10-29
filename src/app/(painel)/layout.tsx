@@ -4,6 +4,8 @@ import { db } from "@/lib/db";
 import { Sidebar } from "@/components/Sidebar";
 import { env } from "@/lib/env";
 import { TableSort } from "@/components/TableSort";
+import { RefreshButton } from "@/components/RefreshButton";
+import { ChunkGuard } from "@/components/ChunkGuard";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +28,8 @@ export default async function PainelLayout({ children }: { children: React.React
       <Sidebar name={session.name} store={env.storeName()} connected={connected} leaves={leaves} logout={sair} />
       <main className="main">{children}</main>
       <TableSort />
+      <RefreshButton />
+      <ChunkGuard />
     </div>
   );
 }
