@@ -1,92 +1,50 @@
-import { NumberInput } from "@/components/NumberInput";
+import Link from "next/link";
+import { FlaskConical, Plus, Rocket } from "lucide-react";
 import { db } from "@/lib/db";
-import { TRIGGERS } from "@/lib/funnels";
-import { Header, Panel } from "@/components/ui";
-import { saveFunnel, toggleFunnel } from "../acoes3";
+import { CONDS, TRIGGERS } from "@/lib/funnels";
+import { FunnelBuilder, type FStep } from "@/components/FunnelBuilder";
+import { saveFunnel, testFunnel, toggleFunnel } from "../acoes3";
 
 export const dynamic = "force-dynamic";
 
-type Step = { delayMin: number; text: string };
-const human = (m: number) => (m === 0 ? "na hora" : m % 1440 === 0 ? `${m / 1440} dia(s) depois` : m % 60 === 0 ? `${m / 60} hora(s) depois` : `${m} min depois`);
-
-function StepRow({ i, step }: { i: number; step?: Step }) {
-  const unit = !step ? "h" : step.delayMin % 1440 === 0 && step.delayMin ? "d" : step.delayMin % 60 === 0 && step.delayMin ? "h" : "m";
-  const val = !step ? "" : unit === "d" ? step.delayMin / 1440 : unit === "h" ? step.delayMin / 60 : step.delayMin;
-  return (
-    <div className="stack" style={{ gap: 6, padding: 12, border: "1px solid var(--line)", borderRadius: 12 }}>
-      <div className="row" style={{ gap: 8 }}>
-        <b style={{ fontSize: 13 }}>Mensagem {i + 1}</b>
-        <NumberInput size="sm" name={`s${i}_delay`} defaultValue={val} />
-        <select className="in" name={`s${i}_unit`} defaultValue={unit} style={{ width: 120, height: 34 }}>
-          <option value="m">minutos</option><option value="h">horas</option><option value="d">dias</option>
-        </select>
-        <span className="dim" style={{ fontSize: 12 }}>{i === 0 ? "depois do gatilho" : "depois da anterior"}</span>
-      </div>
-      <textarea className="in" name={`s${i}_text`} defaultValue={step?.text ?? ""} style={{ minHeight: 60 }} placeholder="Deixe vazio para não usar" />
-    </div>
-  );
-}
-
-export default async function Funis({ searchParams }: { searchParams: Promise<{ ok?: string; e?: string }> }) {
+export default async function Funis({ searchParams }: { searchParams: Promise<{ ok?: string; e?: string; novo?: string; teste?: string; erro?: string }> }) {
   const sp = await searchParams;
   const funnels = await db.funnel.findMany({ orderBy: { createdAt: "desc" }, include: { _count: { select: { runs: true } } } });
-  const editing = sp.e ? funnels.find((f) => f.id === sp.e) : undefined;
-  const steps = (editing?.steps as Step[] | undefined) ?? [];
-  const done = await db.funnelRun.groupBy({ by: ["funnelId", "status"], _count: true });
+  const cur = sp.novo ? undefined : funnels.find((f) => f.id === sp.e) ?? funnels[0];
+  const runs = cur ? await db.funnelRun.groupBy({ by: ["status"], where: { funnelId: cur.id }, _count: true }) : [];
+  const c = (k: string) => runs.find((r) => r.status === k)?._count ?? 0;
 
   return (
     <>
-      <Header title="Funis" lede="Sequências de mensagens no privado que começam sozinhas quando algo acontece: virou lead, entrou ou saiu do grupo, fez a primeira compra." />
-      {sp.ok && <div className="ok">Funil salvo.</div>}
-      <div className="grid g2" style={{ alignItems: "start" }}>
-        <Panel title={editing ? `Editar: ${editing.name}` : "Novo funil"}>
-          <form action={saveFunnel} className="stack" key={editing?.id ?? "novo"}>
-            <input type="hidden" name="id" value={editing?.id ?? ""} />
-            <div className="field"><label>Nome</label><input className="in" name="name" defaultValue={editing?.name ?? ""} placeholder="Boas-vindas ao Grupo VIP" required /></div>
-            <div className="field">
-              <label>Começa quando</label>
-              <select className="in" name="trigger" defaultValue={editing?.trigger ?? "lead_novo"}>
-                {Object.entries(TRIGGERS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-              </select>
-            </div>
-            {[0, 1, 2, 3].map((i) => <StepRow key={i} i={i} step={steps[i]} />)}
-            <span className="hint">{"{nome}"} = primeiro nome, {"{link}"} = link do grupo com vaga, {"{loja}"} = nome da loja. Quem responder SAIR não recebe mais.</span>
-            <label className="check"><input type="checkbox" name="active" defaultChecked={editing?.active ?? true} /> Ligado</label>
-            <div className="row">
-              <button className="btn pri" type="submit">Salvar funil</button>
-              {editing && <a className="btn" href="/funis">Cancelar</a>}
-            </div>
-          </form>
-        </Panel>
-        <Panel title="Funis" body={false}>
-          {funnels.length ? (
-            <table className="tb"><tbody>
-              {funnels.map((f) => {
-                const st = (f.steps as Step[]) ?? [];
-                const finished = done.find((d) => d.funnelId === f.id && d.status === "concluido")?._count ?? 0;
-                return (
-                  <tr key={f.id}>
-                    <td>
-                      <div className="row" style={{ gap: 8 }}>
-                        <b style={{ fontWeight: 550 }}>{f.name}</b>
-                        <span className={`chip ${f.active ? "c-l" : "c-n"}`}>{f.active ? "ligado" : "desligado"}</span>
-                      </div>
-                      <div className="dim" style={{ fontSize: 12, marginTop: 4 }}>{TRIGGERS[f.trigger] ?? f.trigger} · {st.map((s) => human(s.delayMin)).join(", ")}</div>
-                      <div className="dim" style={{ fontSize: 12 }}>{f._count.runs} pessoas entraram, {finished} concluíram</div>
-                    </td>
-                    <td className="r" style={{ width: 170 }}>
-                      <div className="row" style={{ gap: 6, justifyContent: "flex-end" }}>
-                        <a className="btn sm" href={`/funis?e=${f.id}`}>Editar</a>
-                        <form action={toggleFunnel}><input type="hidden" name="id" value={f.id} /><button className="btn sm">{f.active ? "Desligar" : "Ligar"}</button></form>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody></table>
-          ) : <div className="empty">Nenhum funil ainda.</div>}
-        </Panel>
-      </div>
+      <form action={saveFunnel} encType="multipart/form-data">
+        <div className="hd" style={{ marginBottom: 16 }}>
+          <div style={{ flex: 1 }}>
+            <div className="dim" style={{ fontSize: 13 }}><Link href="/funis" className="dim">Funis</Link> /</div>
+            <h1 className="row" style={{ gap: 12 }}>{cur?.name ?? "Novo funil"} {cur && <span className={`chip ${cur.active ? "c-l" : "c-n"}`} style={{ fontSize: 12 }}><span className="live-dot" style={{ width: 6, height: 6, display: cur.active ? "inline-block" : "none" }} /> {cur.active ? "Ativo" : "Desligado"}</span>}</h1>
+          </div>
+          <div className="acts">
+            {cur && <button className="btn" type="submit" formAction={testFunnel} formNoValidate name="id_test" value={cur.id}><FlaskConical size={15} /> Testar no meu número</button>}
+            <button className="btn pri" type="submit"><Rocket size={15} /> Salvar e publicar</button>
+          </div>
+        </div>
+        {sp.ok && <div className="ok" style={{ marginBottom: 12 }}>Funil salvo.</div>}
+        {sp.teste && <div className="ok" style={{ marginBottom: 12 }}>Mensagens do funil mandadas para o número conectado.</div>}
+        {sp.erro && <div className="err" style={{ marginBottom: 12 }}>Não achei o número conectado para o teste.</div>}
+        <div className="row" style={{ gap: 8, marginBottom: 14 }}>
+          <div className="chips">
+            {funnels.map((f) => <Link key={f.id} href={`/funis?e=${f.id}`} className={cur?.id === f.id ? "on" : ""}>{f.name}<b>{f._count.runs}</b></Link>)}
+            <Link href="/funis?novo=1" className={!cur ? "on" : ""}><Plus size={13} /> Novo</Link>
+          </div>
+        </div>
+        <FunnelBuilder key={cur?.id ?? "novo"} id={cur?.id} name={cur?.name ?? ""} trigger={cur?.trigger ?? "lead_novo"} active={cur?.active ?? true} steps={(cur?.steps as FStep[]) ?? []}
+          triggers={TRIGGERS} conds={CONDS} stats={{ running: c("ativo"), done: c("concluido"), total: cur?._count.runs ?? 0 }} />
+      </form>
+      {cur && (
+        <form action={toggleFunnel} style={{ marginTop: 10 }}>
+          <input type="hidden" name="id" value={cur.id} />
+          <button className="btn ghost sm" type="submit">{cur.active ? "Desligar este funil" : "Ligar este funil"}</button>
+        </form>
+      )}
     </>
   );
 }

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { TZDate } from "@date-fns/tz";
 import { getSession } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { evolution } from "@/lib/evolution";
 import { saveSetting } from "@/lib/settings";
 import { sendText } from "@/lib/send";
 import { tz } from "@/lib/time";
@@ -147,12 +148,38 @@ export async function createLaunch(f: FormData) {
 export async function saveFunnel(f: FormData) {
   await auth();
   const id = str(f, "id");
-  const steps = Array.from({ length: 4 }, (_, i) => ({ delayMin: Math.max(0, Math.round(num(f, `s${i}_delay`, 0) * (str(f, `s${i}_unit`) === "d" ? 1440 : str(f, `s${i}_unit`) === "h" ? 60 : 1))), text: str(f, `s${i}_text`) })).filter((s) => s.text);
+  const { saveUpload } = await import("@/lib/uploads");
+  type St = { delayMin: number; text: string; mediaUrl?: string | null; mediaType?: string | null; cond?: string | null };
+  let raw: St[] = [];
+  try { raw = JSON.parse(str(f, "steps") || "[]"); } catch { raw = []; }
+  const steps: St[] = [];
+  for (let i = 0; i < raw.length && i < 10; i++) {
+    const st = raw[i];
+    if (!st.text?.trim()) continue;
+    const file = f.get(`media_${i}`);
+    let mediaUrl = st.mediaUrl ?? null, mediaType = st.mediaType ?? null;
+    if (file instanceof File && file.size > 0) { const up = await saveUpload(file); mediaUrl = up.url; mediaType = up.type; }
+    steps.push({ delayMin: Math.max(0, Math.round(Number(st.delayMin) || 0)), text: st.text.trim(), mediaUrl, mediaType, cond: st.cond && st.cond !== "sempre" ? st.cond : null });
+  }
   const data = { name: str(f, "name") || "Funil", trigger: str(f, "trigger"), active: on(f, "active"), steps };
-  if (id) await db.funnel.update({ where: { id }, data });
-  else await db.funnel.create({ data });
+  const saved = id ? await db.funnel.update({ where: { id }, data }) : await db.funnel.create({ data });
   revalidatePath("/funis");
-  redirect("/funis?ok=1");
+  redirect(`/funis?ok=1&e=${saved.id}`);
+}
+// Manda todas as mensagens do funil para o número conectado, para conferir
+export async function testFunnel(f: FormData) {
+  const s = await auth();
+  const fid = str(f, "id_test") || str(f, "id");
+  const fn = await db.funnel.findUnique({ where: { id: fid } });
+  const me = await evolution.ownerPhone();
+  if (!fn || !me) redirect(`/funis?e=${fid}&erro=teste`);
+  const steps = (fn!.steps as { text: string; mediaUrl?: string | null; mediaType?: string | null }[]) ?? [];
+  for (const st of steps) {
+    const text = st.text.replace(/\{nome\}/g, s.name.split(" ")[0]);
+    if (st.mediaUrl) await evolution.sendMedia(me!, { url: st.mediaUrl, type: (st.mediaType as "image") ?? "image", caption: text });
+    else await evolution.sendText(me!, text);
+  }
+  redirect(`/funis?e=${fn!.id}&teste=1`);
 }
 export async function toggleFunnel(f: FormData) {
   await auth();
