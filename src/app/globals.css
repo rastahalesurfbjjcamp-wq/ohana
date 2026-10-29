@@ -917,3 +917,9 @@ a.itile:hover { border-color: #34403b; transform: translateY(-1px); }
 .refresh-fab.on svg { animation: spin .8s linear infinite; color: var(--lagoon); }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (max-width: 860px) { .refresh-fab span { display: none; } .refresh-fab { padding: 0 11px; bottom: 12px; right: 12px; } }
+
+/* Logo */
+.mark-img { width: 36px; height: auto; flex-shrink: 0; filter: drop-shadow(0 0 10px rgba(247,201,40,.18)); }
+.login-logo { width: 220px; max-width: 80%; height: auto; display: block; margin: 4px auto 10px; }
+.splash-img { width: min(340px, 72vw); height: auto; display: block; margin: 0 auto; animation: splashPulse 1.8s ease-in-out infinite; filter: drop-shadow(0 6px 30px rgba(52,194,106,.18)); }
+.splash-hub { margin-top: 14px; font-family: Elite, "Special Elite", monospace; font-size: 20px; letter-spacing: .04em; background: linear-gradient(90deg, #f7c928 0%, #fff 35%, #34c26a 70%, #f7c928 100%); background-size: 300% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: splashShine 2.4s linear infinite; }

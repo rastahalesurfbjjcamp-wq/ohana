@@ -92,7 +92,8 @@ export function Sidebar({ name, store, connected, leaves, logout }: { name: stri
   return (
     <aside className="side">
       <div className="brand">
-        <div className="mark">H</div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img className="mark-img" src="/brand/lion.png" alt="" width={36} height={39} />
         <div>
           <b>{store} Hub</b>
           <small>Comunidade e vendas</small>

@@ -14,7 +14,9 @@ export default function PainelError({ error, reset }: { error: Error & { digest?
   return (
     <div className="splash">
       <div className="splash-in">
-        <div className="splash-logo">{name}</div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img className="splash-img" src="/brand/logo.png" alt={name} />
+        <div className="splash-hub">{name} Hub</div>
         {auto ? (
           <><div className="splash-bar"><i /></div><div className="splash-txt">O sistema foi atualizado. Recarregando…</div></>
         ) : (

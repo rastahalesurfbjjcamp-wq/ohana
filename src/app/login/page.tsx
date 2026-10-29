@@ -17,8 +17,11 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   return (
     <div className="login">
       <form action={entrar} className="pnl card stack">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img className="login-logo" src="/brand/logo.png" alt={env.storeName()} />
         <div className="brand">
-          <div className="mark">H</div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img className="mark-img" src="/brand/lion.png" alt="" width={36} height={39} />
           <div>
             <b>{env.storeName()} Hub</b>
             <small>Comunidade e vendas</small>
