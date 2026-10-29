@@ -124,6 +124,7 @@ export async function saveReport(formData: FormData) {
   await admin();
   await saveSetting("report", {
     enabled: on(formData, "enabled"),
+    target: str(formData, "target") === "privado" ? "privado" : "grupo",
     time: str(formData, "time") || "22:00",
     weeklyEnabled: on(formData, "weeklyEnabled"),
     weeklyDay: num(formData, "weeklyDay") || 1,
@@ -147,6 +148,15 @@ export async function sendReportNow(formData: FormData) {
   const today = isoDayLocal();
   const text =
     p === "semana" ? await weeklyReport() : p === "mes" ? await monthReport() : await dailyReport(p === "ontem" ? addDays(today, -1) : today, { withTip: true });
+  const { getSettings } = await import("@/lib/settings");
+  const s = await getSettings();
+  if (s.report.target === "privado") {
+    const users = await db.user.findMany({ where: { phone: { not: null }, role: "ADMIN" } });
+    if (users.length) {
+      for (const u of users) await sendText(u.phone!, text);
+      redirect("/relatorio?ok=1");
+    }
+  }
   const groups = await db.group.findMany({ where: { isResults: true } });
   if (!groups.length) redirect("/relatorio?erro=sem-grupo");
   for (const g of groups) await sendText(g.jid, text);

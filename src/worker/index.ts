@@ -33,7 +33,16 @@ async function resultsGroups() {
   return db.group.findMany({ where: { isResults: true, archived: false } });
 }
 
+// Relatório vai para o grupo de resultados ou para o privado dos admins com número cadastrado
 async function postToResults(text: string) {
+  const s = await getSettings();
+  if (s.report.target === "privado") {
+    const users = await db.user.findMany({ where: { phone: { not: null }, role: "ADMIN" } });
+    if (users.length) {
+      for (const u of users) await sendText(u.phone!, text);
+      return;
+    }
+  }
   for (const g of await resultsGroups()) await sendText(g.jid, text);
 }
 

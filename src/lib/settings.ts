@@ -11,6 +11,7 @@ export const DEFAULTS = {
   },
   report: {
     enabled: true,
+    target: "grupo", // grupo | privado
     time: "22:00",
     weeklyEnabled: true,
     weeklyDay: 1, // segunda
@@ -91,6 +92,7 @@ export type Settings = {
   winback: { enabled: boolean; delayMinutes: number; text: string; onlyIfNotRemovedByAdmin: boolean };
   report: {
     enabled: boolean;
+    target: string;
     time: string;
     weeklyEnabled: boolean;
     weeklyDay: number;

@@ -170,3 +170,39 @@ export function ToggleCard({ name, title, sub, defaultChecked, tone = "l", child
     </div>
   );
 }
+
+/* Só horário: botão com relógio e lista de horários */
+export function TimeField({ name, defaultValue = "22:00", label }: { name: string; defaultValue?: string; label?: string }) {
+  const [time, setTime] = useState(defaultValue);
+  const [open, setOpen] = useState(false);
+  const ref = useOutside(open, () => setOpen(false));
+  const times = Array.from({ length: 48 }, (_, i) => `${pad(Math.floor(i / 2))}:${i % 2 ? "30" : "00"}`);
+  return (
+    <div className="dtf" ref={ref} style={{ gridTemplateColumns: "1fr" }}>
+      <input type="hidden" name={name} value={time} />
+      <button type="button" className={`dtf-b${open ? " on" : ""}`} onClick={() => setOpen((o) => !o)}><Clock size={16} /> {time}{label ? <span className="dim" style={{ fontWeight: 400 }}>{label}</span> : null}</button>
+      {open && (
+        <div className="dtf-pop" style={{ width: 260 }}>
+          <div className="dtf-own"><span className="dim" style={{ fontSize: 12 }}>Horário exato</span><input type="time" value={time} onChange={(e) => e.target.value && setTime(e.target.value)} /></div>
+          <div className="dtf-times">{times.map((t) => <button type="button" key={t} className={t === time ? "on" : ""} onClick={() => { setTime(t); setOpen(false); }}>{t}</button>)}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* Cartão de escolha única (radio bonito) */
+export function ChoiceCards({ name, options, defaultValue }: { name: string; options: { value: string; title: string; sub?: string }[]; defaultValue: string }) {
+  const [v, setV] = useState(defaultValue);
+  return (
+    <div className="choice">
+      <input type="hidden" name={name} value={v} />
+      {options.map((o) => (
+        <button type="button" key={o.value} className={v === o.value ? "on" : ""} onClick={() => setV(o.value)}>
+          <div style={{ flex: 1, textAlign: "left" }}><b>{o.title}</b>{o.sub && <small>{o.sub}</small>}</div>
+          <span className="ck">{v === o.value && <Check size={13} strokeWidth={3} />}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
