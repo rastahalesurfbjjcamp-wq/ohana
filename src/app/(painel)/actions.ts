@@ -78,7 +78,7 @@ export async function createSchedule(formData: FormData) {
     mediaUrl = up.url;
     mediaType = up.type;
   }
-  const repeat = str(formData, "repeat");
+  const repeat = str(formData, "repeat"); // só vem quando a chave Repetir está ligada
   await db.scheduledMessage.create({
     data: {
       text,
