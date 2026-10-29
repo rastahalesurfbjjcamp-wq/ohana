@@ -205,3 +205,24 @@ export async function sendBroadcastTest(f: FormData) {
   }
   redirect("/disparos?teste=1");
 }
+
+// Votação: vira tarefa de produção ou pré-venda para quem votou na opção vencedora
+export async function pollToTask(f: FormData) {
+  const s = await auth();
+  const p = await db.poll.findUnique({ where: { id: str(f, "id") }, include: { votes: true } });
+  if (!p) redirect("/votacoes");
+  const counts = p!.options.map((_, i) => p!.votes.filter((v) => v.option === i).length);
+  const win = counts.indexOf(Math.max(...counts));
+  await db.task.create({ data: { title: `Produzir: ${p!.options[win]}`, description: `Venceu a votação "${p!.question}" com ${counts[win]} votos de ${p!.votes.length}.`, priority: "alta", createdBy: s.name } });
+  redirect(`/votacoes?id=${p!.id}&tarefa=1`);
+}
+export async function pollToPresale(f: FormData) {
+  await auth();
+  const p = await db.poll.findUnique({ where: { id: str(f, "id") }, include: { votes: true } });
+  if (!p) redirect("/votacoes");
+  const counts = p!.options.map((_, i) => p!.votes.filter((v) => v.option === i).length);
+  const win = counts.indexOf(Math.max(...counts));
+  const phones = p!.votes.filter((v) => v.option === win).map((v) => v.phone);
+  await db.setting.upsert({ where: { key: "_disparo_lista" }, create: { key: "_disparo_lista", value: { phones, at: Date.now() } }, update: { value: { phones, at: Date.now() } } });
+  redirect("/disparos?lista=1");
+}
