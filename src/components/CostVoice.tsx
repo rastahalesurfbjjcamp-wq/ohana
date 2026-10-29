@@ -1,7 +1,7 @@
 "use client";
 // Preencher custos falando ou digitando: a IA liga cada valor ao produto.
 import { useRef, useState, useTransition } from "react";
-import { Check, Mic, Square, Wand2, X } from "lucide-react";
+import { Check, Mic, SendHorizontal, Square, X } from "lucide-react";
 
 type Item = { product: string; cost: number };
 type SR = { lang: string; continuous: boolean; interimResults: boolean; start: () => void; stop: () => void; onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null; onend: (() => void) | null };
@@ -30,8 +30,14 @@ export function CostVoice({ products, parse, save }: { products: string[]; parse
     <div className="cv">
       <button type="button" className={`cv-mic${rec ? " on" : ""}`} onClick={mic} aria-label={rec ? "Parar" : "Falar"}>{rec ? <Square size={26} /> : <Mic size={30} />}</button>
       <div className={`cv-wave${rec ? " on" : ""}`}>{Array.from({ length: 18 }).map((_, i) => <i key={i} style={{ animationDelay: `${(i % 6) * 0.1}s` }} />)}</div>
-      <textarea className="in" value={text} onChange={(e) => setText(e.target.value)} placeholder={`Ex.: "A Original Rasta custou 58 reais, o short Original Rasta 52 e a Hidden Promised Land 58"`} style={{ minHeight: 90, fontStyle: text ? "normal" : "italic" }} />
-      <button type="button" className="btn" disabled={!text.trim() || pending} onClick={understand} style={{ width: "100%", justifyContent: "center" }}><Wand2 size={15} /> {pending && !items.length ? "Entendendo…" : "Entender os valores"}</button>
+      <div style={{ position: "relative" }}>
+        <textarea className="in" value={text} onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && text.trim() && !pending) { e.preventDefault(); if (rec) sr.current?.stop(); understand(); } }}
+          placeholder={`Ex.: "A Original Rasta custou 58 reais, o short Original Rasta 52 e a Hidden Promised Land 58"`} style={{ minHeight: 90, paddingRight: 54, fontStyle: text ? "normal" : "italic" }} />
+        <button type="button" className="btn pri" aria-label="Enviar" title="Enviar (Enter)" disabled={!text.trim() || pending} onClick={() => { if (rec) sr.current?.stop(); understand(); }}
+          style={{ position: "absolute", right: 8, bottom: 8, width: 38, height: 38, padding: 0, justifyContent: "center", borderRadius: 11 }}><SendHorizontal size={17} /></button>
+      </div>
+      <div className="dim" style={{ fontSize: 12, textAlign: "center" }}>{pending && !items.length ? "Entendendo os valores…" : "Fale ou digite e aperte enviar. Você confere antes de salvar."}</div>
       {items.map((it, i) => (
         <div className="cv-it" key={i}>
           <span>{it.product}</span>

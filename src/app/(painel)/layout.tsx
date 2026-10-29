@@ -3,6 +3,7 @@ import { getSession, logout } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Sidebar } from "@/components/Sidebar";
 import { env } from "@/lib/env";
+import { TableSort } from "@/components/TableSort";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,7 @@ export default async function PainelLayout({ children }: { children: React.React
     <div className="app">
       <Sidebar name={session.name} store={env.storeName()} connected={connected} leaves={leaves} logout={sair} />
       <main className="main">{children}</main>
+      <TableSort />
     </div>
   );
 }

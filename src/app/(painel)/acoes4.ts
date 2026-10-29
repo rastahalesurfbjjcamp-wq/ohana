@@ -225,3 +225,24 @@ export async function applyTemplate(f: FormData) {
   revalidatePath("/modelos");
   redirect(`/modelos?usado=${t!.k}`);
 }
+
+// Custos digitados direto na tabela de produtos (um por um ou vários de uma vez)
+export async function saveCostTable(f: FormData) {
+  await admin();
+  const num = (v: string) => { const n = Number(v.replace(/[^\d,.-]/g, "").replace(/\.(?=\d{3}(\D|$))/g, "").replace(",", ".")); return Number.isFinite(n) && n > 0 ? n : 0; };
+  const items: { product: string; cost: number }[] = [];
+  if (str(f, "acao") === "bulk") {
+    const v = num(str(f, "bulk"));
+    if (v) for (const t of f.getAll("sel")) items.push({ product: String(t), cost: v });
+  } else {
+    for (const [k, val] of f.entries()) {
+      if (!k.startsWith("c::")) continue;
+      const t = k.slice(3);
+      const v = String(val).trim();
+      if (v && v !== String(f.get(`o::${t}`) ?? "")) { const n = num(v); if (n) items.push({ product: t, cost: n }); }
+    }
+  }
+  const r = items.length ? await saveParsedCosts(items) : { ok: 0 };
+  const back = str(f, "back");
+  redirect(`${back.startsWith("/produtos") ? back : "/produtos"}${back.includes("?") ? "&" : "?"}salvos=${r.ok}`);
+}

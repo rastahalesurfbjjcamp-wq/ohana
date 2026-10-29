@@ -8,12 +8,14 @@ import { resolvePeriod } from "@/lib/periods";
 import { getSettings } from "@/lib/settings";
 import { brl, pct } from "@/lib/time";
 import { ErrorNote, Header, Kpi, Panel } from "@/components/ui";
-import { parseCosts, saveParsedCosts } from "../acoes4";
+import { parseCosts, saveCostTable, saveParsedCosts } from "../acoes4";
+import { CostTableBar, SelectAll } from "@/components/CostTableBar";
 
 export const dynamic = "force-dynamic";
 
-export default async function Produtos({ searchParams }: { searchParams: Promise<{ p?: string; de?: string; ate?: string; todos?: string }> }) {
-  const { p, de, ate, todos } = await searchParams;
+export default async function Produtos({ searchParams }: { searchParams: Promise<{ p?: string; de?: string; ate?: string; todos?: string; salvos?: string }> }) {
+  const { p, de, ate, todos, salvos } = await searchParams;
+  const backUrl = `/produtos?${new URLSearchParams({ ...(p ? { p } : {}), ...(de ? { de } : {}), ...(ate ? { ate } : {}), ...(todos ? { todos } : {}) })}`;
   const period = resolvePeriod(p, "30d", de, ate);
   const s = await getSettings();
   let rows: ProductProfit[] = [];
@@ -39,6 +41,7 @@ export default async function Produtos({ searchParams }: { searchParams: Promise
         <Link className="btn" href="/custos"><Settings size={15} /> Impostos e taxas</Link>
       </Header>
       {error ? <ErrorNote error={error} /> : null}
+      {salvos && <div className="ok">{Number(salvos) ? `${salvos} custo${salvos === "1" ? "" : "s"} salvo${salvos === "1" ? "" : "s"}. O lucro já foi recalculado.` : "Nenhum custo mudou."}</div>}
       <div className="grid g4">
         <Kpi icon={<ShoppingBag size={15} />} label="Faturamento líquido" value={brl(revenue, 0)} sub={`${m?.orders ?? 0} pedidos · ${period.label.toLowerCase()}`} />
         <Kpi icon={<Megaphone size={15} />} tone="k" label="Anúncios" value={m?.ads != null ? brl(m.ads, 0) : "–"} sub={m?.ads != null ? `${pct(adsShare, 0)} do faturamento, puxado do Meta` : "conecte o Meta Ads"} />
@@ -50,19 +53,22 @@ export default async function Produtos({ searchParams }: { searchParams: Promise
         </div>
       </div>
       <div className="cols c-2-1" style={{ alignItems: "start" }}>
-        <Panel title="Lucro por produto" sub={`${todos ? "Todos os produtos" : "Os vendidos"} no período, com dados reais da Shopify. O lucro já desconta a parte dos anúncios.`} body={false}
+        <Panel title="Lucro por produto" sub={`${todos ? "Todos os produtos" : "Os vendidos"} no período. Clique no título da coluna para ordenar, digite o custo direto na linha ou marque vários para aplicar o mesmo custo.`} body={false}
           right={<Link className="btn sm ghost" href={todos ? "/produtos" : `/produtos?todos=1${p ? `&p=${p}` : ""}`}>{todos ? "Só os vendidos" : `Ver os ${rows.length}`}</Link>}>
           {list.length ? (
+            <form action={saveCostTable}>
+            <input type="hidden" name="back" value={backUrl} />
             <div style={{ overflowX: "auto" }}>
               <table className="tb">
-                <thead><tr><th>Produto</th><th className="r">Vendidos</th><th className="r">Faturou</th><th className="r">Custo</th><th className="r">Lucro real</th><th style={{ width: 170 }}>Margem</th><th className="r">Estoque</th></tr></thead>
+                <thead><tr><th style={{ width: 36 }}><SelectAll /></th><th>Produto</th><th className="r">Vendidos</th><th className="r">Faturou</th><th className="r">Custo por peça</th><th className="r">Lucro real</th><th style={{ width: 170 }}>Margem</th><th className="r">Estoque</th></tr></thead>
                 <tbody>
                   {list.slice(0, 150).map((r) => {
                     const lr = real(r);
                     const mg = lr != null && r.revenue ? lr / r.revenue : null;
                     return (
                       <tr key={r.product.id} className={r.cost == null && r.sold ? "warn-y" : ""}>
-                        <td>
+                        <td><input type="checkbox" name="sel" value={r.product.title} aria-label={`Selecionar ${r.product.title}`} /></td>
+                        <td data-sort={r.product.title.toLowerCase()}>
                           <div className="row" style={{ gap: 10, flexWrap: "nowrap" }}>
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             {r.product.image ? <img className="thumb" src={r.product.image} alt="" /> : <div className="thumb" />}
@@ -71,16 +77,21 @@ export default async function Produtos({ searchParams }: { searchParams: Promise
                         </td>
                         <td className="r">{r.sold}</td>
                         <td className="r">{brl(r.revenue, 0)}</td>
-                        <td className="r">{r.cost != null ? <span className="mut">{brl(r.cost, 0)}{r.costFromLot ? " ·" : ""}</span> : <span className="chip c-s"><AlertCircle size={11} /> falta o custo</span>}</td>
-                        <td className="r">{lr != null ? <b className={lr < 0 ? "dn" : "up"}>{brl(lr, 0)}</b> : <span className="dim">?</span>}</td>
-                        <td>{mg != null ? <div className="row" style={{ gap: 8, flexWrap: "nowrap" }}><div className="hbar" style={{ flex: 1 }}><i className={mg < 0.15 ? "c" : mg < 0.3 ? "s" : ""} style={{ width: `${Math.max(2, (Math.max(0, mg) / maxMargin) * 100)}%` }} /></div><b style={{ width: 38, textAlign: "right" }}>{pct(mg, 0)}</b></div> : <span className="dim">?</span>}</td>
-                        <td className="r">{r.stock <= 0 ? <span className="chip c-c">zerado</span> : <span className="mut">{r.stock}</span>}</td>
+                        <td className="r" data-sort={r.cost ?? -1}>
+                          <input type="hidden" name={`o::${r.product.title}`} value={r.cost != null ? r.cost.toFixed(2).replace(".", ",") : ""} />
+                          <span className="row" style={{ gap: 4, justifyContent: "flex-end", flexWrap: "nowrap" }}><span className="dim" style={{ fontSize: 12 }}>R$</span><input className={`cost-in${r.cost == null ? " miss" : ""}`} name={`c::${r.product.title}`} defaultValue={r.cost != null ? r.cost.toFixed(2).replace(".", ",") : ""} data-orig={r.cost != null ? r.cost.toFixed(2).replace(".", ",") : ""} placeholder="falta" inputMode="decimal" /></span>
+                        </td>
+                        <td className="r" data-sort={lr ?? -1e9}>{lr != null ? <b className={lr < 0 ? "dn" : "up"}>{brl(lr, 0)}</b> : <span className="dim">?</span>}</td>
+                        <td data-sort={mg ?? -1e9}>{mg != null ? <div className="row" style={{ gap: 8, flexWrap: "nowrap" }}><div className="hbar" style={{ flex: 1 }}><i className={mg < 0.15 ? "c" : mg < 0.3 ? "s" : ""} style={{ width: `${Math.max(2, (Math.max(0, mg) / maxMargin) * 100)}%` }} /></div><b style={{ width: 38, textAlign: "right" }}>{pct(mg, 0)}</b></div> : <span className="dim">?</span>}</td>
+                        <td className="r" data-sort={r.stock}>{r.stock <= 0 ? <span className="chip c-c">zerado</span> : <span className="mut">{r.stock}</span>}</td>
                       </tr>
                     );
                   })}
                 </tbody>
               </table>
             </div>
+            <CostTableBar />
+            </form>
           ) : !error && <div className="empty">Nenhuma venda no período.</div>}
         </Panel>
         <section className="pnl" style={{ padding: 22, borderColor: "rgba(52,194,106,.35)" }}>
