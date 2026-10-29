@@ -206,3 +206,44 @@ export function ChoiceCards({ name, options, defaultValue }: { name: string; opt
     </div>
   );
 }
+
+/* Só data: calendário num botão. Manda AAAA-MM-DD (ou vazio). */
+export function DateField({ name, defaultValue = "", placeholder = "Sem prazo" }: { name: string; defaultValue?: string; placeholder?: string }) {
+  const [day, setDay] = useState(defaultValue);
+  const [open, setOpen] = useState(false);
+  const base = day ? new Date(`${day}T12:00:00`) : new Date();
+  const [month, setMonth] = useState(new Date(base.getFullYear(), base.getMonth(), 1));
+  const ref = useOutside(open, () => setOpen(false));
+  const today = iso(new Date());
+  const first = month.getDay();
+  const dim = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+  const quick = [["Hoje", 0], ["Amanhã", 1], ["Sexta", ((5 - new Date().getDay() + 7) % 7) || 7], ["Em 1 semana", 7]] as const;
+  return (
+    <div className="dtf" ref={ref} style={{ gridTemplateColumns: "1fr" }}>
+      <input type="hidden" name={name} value={day} />
+      <button type="button" className={`dtf-b${open ? " on" : ""}`} onClick={() => setOpen((o) => !o)}>
+        <CalendarDays size={16} /> {day ? `${WDS[new Date(`${day}T12:00:00`).getDay()]}, ${day.slice(8)}/${day.slice(5, 7)}` : <span className="dim" style={{ fontWeight: 400 }}>{placeholder}</span>}
+      </button>
+      {open && (
+        <div className="dtf-pop">
+          <div className="dtf-quick">
+            {quick.map(([l, n]) => { const q = new Date(); q.setDate(q.getDate() + n); return <button type="button" key={l} className={iso(q) === day ? "on" : ""} onClick={() => { setDay(iso(q)); setOpen(false); }}>{l}</button>; })}
+            {day && <button type="button" onClick={() => { setDay(""); setOpen(false); }}>Sem prazo</button>}
+          </div>
+          <div className="dp-mh">
+            <button type="button" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))} aria-label="Mês anterior"><ChevronLeft size={15} /></button>
+            <span>{MONTHS[month.getMonth()]} de {month.getFullYear()}</span>
+            <button type="button" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))} aria-label="Próximo mês"><ChevronRight size={15} /></button>
+          </div>
+          <div className="dp-g">
+            {["D", "S", "T", "Q", "Q", "S", "S"].map((w, i) => <span key={i} className="wd">{w}</span>)}
+            {Array.from({ length: first }).map((_, i) => <span key={`e${i}`} className="d out" />)}
+            {Array.from({ length: dim }, (_, i) => iso(new Date(month.getFullYear(), month.getMonth(), i + 1))).map((x) => (
+              <button type="button" key={x} className={`d${x === day ? " edge st en" : ""}${x === today ? " today" : ""}`} onClick={() => { setDay(x); setOpen(false); }}>{Number(x.slice(8))}</button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

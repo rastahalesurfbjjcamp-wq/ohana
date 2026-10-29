@@ -735,3 +735,26 @@ a.trk:hover { border-color: var(--lagoon); }
 .ckcard input:checked::after { content: ""; width: 5px; height: 10px; border: solid #04140a; border-width: 0 2.5px 2.5px 0; transform: rotate(45deg) translate(-1px, -1px); }
 .ckgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; }
 .wa-group .wmsg { margin-left: 0; margin-right: 28px; background: #1f2c34; border-radius: 2px 10px 10px 10px; }
+
+/* Quadro de tarefas */
+.kb { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; align-items: start; }
+.kb-col { border-radius: 18px; border: 1px solid var(--line); background: #101412; padding: 12px; min-height: 420px; transition: border-color .15s, background .15s; }
+.kb-col.over { border-color: rgba(52,194,106,.55); background: #111816; }
+.kb-h { display: flex; align-items: center; gap: 8px; padding: 4px 6px 12px; font-size: 14.5px; }
+.kb-list { display: flex; flex-direction: column; gap: 10px; }
+.kb-card { border-radius: 14px; border: 1px solid #222826; background: linear-gradient(180deg, #161b19, #131816); padding: 12px; cursor: grab; transition: transform .15s, box-shadow .15s, border-color .15s; display: flex; flex-direction: column; gap: 8px; }
+.kb-card:hover { border-color: #34403b; }
+.kb-card.drag { opacity: .5; transform: rotate(2deg) scale(1.02); box-shadow: 0 20px 40px -10px rgba(0,0,0,.7); border-color: rgba(52,194,106,.6); }
+.kb-card.done .kb-t { text-decoration: line-through; color: var(--ink3); }
+.kb-t { font-size: 14px; font-weight: 600; line-height: 1.4; }
+.kb-due { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--ink3); }
+.kb-due.late { color: var(--coral); } .kb-due.today { color: var(--sun); }
+.kb-acts { display: inline-flex; gap: 2px; opacity: 0; transition: opacity .15s; }
+.kb-card:hover .kb-acts { opacity: 1; }
+.kb-acts button { width: 26px; height: 26px; border-radius: 7px; border: 0; background: #1e2421; color: var(--ink2); cursor: pointer; display: grid; place-items: center; }
+.kb-acts button:hover { color: #fff; background: #2a322e; }
+.kb-empty { border: 1.5px dashed #262d2a; border-radius: 12px; padding: 20px; text-align: center; color: var(--ink3); font-size: 12.5px; }
+.statk { display: flex; align-items: center; gap: 14px; padding: 16px 18px; }
+.statk b { display: block; font: 650 26px Geist, system-ui; letter-spacing: -.03em; line-height: 1.1; }
+.statk small { font-size: 12.5px; color: var(--ink3); }
+@media (max-width: 1000px) { .kb { grid-template-columns: 1fr; } .kb-acts { opacity: 1; } }
