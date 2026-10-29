@@ -1,15 +1,20 @@
 // IA: interpreta comandos do grupo de resultados e transcreve áudios.
 import Anthropic from "@anthropic-ai/sdk";
 import { env } from "./env";
+import { creds } from "./integrations";
 
-export function hasAI() {
-  return !!env.anthropicKey();
+export async function hasAI() {
+  return !!(await creds()).ai.key;
 }
 
-let _client: Anthropic | null = null;
-function client() {
-  if (!_client) _client = new Anthropic({ apiKey: env.anthropicKey() });
-  return _client;
+let _client: { key: string; c: Anthropic } | null = null;
+async function client() {
+  const key = (await creds()).ai.key ?? "";
+  if (!_client || _client.key !== key) _client = { key, c: new Anthropic({ apiKey: key }) };
+  return _client.c;
+}
+async function model() {
+  return (await creds()).ai.model ?? env.anthropicModel();
 }
 
 export const COMMAND_TOOLS: Anthropic.Tool[] = [
@@ -81,8 +86,8 @@ Se a mensagem não for um pedido para você (conversa entre a equipe), responda 
 Nunca invente números.`;
 
 export async function interpretCommand(text: string, todayIso: string) {
-  const res = await client().messages.create({
-    model: env.anthropicModel(),
+  const res = await (await client()).messages.create({
+    model: await model(),
     max_tokens: 600,
     system: `${SYSTEM()}\nHoje é ${todayIso}.`,
     tools: COMMAND_TOOLS,
@@ -98,9 +103,9 @@ export async function interpretCommand(text: string, todayIso: string) {
 }
 
 export async function shortTip(numbersText: string): Promise<string | undefined> {
-  if (!hasAI()) return undefined;
-  const res = await client().messages.create({
-    model: env.anthropicModel(),
+  if (!(await hasAI())) return undefined;
+  const res = await (await client()).messages.create({
+    model: await model(),
     max_tokens: 160,
     system:
       "Você analisa os números do dia de um e-commerce de moda. Responda com UMA frase curta e prática, em português simples, começando com 'Para amanhã:'. Sem travessões, sem emojis, sem inventar números que não estão no texto.",
@@ -112,14 +117,15 @@ export async function shortTip(numbersText: string): Promise<string | undefined>
 
 // Transcrição de áudio (API compatível com OpenAI: OpenAI, Groq e outras)
 export async function transcribe(base64: string, mimetype = "audio/ogg"): Promise<string> {
-  const key = env.transcribeKey();
+  const t = (await creds()).transcribe;
+  const key = t.key;
   if (!key) throw new Error("Transcrição não configurada (TRANSCRIBE_API_KEY)");
   const buf = Buffer.from(base64, "base64");
   const form = new FormData();
   form.append("file", new Blob([buf], { type: mimetype }), mimetype.includes("ogg") ? "audio.ogg" : "audio.mp3");
-  form.append("model", env.transcribeModel());
+  form.append("model", t.model ?? env.transcribeModel());
   form.append("language", "pt");
-  const res = await fetch(env.transcribeUrl(), { method: "POST", headers: { Authorization: `Bearer ${key}` }, body: form });
+  const res = await fetch(t.url ?? env.transcribeUrl(), { method: "POST", headers: { Authorization: `Bearer ${key}` }, body: form });
   if (!res.ok) throw new Error(`Transcrição falhou: ${res.status} ${await res.text()}`);
   const json = (await res.json()) as { text?: string };
   return (json.text ?? "").trim();

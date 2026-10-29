@@ -93,7 +93,7 @@ export async function handleCommand(fromPhone: string, input: string, wasAudio: 
     return "Cancelado, não lancei nada.";
   }
 
-  if (!hasAI()) {
+  if (!(await hasAI())) {
     // Sem IA: entende só pedidos de relatório simples
     const t = text.toLowerCase();
     if (/relat[oó]rio|resultado|vendas/.test(t)) {

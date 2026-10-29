@@ -1,12 +1,11 @@
 // Leitura de vendas da Shopify (Admin GraphQL).
-import { env } from "./env";
+import { creds } from "./integrations";
 
 const API_VERSION = "2025-10";
 
 async function gql<T>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
-  const domain = env.shopifyDomain();
-  const token = env.shopifyToken();
-  if (!domain || !token) throw new Error("Shopify não configurada (SHOPIFY_STORE_DOMAIN e SHOPIFY_ADMIN_TOKEN)");
+  const { domain, token } = (await creds()).shopify;
+  if (!domain || !token) throw new Error("SHOPIFY_NAO_CONFIGURADA");
   const res = await fetch(`https://${domain}/admin/api/${API_VERSION}/graphql.json`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Shopify-Access-Token": token },

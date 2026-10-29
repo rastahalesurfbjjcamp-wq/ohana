@@ -10,7 +10,7 @@ const DEVICE: Record<string, string> = { mobile: "Celular", desktop: "Computador
 export default async function Conversao({ searchParams }: { searchParams: Promise<{ p?: string }> }) {
   const { p } = await searchParams;
   const period = resolvePeriod(p, "30d");
-  if (!hasShopify()) {
+  if (!(await hasShopify())) {
     return (
       <>
         <Header title="Conversão" />

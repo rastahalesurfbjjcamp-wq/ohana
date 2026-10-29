@@ -6,7 +6,7 @@ import {
   ArrowLeftRight, Bot, Box, CalendarClock, CalendarHeart, ChartNoAxesCombined, ChevronDown, ChevronRight, Contact,
   Gift, HeartHandshake, LayoutDashboard, LogOut, MessageCircle, MessagesSquare, Package, Percent, ReceiptText,
   RefreshCcw, Rocket, Route, Send, Settings, ShoppingBag, Sparkles, SquareCheckBig, Truck, UserPlus, Users, Vote,
-  Wallet, Warehouse, Workflow, Coins, type LucideIcon,
+  Wallet, Warehouse, Workflow, Coins, Plug, type LucideIcon,
 } from "lucide-react";
 
 type Item = { href: string; icon: LucideIcon; label: string; badge?: number; soon?: boolean };
@@ -108,6 +108,7 @@ export function Sidebar({ name, store, connected, leaves, logout }: { name: stri
         ))}
       </nav>
       <div className="foot">
+        {link({ href: "/integracoes", icon: Plug, label: "Integrações" })}
         {link({ href: "/configuracoes", icon: Settings, label: "Configurações" })}
         <div className="me">
           <div className="av">{initials}</div>

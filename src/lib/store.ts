@@ -1,16 +1,16 @@
 // Dados da loja na Shopify para as telas do painel (pedidos, produtos, clientes, conversão).
 // Leituras com cache curto em memória para as telas abrirem rápido.
-import { env } from "./env";
+import { creds } from "./integrations";
 
 const API_VERSION = "2025-10";
 
-export function hasShopify() {
-  return !!env.shopifyDomain() && !!env.shopifyToken();
+export async function hasShopify() {
+  const c = (await creds()).shopify;
+  return !!c.domain && !!c.token;
 }
 
 export async function gql<T>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
-  const domain = env.shopifyDomain();
-  const token = env.shopifyToken();
+  const { domain, token } = (await creds()).shopify;
   if (!domain || !token) throw new Error("SHOPIFY_NAO_CONFIGURADA");
   const res = await fetch(`https://${domain}/admin/api/${API_VERSION}/graphql.json`, {
     method: "POST",

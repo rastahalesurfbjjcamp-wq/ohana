@@ -1,11 +1,10 @@
 // Gasto do Meta Ads (Graph API).
-import { env } from "./env";
+import { creds } from "./integrations";
 
 const GRAPH = "https://graph.facebook.com/v23.0";
 
 export async function metaSpend(sinceIso: string, untilIso: string): Promise<number | null> {
-  const token = env.metaToken();
-  const account = env.metaAdAccount();
+  const { token, adAccount: account } = (await creds()).meta;
   if (!token || !account) return null;
   const act = account.startsWith("act_") ? account : `act_${account}`;
   const params = new URLSearchParams({
@@ -21,8 +20,7 @@ export async function metaSpend(sinceIso: string, untilIso: string): Promise<num
 
 // Gasto e compras que o próprio Meta diz ter gerado
 export async function metaInsights(sinceIso: string, untilIso: string, level: "account" | "campaign" = "account") {
-  const token = env.metaToken();
-  const account = env.metaAdAccount();
+  const { token, adAccount: account } = (await creds()).meta;
   if (!token || !account) return null;
   const act = account.startsWith("act_") ? account : `act_${account}`;
   const params = new URLSearchParams({

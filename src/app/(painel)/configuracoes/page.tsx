@@ -25,7 +25,6 @@ async function whatsapp() {
   }
 }
 
-const CHECK = (ok: boolean) => <span className={`chip ${ok ? "c-l" : "c-n"}`}>{ok ? "configurado" : "falta"}</span>;
 
 export default async function Configuracoes({ searchParams }: { searchParams: Promise<{ ok?: string }> }) {
   const sp = await searchParams;
@@ -69,15 +68,8 @@ export default async function Configuracoes({ searchParams }: { searchParams: Pr
             {wa.state === "error" && <div className="err">Não consegui falar com a Evolution API: {wa.error}</div>}
           </div>
         </Panel>
-        <Panel title="Integrações" sub="As chaves ficam nas variáveis do servidor (Easypanel), nunca aqui.">
-          <table className="tb">
-            <tbody>
-              <tr><td>Shopify</td><td className="r">{CHECK(!!env.shopifyDomain() && !!env.shopifyToken())}</td></tr>
-              <tr><td>Meta Ads</td><td className="r">{CHECK(!!env.metaToken() && !!env.metaAdAccount())}</td></tr>
-              <tr><td>IA (comandos e dica do dia)</td><td className="r">{CHECK(!!env.anthropicKey())}</td></tr>
-              <tr><td>Transcrição de áudio</td><td className="r">{CHECK(!!env.transcribeKey())}</td></tr>
-            </tbody>
-          </table>
+        <Panel title="Integrações" sub="Shopify, Meta Ads, IA e transcrição agora se conectam pela aba Integrações.">
+          <Link className="btn pri" href="/integracoes">Abrir Integrações</Link>
         </Panel>
       </div>
       <div className="grid g2" style={{ alignItems: "start" }}>
