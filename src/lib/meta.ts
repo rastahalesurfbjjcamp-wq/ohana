@@ -190,7 +190,12 @@ export interface CampStat {
   group: AdGroup; auto: AdGroup; manual: boolean;
   spend: number; impressions: number; clicks: number;
   leads: number; follows: number; visits: number; purchases: number; value: number;
+  acts: Record<string, number>; // tudo que o Meta mandou nessa campanha (para escolher a métrica de seguidor)
 }
+
+// Campos extras que nem toda conta/versão aceita: testa uma vez e lembra
+const EXTRA = ["instagram_profile_visits"];
+const extraOk = new Map<string, boolean>();
 
 const OBJ: Record<string, AdGroup> = {
   OUTCOME_SALES: "vendas", CONVERSIONS: "vendas", PRODUCT_CATALOG_SALES: "vendas",
@@ -203,9 +208,11 @@ async function campStatsRaw(sinceIso: string, untilIso: string): Promise<CampSta
   const [accs, s] = await Promise.all([activeAccounts(), getSettings()]);
   if (!token || !accs.length) return null;
   const out: CampStat[] = [];
+  const fm = s.ads.followMetric;
   for (const acc of accs) {
+    const extra = EXTRA.filter((f) => extraOk.get(f) !== false);
     let url: string | null = `${GRAPH}/${actId(acc.id)}/insights?${new URLSearchParams({
-      fields: "campaign_id,campaign_name,objective,spend,impressions,inline_link_clicks,actions,action_values",
+      fields: ["campaign_id,campaign_name,objective,spend,impressions,inline_link_clicks,actions,action_values", ...extra].join(","),
       level: "campaign",
       time_range: JSON.stringify({ since: sinceIso, until: untilIso }),
       limit: "200",
@@ -213,11 +220,22 @@ async function campStatsRaw(sinceIso: string, untilIso: string): Promise<CampSta
     })}`;
     while (url) {
       const res: Response = await fetch(url, { cache: "no-store" });
-      if (!res.ok) throw new Error(`Meta Ads respondeu ${res.status} na conta ${acc.name || acc.id}`);
-      const j = (await res.json()) as { data?: { campaign_id: string; campaign_name: string; objective?: string; spend?: string; impressions?: string; inline_link_clicks?: string; actions?: A; action_values?: A }[]; paging?: { next?: string } };
+      if (!res.ok) {
+        const body = await res.text();
+        // campo extra não aceito: tira e tenta de novo
+        const bad = extra.find((f) => body.includes(f));
+        if (res.status === 400 && bad && extraOk.get(bad) !== false) { extraOk.set(bad, false); return campStatsRaw(sinceIso, untilIso); }
+        throw new Error(`Meta Ads respondeu ${res.status} na conta ${acc.name || acc.id}`);
+      }
+      for (const f of extra) extraOk.set(f, true);
+      const j = (await res.json()) as { data?: ({ campaign_id: string; campaign_name: string; objective?: string; spend?: string; impressions?: string; inline_link_clicks?: string; actions?: A; action_values?: A } & Record<string, unknown>)[]; paging?: { next?: string } };
       for (const r of j.data ?? []) {
-        const follows = most(r.actions, /follow/, /unfollow/);
-        const visits = most(r.actions, /profile_visit/);
+        const acts: Record<string, number> = {};
+        for (const a of r.actions ?? []) acts[a.action_type] = Number(a.value) || 0;
+        for (const f of extra) if (r[f] != null) acts[f] = Number(r[f]) || 0;
+        const visits = acts.instagram_profile_visits || most(r.actions, /profile_visit/);
+        // seguidor: a métrica escolhida no painel, ou o que tiver "follow" no nome
+        const follows = fm ? acts[fm] ?? 0 : most(r.actions, /follow/, /unfollow/);
         const leads = first(r.actions, ["lead", "onsite_conversion.lead_grouped", "offsite_conversion.fb_pixel_lead", "onsite_web_lead", "leadgen_grouped"]);
         const purchases = first(r.actions, ["omni_purchase", "offsite_conversion.fb_pixel_purchase", "purchase"]);
         const objective = r.objective ?? "";
@@ -229,7 +247,7 @@ async function campStatsRaw(sinceIso: string, untilIso: string): Promise<CampSta
           id: r.campaign_id, name: r.campaign_name, account: acc.id, accountName: acc.name, objective,
           group: manual ?? auto, auto, manual: !!manual,
           spend: Number(r.spend ?? 0), impressions: Number(r.impressions ?? 0), clicks: Number(r.inline_link_clicks ?? 0),
-          leads, follows, visits, purchases,
+          leads, follows, visits, purchases, acts,
           value: first(r.action_values, ["omni_purchase", "offsite_conversion.fb_pixel_purchase", "purchase"]),
         });
       }
@@ -242,7 +260,7 @@ async function campStatsRaw(sinceIso: string, untilIso: string): Promise<CampSta
 export async function campStats(sinceIso: string, untilIso: string) {
   const s = await getSettings();
   // a chave muda quando as escolhas mudam, para o painel refletir na hora
-  const key = JSON.stringify([s.ads.accounts.filter((a) => a.on).map((a) => a.id + a.kind), s.ads.camp]);
+  const key = JSON.stringify([s.ads.accounts.filter((a) => a.on).map((a) => a.id + a.kind), s.ads.camp, s.ads.followMetric]);
   return swr(`cs:${sinceIso}:${untilIso}:${key}`, 300_000, () => campStatsRaw(sinceIso, untilIso));
 }
 

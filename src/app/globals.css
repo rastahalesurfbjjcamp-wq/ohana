@@ -1090,3 +1090,8 @@ a.itile:hover { border-color: #34403b; transform: translateY(-1px); }
 .tbw { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; }
 .hst .tb td, .hst .tb th { white-space: nowrap; }
 .hst .tb tfoot td { border-top: 1px solid var(--line); padding-top: 12px; }
+.ok-btn { background: rgba(52,194,106,.16); border-color: rgba(52,194,106,.6); color: #4ad781; }
+
+/* Atualizar no topo de cada tela */
+.rbtn.on svg { animation: spin .8s linear infinite; color: var(--lagoon); }
+@media (max-width: 860px) { .rbtn { display: none !important; } }

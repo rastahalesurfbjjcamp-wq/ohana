@@ -12,11 +12,15 @@ import { DateRange } from "@/components/DateRange";
 import { Bars } from "@/components/charts";
 import { daysBetween, resolvePeriod } from "@/lib/periods";
 import { ordersBetween, products, recentOrders, type Order } from "@/lib/store";
+import { beyondOrdersWindow } from "@/lib/shopify";
+import { couponSales, salesSeries } from "@/lib/history";
 import { ensureTeam, partnerStats } from "@/lib/partners";
 import { byGroup, campStats, type CampStat } from "@/lib/meta";
 import { getSettings } from "@/lib/settings";
 import { saveDashCards } from "./acoes7";
-import { Heart, SlidersHorizontal } from "lucide-react";
+import { Heart } from "lucide-react";
+import { CardPicker } from "@/components/CardPicker";
+import { RefreshButton } from "@/components/RefreshButton";
 
 const CARDS: [string, string][] = [
   ["faturamento", "Faturamento"], ["pedidos", "Pedidos"], ["lucro", "Lucro"],
@@ -144,7 +148,13 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
   const pendTotal = pay.reduce((a, x) => a + x.pv, 0);
   const oneDay = period.from === period.to;
   const hourOf = (iso: string) => Number(new Intl.DateTimeFormat("pt-BR", { timeZone: tz, hour: "2-digit", hourCycle: "h23" }).format(new Date(iso)));
-  const salesBars = oneDay
+  // período com mais de 60 dias: a Shopify não entrega os pedidos, então vendas vêm do relatório
+  const old = beyondOrdersWindow(pStart);
+  const oldSeries = old ? await salesSeries(period.from, period.to, "day").catch(() => []) : [];
+  const nOrders = old ? m?.orders ?? 0 : valid.length;
+  const salesBars = old
+    ? oldSeries.map((r) => ({ label: `${r.key.slice(8)}/${r.key.slice(5, 7)}`, value: r.net }))
+    : oneDay
     ? Array.from({ length: period.from === today ? hour + 1 : 24 }, (_, h) => ({ label: `${h}h`, value: valid.filter((o) => hourOf(o.createdAt) === h).reduce((a, o) => a + o.subtotal, 0) }))
     : daysBetween(period.from, period.to).map((d) => ({ label: `${d.slice(8)}/${d.slice(5, 7)}`, value: valid.filter((o) => isoDayLocal(new Date(o.createdAt)) === d).reduce((a, o) => a + o.subtotal, 0) }));
   const leadsN = leadsP.reduce((a, x) => a + x._count, 0);
@@ -161,16 +171,17 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
   const g = camps ? byGroup(camps) : null;
   const salesSpend = g ? g.vendas.spend : m?.ads ?? null;
   const roas = salesSpend && m ? m.net / salesSpend : null;
+  const perfilCs = settings.ads.cards.includes("perfil") && settings.ads.perfilCoupons.length ? await couponSales(settings.ads.perfilCoupons, period.from, period.to).catch(() => null) : null;
   const per = (a: number, b: number) => (b ? brl(a / b) : "–");
   const n0 = (v: number) => v.toLocaleString("pt-BR");
   const cardOn = settings.ads.cards;
   const ks: Record<string, React.ReactNode> = {
     faturamento: <Link key="faturamento" href="/historico" className="ks hl"><small><Wallet size={14} /> Faturamento</small><b>{m ? brl(m.net, 0) : "–"}</b><span>{period.label.toLowerCase()}</span></Link>,
-    pedidos: <Link key="pedidos" href="/pedidos" className="ks"><small><Receipt size={14} /> Pedidos</small><b>{valid.length}</b><span>ticket {valid.length ? brl(valid.reduce((a, o) => a + o.subtotal, 0) / valid.length, 0) : "–"}</span></Link>,
+    pedidos: <Link key="pedidos" href="/pedidos" className="ks"><small><Receipt size={14} /> Pedidos</small><b>{nOrders}</b><span>ticket {old ? (m?.orders ? brl(m.aov, 0) : "–") : valid.length ? brl(valid.reduce((a, o) => a + o.subtotal, 0) / valid.length, 0) : "–"}</span></Link>,
     lucro: <Link key="lucro" href="/financeiro" className="ks"><small><TrendingUp size={14} /> Lucro</small><b className={m && m.profitBeforeFixed < 0 ? "dn" : "up"}>{m ? brl(m.profitBeforeFixed, 0) : "–"}</b><span>antes dos custos fixos</span></Link>,
     vendas: <Link key="vendas" href="/campanhas" className="ks"><small><Target size={14} /> Anúncios de venda</small><b>{salesSpend != null ? brl(salesSpend, 0) : "–"}</b><span>{roas ? `ROAS ${roas.toFixed(2).replace(".", ",")}` : "sem gasto lido"}{g && g.vendas.purchases ? ` · Meta: ${n0(g.vendas.purchases)} compras` : ""}</span></Link>,
     leads: <Link key="leads" href="/campanhas" className="ks"><small><FileText size={14} /> Leads dos anúncios</small><b>{g ? n0(g.leads.leads) : "–"}</b><span>{g ? (g.leads.spend || g.leads.leads ? `${per(g.leads.spend, g.leads.leads)} por lead · gasto ${brl(g.leads.spend, 0)}` : "nenhuma campanha de lead") : "conecte o Meta Ads"}</span></Link>,
-    perfil: <Link key="perfil" href="/campanhas" className="ks"><small><Heart size={14} /> {g && !g.perfil.follows && g.perfil.visits ? "Visitas no perfil" : "Seguidores"}</small><b>{g ? n0(g.perfil.follows || g.perfil.visits) : "–"}</b><span>{g ? (g.perfil.spend ? `${per(g.perfil.spend, g.perfil.follows || g.perfil.visits)} cada · gasto ${brl(g.perfil.spend, 0)}` : "nenhuma campanha de perfil") : "conecte o Meta Ads"}</span></Link>,
+    perfil: <Link key="perfil" href="/campanhas" className="ks"><small><Heart size={14} /> Seguidores</small><b>{g ? n0(g.perfil.follows) : "–"}</b><span>{g ? (g.perfil.spend ? `${per(g.perfil.spend, g.perfil.follows)} cada · gasto ${brl(g.perfil.spend, 0)}` : "nenhuma campanha de perfil") : "conecte o Meta Ads"}{perfilCs?.orders ? ` · cupom ${brl(perfilCs.net, 0)} em ${perfilCs.orders} venda(s)` : ""}</span></Link>,
     gasto: <Link key="gasto" href="/campanhas" className="ks"><small><Megaphone size={14} /> Gasto em anúncios</small><b>{g ? brl(g.total.spend, 0) : m?.ads != null ? brl(m.ads, 0) : "–"}</b><span>{g ? `${g.total.campaigns} campanha(s) com gasto` : "todas as contas"}</span></Link>,
     conversao: <Link key="conversao" href="/conversao" className="ks"><small><MousePointerClick size={14} /> Conversão</small><b>{m?.conversion ? `${(m.conversion.rate * 100).toFixed(2).replace(".", ",")}%` : "–"}</b><span>{m?.conversion?.sessions != null ? `${m.conversion.sessions.toLocaleString("pt-BR")} visitas` : "visitas na loja"}</span></Link>,
     formulario: <Link key="formulario" href="/leads" className="ks"><small><FileText size={14} /> Formulário</small><b>{leadsP.reduce((a, x) => a + x._count, 0)}</b><span>{leadsP.filter((x) => x.status === "no_grupo" || x.status === "cliente").reduce((a, x) => a + x._count, 0)} já no grupo ou clientes</span></Link>,
@@ -208,16 +219,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
         </div>
         <div className="row acts">
           <DateRange current={period.key} from={period.from} to={period.to} label={period.label} presets={["hoje", "ontem", "7d", "30d", "60d", "mes", "mes-passado"]} />
-          <details className="dd">
-            <summary className="btn"><SlidersHorizontal size={16} /> Personalizar</summary>
-            <form action={saveDashCards} className="dd-pop dd-list">
-              <b style={{ fontSize: 13 }}>Cartões do topo</b>
-              {CARDS.map(([k, l]) => (
-                <label key={k} className="dd-chk"><input type="checkbox" name="card" value={k} defaultChecked={cardOn.includes(k)} /> {l}</label>
-              ))}
-              <button className="btn pri sm" type="submit">Salvar</button>
-            </form>
-          </details>
+          <RefreshButton bar />
+          <CardPicker cards={CARDS} on={cardOn} action={saveDashCards} />
           <Link className="btn" href="/agendamentos"><CalendarClock size={16} /> Agendar</Link>
           <Link className="btn pri" href="/disparos"><Megaphone size={16} /> Novo disparo</Link>
         </div>
@@ -240,33 +243,36 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
             <h3 style={{ fontSize: 15, fontWeight: 600 }}>Vendas {oneDay ? "por hora" : "por dia"}</h3>
             <span className="dim" style={{ fontSize: 12.5 }}>{plab} · sem frete</span>
           </div>
-          {valid.length ? <Bars items={salesBars} format={(v) => brl(v, 0)} height={200} highlightLast={period.to === today} /> : <div className="empty">Nenhuma venda {oneDay && period.from === today ? "hoje ainda" : "no período"}.</div>}
+          {nOrders ? <Bars items={salesBars} format={(v) => brl(v, 0)} height={200} highlightLast={period.to === today} /> : <div className="empty">Nenhuma venda {oneDay && period.from === today ? "hoje ainda" : "no período"}.</div>}
         </section>
         <section className="pnl" style={{ padding: 22 }}>
           <div className="row" style={{ justifyContent: "space-between", marginBottom: 4 }}>
             <h3 style={{ fontSize: 15, fontWeight: 600 }}>Pagamentos</h3>
             <Link className="btn sm ghost" href="/pedidos">Pedidos <ArrowRight size={14} /></Link>
           </div>
-          {pay.map((x) => (
+          {old && <p className="dim" style={{ fontSize: 12.5, margin: "6px 0 4px" }}>A Shopify só mostra a forma de pagamento dos pedidos dos últimos 60 dias. O faturamento do período está no Histórico de vendas.</p>}
+          {!old && pay.map((x) => (
             <div className="lrow" key={x.k}>
               <span className={`tile sm ${x.k === "pix" ? "t-l" : x.k === "cartao" ? "t-k" : "t-n"}`}>{x.k === "cartao" ? <CreditCard size={15} /> : <Wallet size={15} />}</span>
               <div><div className="t">{x.label}</div><div className="s">{x.n} pago(s){x.pn ? ` · ${x.pn} pendente(s) ${brl(x.pv, 0)}` : ""}</div></div>
               <div className="end mid-num" style={{ fontSize: 20 }}>{brl(x.v, 0)}</div>
             </div>
           ))}
+          {!old && (
           <div className="lrow">
             <span className="tile sm t-s"><Hourglass size={15} /></span>
             <div><div className="t">Aguardando pagamento</div><div className="s">Pix e boletos gerados</div></div>
             <div className="end mid-num" style={{ fontSize: 20, color: "var(--sun)" }}>{brl(pendTotal, 0)}</div>
           </div>
-          {lost.length > 0 && (
+          )}
+          {!old && lost.length > 0 && (
             <div className="lrow">
               <span className="tile sm t-c"><PackageX size={15} /></span>
               <div><div className="t">Cancelados ou estornados</div><div className="s">{lost.length} pedido(s)</div></div>
               <div className="end mid-num dn" style={{ fontSize: 20 }}>{brl(lost.reduce((a, o) => a + o.total, 0), 0)}</div>
             </div>
           )}
-          {paidTotal + pendTotal > 0 && (
+          {!old && paidTotal + pendTotal > 0 && (
             <div className="hbar" style={{ marginTop: 10, display: "flex" }}>
               {pay.map((x) => <i key={x.k} className={x.k === "pix" ? "" : x.k === "cartao" ? "k" : "s"} style={{ width: `${(x.v / (paidTotal + pendTotal)) * 100}%`, borderRadius: 0 }} />)}
             </div>
@@ -299,7 +305,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
               { l: "Visitas na loja", v: sessions, icon: MousePointerClick, tone: "t-n" },
               { l: "Preencheram o formulário", v: leadsN, icon: FileText, tone: "t-p" },
               { l: "Entraram na comunidade", v: pc("JOIN") + pc("RETURN"), icon: LogIn, tone: "t-l" },
-              { l: "Compraram", v: valid.length, icon: ShoppingBag, tone: "t-s" },
+              { l: "Compraram", v: nOrders, icon: ShoppingBag, tone: "t-s" },
             ].map((x) => (
               <div className="lrow" key={x.l}>
                 <span className={`tile sm ${x.tone}`}><x.icon size={15} /></span>

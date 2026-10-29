@@ -44,3 +44,18 @@ export async function saveDashCards(f: FormData) {
   await saveSetting("ads", { cards: cards.length ? cards : ["faturamento"] });
   revalidatePath("/");
 }
+
+export async function saveFollowMetric(f: FormData) {
+  await admin();
+  await saveSetting("ads", { followMetric: String(f.get("metric") ?? "").slice(0, 120) });
+  revalidatePath("/campanhas");
+  revalidatePath("/");
+}
+
+export async function savePerfilCoupons(f: FormData) {
+  await admin();
+  const list = String(f.get("coupons") ?? "").split(/[\s,;]+/).map((c) => c.trim().toUpperCase()).filter((c) => /^[\w-]{2,40}$/.test(c)).slice(0, 10);
+  await saveSetting("ads", { perfilCoupons: list });
+  revalidatePath("/campanhas");
+  revalidatePath("/");
+}

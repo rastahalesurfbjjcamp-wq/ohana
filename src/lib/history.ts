@@ -2,7 +2,8 @@
 // Bruto = preço x quantidade; descontos = cupons e promoções; devoluções = reembolsos e trocas;
 // líquido = bruto - descontos - devoluções (sem frete e sem impostos), igual ao "Vendas líquidas" da Shopify.
 import { swr } from "./cache";
-import { shopCreatedAt, shopifyql } from "./shopify";
+import { shopCreatedAt, shopifyql, unitCostsByTitle } from "./shopify";
+import { costResolver } from "./report";
 import { isoDayLocal } from "./time";
 
 export type HistRow = { key: string; orders: number; gross: number; discounts: number; returns: number; net: number; shipping: number; total: number };
@@ -63,3 +64,28 @@ export async function storeStart() {
 }
 
 export const todayIso = () => isoDayLocal();
+
+// Vendas que vieram por cupons (ex.: cupom que o ManyChat entrega para quem chega pelo tráfego do perfil)
+export type CouponSales = { codes: string[]; orders: number; gross: number; net: number; cogs: number; missingCost: number; items: number };
+export async function couponSales(codes: string[], from: string, to: string): Promise<CouponSales> {
+  const clean = [...new Set(codes.map((c) => c.trim()).filter((c) => /^[\w-]{2,40}$/.test(c)))];
+  return swr(`hist:cs:${clean.join(",")}:${from}:${to}`, 300_000, async () => {
+    const out: CouponSales = { codes: clean, orders: 0, gross: 0, net: 0, cogs: 0, missingCost: 0, items: 0 };
+    if (!clean.length) return out;
+    const [resolve, costs] = await Promise.all([costResolver(), unitCostsByTitle().catch(() => new Map<string, number>())]);
+    for (const code of clean) {
+      const tot = (await shopifyql(`FROM sales SHOW orders, gross_sales, net_sales WHERE discount_code = '${code}' SINCE ${from} UNTIL ${to}`))[0] ?? {};
+      out.orders += num(tot.orders); out.gross += num(tot.gross_sales); out.net += num(tot.net_sales);
+      if (!num(tot.orders)) continue;
+      const rows = await shopifyql(`FROM sales SHOW net_items_sold WHERE discount_code = '${code}' GROUP BY product_title SINCE ${from} UNTIL ${to} LIMIT 500`);
+      for (const r of rows) {
+        const q = num(r.net_items_sold);
+        if (q <= 0) continue;
+        out.items += q;
+        const c = resolve(r.product_title, costs.get(r.product_title) ?? null);
+        if (c == null) out.missingCost += q; else out.cogs += c * q;
+      }
+    }
+    return out;
+  });
+}

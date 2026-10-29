@@ -1,6 +1,7 @@
 // Leitura de vendas da Shopify (Admin GraphQL).
 import { swr } from "./cache";
 import { creds } from "./integrations";
+import { isoDayLocal } from "./time";
 
 const API_VERSION = "2025-10";
 const QL_VERSION = "2026-10";
@@ -52,8 +53,43 @@ type OrdersPage = {
   };
 };
 
+// A Shopify só entrega pedidos dos últimos 60 dias pela API de pedidos (sem a permissão read_all_orders).
+// Antes disso, os números vêm do relatório de vendas (ShopifyQL), que tem a loja inteira.
+export const ORDERS_WINDOW_DAYS = 58;
+export const beyondOrdersWindow = (start: Date) => start.getTime() < Date.now() - ORDERS_WINDOW_DAYS * 864e5;
+
+export async function unitCostsByTitle(): Promise<Map<string, number>> {
+  return swr("unit-costs", 600_000, async () => {
+    const out = new Map<string, number>();
+    let after: string | null = null;
+    do {
+      type P = { products: { pageInfo: { hasNextPage: boolean; endCursor: string | null }; nodes: { title: string; variants: { nodes: { inventoryItem: { unitCost: { amount: string } | null } | null }[] } }[] } };
+      const d: P = await gql<P>(`query($after:String){ products(first:100, after:$after){ pageInfo{hasNextPage endCursor} nodes{ title variants(first:5){ nodes{ inventoryItem{ unitCost{amount} } } } } } }`, { after });
+      for (const p of d.products.nodes) {
+        const c = p.variants.nodes.map((v) => v.inventoryItem?.unitCost?.amount).find((x) => x != null);
+        if (c != null) out.set(p.title, Number(c));
+      }
+      after = d.products.pageInfo.hasNextPage ? d.products.pageInfo.endCursor : null;
+    } while (after);
+    return out;
+  });
+}
+
+async function salesFromReport(start: Date, end: Date): Promise<SalesSummary> {
+  const a = isoDayLocal(start);
+  const b = isoDayLocal(new Date(end.getTime() - 1));
+  const tot = (await shopifyql(`FROM sales SHOW orders, net_sales, total_sales SINCE ${a} UNTIL ${b}`))[0] ?? {};
+  const rows = await shopifyql(`FROM sales SHOW net_items_sold, net_sales GROUP BY product_title SINCE ${a} UNTIL ${b} ORDER BY net_sales DESC LIMIT 1000`);
+  const costs = await unitCostsByTitle().catch(() => new Map<string, number>());
+  const lines: SalesLine[] = rows
+    .map((r) => ({ title: r.product_title || "Sem produto", quantity: Number(r.net_items_sold) || 0, revenue: Number(r.net_sales) || 0, unitCost: costs.get(r.product_title) ?? null }))
+    .filter((l) => l.quantity > 0 || l.revenue !== 0);
+  return { orders: Number(tot.orders) || 0, gross: Number(tot.total_sales) || 0, net: Number(tot.net_sales) || 0, lines };
+}
+
 // Vendas entre duas datas (UTC)
 async function salesBetweenRaw(start: Date, end: Date): Promise<SalesSummary> {
+  if (beyondOrdersWindow(start)) return salesFromReport(start, end);
   const q = `created_at:>='${start.toISOString()}' created_at:<'${end.toISOString()}' -status:cancelled`;
   let after: string | null = null;
   const out: SalesSummary = { orders: 0, gross: 0, net: 0, lines: [] };

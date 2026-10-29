@@ -9,6 +9,9 @@ import { activeAccounts, byGroup, campStats, metaAccounts, metaAds, type AdRow, 
 import { getSettings } from "@/lib/settings";
 import { saveAdAccounts, saveCampGroup } from "../acoes7";
 import { SubmitSelect } from "@/components/SubmitSelect";
+import { couponSales, type CouponSales } from "@/lib/history";
+import { metaLabel } from "@/lib/metaLabels";
+import { saveFollowMetric, savePerfilCoupons } from "../acoes7";
 import { resolvePeriod } from "@/lib/periods";
 import { funnelByDay, ordersBetween, type Order } from "@/lib/store";
 import { brl, dayRange } from "@/lib/time";
@@ -39,6 +42,17 @@ export default async function Campanhas({ searchParams }: { searchParams: Promis
   const actives = await activeAccounts();
   const cfgOf = (id: string) => settings.ads.accounts.find((a) => a.id === id) ?? (settings.ads.accounts.length ? null : actives.find((a) => a.id === id) ?? null);
   const grp = cstats ? byGroup(cstats) : null;
+  // tráfego do perfil: métricas que o Meta mandou e vendas pelo cupom do ManyChat
+  const perfilCamps = (cstats ?? []).filter((c) => c.group === "perfil");
+  const perfilActs = new Map<string, number>();
+  for (const c of perfilCamps) for (const [k, v] of Object.entries(c.acts)) perfilActs.set(k, (perfilActs.get(k) ?? 0) + v);
+  const actOpts = [...perfilActs.entries()].filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+  let cs: CouponSales | null = null;
+  try { cs = settings.ads.perfilCoupons.length ? await couponSales(settings.ads.perfilCoupons, period.from, period.to) : null; } catch { cs = null; }
+  const feeRate = settings.costs.taxRate + settings.costs.paymentFeeRate;
+  const perfilSpend = grp?.perfil.spend ?? 0;
+  const perfilProfit = cs ? cs.net - cs.cogs - cs.net * feeRate - perfilSpend : null;
+  const fCount = grp ? grp.perfil.follows || 0 : 0;
   const [orders, leads, funnel] = await Promise.all([
     ordersBetween(start, end).catch(() => [] as Order[]),
     db.lead.findMany({ where: { createdAt: { gte: start, lt: end } } }),
@@ -208,6 +222,36 @@ export default async function Campanhas({ searchParams }: { searchParams: Promis
             ) : <div className="empty">Nenhuma conta encontrada no token do Meta.</div>}
           </section>
         </div>
+      )}
+      {(perfilCamps.length > 0 || settings.ads.perfilCoupons.length > 0) && (
+        <section className="pnl" style={{ marginBottom: 16 }}>
+          <div className="ph"><div><h3>Tráfego do perfil</h3><small>Seguidores que a campanha trouxe e o que vendeu pelo cupom que o ManyChat entrega</small></div></div>
+          <div className="kstrip" style={{ gridTemplateColumns: "repeat(5, minmax(0, 1fr))", padding: "0 18px 14px" }}>
+            <div className="ks"><small>Gasto no perfil</small><b>{brl(perfilSpend, 0)}</b><span>{perfilCamps.length} campanha(s)</span></div>
+            <div className="ks"><small>{settings.ads.followMetric ? metaLabel(settings.ads.followMetric) : "Seguidores"}</small><b>{fCount.toLocaleString("pt-BR")}</b><span>{fCount ? `${brl(perfilSpend / fCount)} cada` : "escolha a métrica abaixo"}</span></div>
+            <div className="ks"><small>Vendas pelo cupom</small><b>{cs ? brl(cs.net, 0) : "–"}</b><span>{cs ? `${cs.orders} pedido(s) · ${cs.codes.join(", ") || "sem cupom"}` : "sem cupom definido"}</span></div>
+            <div className="ks"><small>ROAS do perfil</small><b>{cs && perfilSpend ? (cs.net / perfilSpend).toFixed(2).replace(".", ",") : "–"}</b><span>vendas do cupom ÷ gasto</span></div>
+            <div className="ks"><small>Lucro do perfil</small><b className={perfilProfit != null && perfilProfit < 0 ? "dn" : "up"}>{perfilProfit != null ? brl(perfilProfit, 0) : "–"}</b><span>{cs ? `peças ${brl(cs.cogs, 0)} · taxas ${brl(cs.net * feeRate, 0)}${cs.missingCost ? ` · ${cs.missingCost} peça(s) sem custo` : ""}` : "–"}</span></div>
+          </div>
+          <div className="row" style={{ gap: 16, padding: "0 18px 18px", flexWrap: "wrap", alignItems: "flex-end" }}>
+            <form action={saveFollowMetric} style={{ minWidth: 280 }}>
+              <div className="dim" style={{ fontSize: 12, marginBottom: 6 }}>O que conta como seguidor (igual à coluna do Gerenciador)</div>
+              <SubmitSelect name="metric" value={settings.ads.followMetric} label="Métrica de seguidor">
+                <option value="">Automático</option>
+                {actOpts.map(([k, v]) => <option key={k} value={k}>{metaLabel(k)} · {v.toLocaleString("pt-BR")}</option>)}
+                {settings.ads.followMetric && !perfilActs.has(settings.ads.followMetric) && <option value={settings.ads.followMetric}>{metaLabel(settings.ads.followMetric)}</option>}
+              </SubmitSelect>
+            </form>
+            <form action={savePerfilCoupons} className="row" style={{ gap: 8, alignItems: "flex-end" }}>
+              <div>
+                <div className="dim" style={{ fontSize: 12, marginBottom: 6 }}>Cupom do ManyChat (separe por vírgula)</div>
+                <input className="in" name="coupons" defaultValue={settings.ads.perfilCoupons.join(", ")} style={{ height: 34, width: 240 }} />
+              </div>
+              <button className="btn sm" type="submit">Salvar cupom</button>
+            </form>
+          </div>
+          {perfilCamps.length > 0 && !actOpts.length && <p className="dim" style={{ fontSize: 12, padding: "0 18px 16px" }}>O Meta ainda não mandou métricas para as campanhas de perfil nesse período.</p>}
+        </section>
       )}
       <div className="cols c-3-1" style={{ alignItems: "start" }}>
         <section className="pnl">

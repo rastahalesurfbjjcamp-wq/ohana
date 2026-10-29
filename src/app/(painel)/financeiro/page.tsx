@@ -6,6 +6,8 @@ import { computeMetrics, type Metrics } from "@/lib/report";
 import { daysBetween, previousPeriod, resolvePeriod } from "@/lib/periods";
 import { productProfits, type ProductProfit } from "@/lib/profit";
 import { ordersBetween } from "@/lib/store";
+import { beyondOrdersWindow } from "@/lib/shopify";
+import { salesSeries } from "@/lib/history";
 import { brl, dayRange, isoDayLocal, pct } from "@/lib/time";
 import { ErrorNote, Header, Panel } from "@/components/ui";
 
@@ -19,6 +21,10 @@ function Delta({ now, before, invert }: { now: number; before: number; invert?: 
 }
 
 async function dailyRevenue(from: string, to: string) {
+  if (beyondOrdersWindow(dayRange(from).start)) {
+    const rows = await salesSeries(from, to, "day");
+    return rows.map((r) => ({ label: `${r.key.slice(8)}/${r.key.slice(5, 7)}`, value: r.net }));
+  }
   const orders = await ordersBetween(dayRange(from).start, dayRange(to).end);
   const byDay = new Map<string, number>();
   for (const o of orders) {

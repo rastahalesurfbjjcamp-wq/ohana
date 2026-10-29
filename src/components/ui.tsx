@@ -1,3 +1,4 @@
+import { RefreshButton } from "./RefreshButton";
 import type { ReactNode } from "react";
 
 export function Header({ title, lede, children }: { title: string; lede?: string; children?: ReactNode }) {
@@ -7,7 +8,7 @@ export function Header({ title, lede, children }: { title: string; lede?: string
         <h1>{title}</h1>
         {lede && <p className="lede">{lede}</p>}
       </div>
-      {children && <div className="acts">{children}</div>}
+      <div className="acts"><RefreshButton bar />{children}</div>
     </div>
   );
 }
