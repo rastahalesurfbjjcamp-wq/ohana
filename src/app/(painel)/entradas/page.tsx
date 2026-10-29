@@ -36,7 +36,10 @@ export default async function Entradas({ searchParams }: { searchParams: Promise
   const fromDay = addDays(today, -(range[2] - 1));
   const since = new Date(`${fromDay}T03:00:00Z`);
   const prevSince = new Date(since.getTime() - range[2] * 864e5);
-  const groupFilter = sp.g ? { groupId: sp.g } : { group: { isCommunity: true } };
+  // Só os grupos que você selecionou (comunidade e grupo de resultados)
+  const chosen = await db.group.findMany({ where: { archived: false, OR: [{ isCommunity: true }, { isResults: true }] }, orderBy: [{ isResults: "asc" }, { name: "asc" }] });
+  const gSel = sp.g && chosen.some((x) => x.id === sp.g) ? sp.g : undefined;
+  const groupFilter = gSel ? { groupId: gSel } : { groupId: { in: chosen.map((x) => x.id) } };
   const where = { createdAt: { gte: since }, ...groupFilter };
   const wherePrev = { createdAt: { gte: prevSince, lt: since }, ...groupFilter };
   const [byType, prevByType, winbacks, events, s, hist, group] = await Promise.all([
@@ -46,7 +49,7 @@ export default async function Entradas({ searchParams }: { searchParams: Promise
     db.memberEvent.findMany({ where: { ...groupFilter, ...(sp.t ? { type: sp.t as "JOIN" | "LEAVE" | "RETURN" } : {}) }, orderBy: { createdAt: "desc" }, take: 40, include: { contact: true, group: true } }),
     getSettings(),
     db.memberEvent.findMany({ where: { createdAt: { gte: new Date(Date.now() - (range[2] === 1 ? 7 : range[2]) * 864e5) }, ...groupFilter }, select: { type: true, createdAt: true } }),
-    sp.g ? db.group.findUnique({ where: { id: sp.g } }) : null,
+    gSel ? db.group.findUnique({ where: { id: gSel } }) : null,
   ]);
   const c = (arr: typeof byType, t: string) => arr.find((x) => x.type === t)?._count ?? 0;
   const joins = c(byType, "JOIN"), leaves = c(byType, "LEAVE"), returns = c(byType, "RETURN");
@@ -85,7 +88,14 @@ export default async function Entradas({ searchParams }: { searchParams: Promise
         <div className="seg">{RANGES.map(([k, l]) => <Link key={k} href={q("r", k === "7" ? null : k)} className={range[0] === k ? "on" : ""}>{l}</Link>)}</div>
         <a className="btn" href={`/api/export/entradas?dias=${Math.max(range[2], 30)}`}><Download size={16} /> Exportar</a>
       </Header>
-      {group && <div><Link className="chip c-k" href={q("g", null)}>{group.name} · ver todos os grupos</Link></div>}
+      {chosen.length > 0 ? (
+        <div className="chips" style={{ alignSelf: "flex-start" }}>
+          <Link href={q("g", null)} className={!gSel ? "on" : ""}>Todos os selecionados<b>{chosen.length}</b></Link>
+          {chosen.map((x) => <Link key={x.id} href={q("g", x.id)} className={gSel === x.id ? "on" : ""}>{x.name}{x.isResults ? " (resultados)" : ""}</Link>)}
+        </div>
+      ) : (
+        <div className="note">Nenhum grupo selecionado ainda. Marque os grupos da comunidade em <Link href="/grupos?v=escolher" style={{ textDecoration: "underline" }}>Grupos</Link> e só eles aparecem aqui.</div>
+      )}
       <div className="grid g4">
         <Kpi icon={<UserPlus size={15} />} label="Entraram" value={joins.toLocaleString("pt-BR")} sub={dj == null ? "sem período anterior" : <><span className={dj >= 0 ? "up" : "dn"}>{dj >= 0 ? "+" : ""}{dj}%</span> que no período anterior</>} />
         <Kpi icon={<UserMinus size={15} />} tone="c" label="Saíram" value={leaves.toLocaleString("pt-BR")} sub={joins ? `${((leaves / joins) * 100).toFixed(1).replace(".", ",")}% de quem entrou` : "–"} />

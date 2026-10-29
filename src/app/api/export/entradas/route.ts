@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
   if (!(await getSession())) return new NextResponse("Entre no painel primeiro", { status: 401 });
   const days = Math.min(365, Number(req.nextUrl.searchParams.get("dias") ?? 30) || 30);
   const events = await db.memberEvent.findMany({
-    where: { createdAt: { gte: new Date(Date.now() - days * 864e5) }, group: { isCommunity: true } },
+    where: { createdAt: { gte: new Date(Date.now() - days * 864e5) }, group: { archived: false, OR: [{ isCommunity: true }, { isResults: true }] } },
     orderBy: { createdAt: "desc" },
     include: { contact: true, group: true },
   });
