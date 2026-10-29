@@ -31,7 +31,7 @@ export async function costResolver() {
   const lots = await db.cost.findMany({ where: { kind: "STOCK_LOT", productKey: { not: null } }, orderBy: { createdAt: "desc" } });
   return (title: string, shopifyCost: number | null): number | null => {
     const t = title.toLowerCase();
-    const lot = lots.find((l) => l.productKey && t.includes(l.productKey.toLowerCase()));
+    const lot = lots.find((l) => l.productKey && l.productKey.toLowerCase() === t) ?? lots.find((l) => l.productKey && t.includes(l.productKey.toLowerCase()));
     if (lot?.unitCost != null) return Number(lot.unitCost);
     return shopifyCost;
   };

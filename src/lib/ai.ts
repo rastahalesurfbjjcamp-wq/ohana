@@ -130,3 +130,40 @@ export async function transcribe(base64: string, mimetype = "audio/ogg"): Promis
   const json = (await res.json()) as { text?: string };
   return (json.text ?? "").trim();
 }
+
+// Entende uma frase falada ou digitada com custos de produtos e liga cada valor ao produto certo
+export async function parseCostsText(text: string, products: string[]): Promise<{ product: string; cost: number }[]> {
+  const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  if (await hasAI()) {
+    const c = await client();
+    const res = await c.messages.create({
+      model: await model(),
+      max_tokens: 800,
+      system: `Você recebe uma frase em português com custos de produção de peças de roupa e a lista de produtos da loja.
+Responda SOMENTE com JSON: [{"product": "nome exato da lista", "cost": número em reais}].
+Use só produtos da lista. Se um valor não bater com nenhum produto, ignore. "58 reais" = 58; "cinquenta e dois" = 52.`,
+      messages: [{ role: "user", content: `Produtos:\n${products.map((p) => `- ${p}`).join("\n")}\n\nFrase: ${text}` }],
+    });
+    const out = res.content.filter((b) => b.type === "text").map((b) => (b as Anthropic.TextBlock).text).join("");
+    try {
+      const j = JSON.parse(out.slice(out.indexOf("["), out.lastIndexOf("]") + 1)) as { product: string; cost: number }[];
+      return j.filter((x) => products.includes(x.product) && x.cost > 0);
+    } catch {
+      /* cai no modo simples */
+    }
+  }
+  // Modo simples, sem IA: "nome do produto 58" separados por vírgula ou "e"
+  const out: { product: string; cost: number }[] = [];
+  for (const part of text.split(/,|;|\n| e (?=[a-zA-ZÀ-ú])/)) {
+    const m = part.match(/(\d+(?:[.,]\d{1,2})?)/);
+    if (!m) continue;
+    const words = norm(part.replace(m[0], "")).split(/\s+/).filter((w) => w.length > 2 && !["custou", "reais", "custa", "por", "peca"].includes(w));
+    let best: [string, number] | null = null;
+    for (const p of products) {
+      const score = words.filter((w) => norm(p).includes(w)).length;
+      if (score && (!best || score > best[1])) best = [p, score];
+    }
+    if (best) out.push({ product: best[0], cost: Number(m[1].replace(",", ".")) });
+  }
+  return out;
+}

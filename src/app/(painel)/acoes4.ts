@@ -180,3 +180,28 @@ export async function testAssistant(history: { fromMe: boolean; text: string }[]
     return { error: String(e).replace(/^Error: /, "").slice(0, 200) };
   }
 }
+
+/* Custos por voz ou texto na tela de produtos */
+export async function parseCosts(text: string, products: string[]): Promise<{ items?: { product: string; cost: number }[]; error?: string }> {
+  await admin();
+  try {
+    const { parseCostsText } = await import("@/lib/ai");
+    return { items: await parseCostsText(text, products) };
+  } catch (e) {
+    return { error: String(e).replace(/^Error: /, "").slice(0, 200) };
+  }
+}
+export async function saveParsedCosts(items: { product: string; cost: number }[]): Promise<{ ok: number }> {
+  const s = await admin();
+  let ok = 0;
+  const month = new Date().toISOString().slice(0, 7);
+  for (const it of items) {
+    if (!it.product || !(it.cost > 0)) continue;
+    // custo por peça guardado como "lote" de 1 peça, ligado pelo nome do produto
+    await db.cost.create({ data: { kind: "STOCK_LOT", description: `Custo de ${it.product}`, amount: it.cost, units: 1, unitCost: it.cost, productKey: it.product.toLowerCase(), month, createdBy: s.name } });
+    ok++;
+  }
+  revalidatePath("/produtos");
+  revalidatePath("/financeiro");
+  return { ok };
+}
