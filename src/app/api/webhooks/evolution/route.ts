@@ -56,7 +56,19 @@ export async function POST(req: NextRequest) {
       const list = Array.isArray(body.data) ? body.data : [body.data];
       for (const d of list) {
         const key = d?.key as { remoteJid?: string; fromMe?: boolean; id?: string; participant?: string; participantAlt?: string; participantPn?: string } | undefined;
-        if (!key?.remoteJid?.endsWith("@g.us") || !key.id) continue;
+        if (!key?.remoteJid || !key.id) continue;
+        if (!key.remoteJid.endsWith("@g.us")) {
+          // Conversa no privado: "SAIR" tira a pessoa dos disparos
+          const t = messageText(d?.message as Record<string, unknown> | undefined).toLowerCase();
+          if (!key.fromMe && /^(sair|parar|pare|cancelar|stop|descadastrar)\b/.test(t)) {
+            const phone = jidToPhone((key as { remoteJidAlt?: string }).remoteJidAlt ?? key.remoteJid);
+            if (phone) {
+              await db.optOut.upsert({ where: { phone }, create: { phone }, update: {} });
+              await db.lead.updateMany({ where: { phone }, data: { status: "descadastrado" } });
+            }
+          }
+          continue;
+        }
         const group = await db.group.findUnique({ where: { jid: key.remoteJid } });
         if (!group?.isResults) continue;
 

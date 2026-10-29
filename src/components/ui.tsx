@@ -48,3 +48,46 @@ export function Bar({ value, max }: { value: number; max: number }) {
     </div>
   );
 }
+
+export function PeriodTabs({ base, current, keys, extra = "" }: { base: string; current: string; keys?: string[]; extra?: string }) {
+  const all = [
+    ["hoje", "Hoje"], ["ontem", "Ontem"], ["7d", "7 dias"], ["30d", "30 dias"], ["mes", "Este mês"], ["mes-passado", "Mês passado"], ["90d", "90 dias"],
+  ];
+  const list = keys ? all.filter(([k]) => keys.includes(k)) : all;
+  return (
+    <div className="tabs">
+      {list.map(([k, l]) => (
+        <a key={k} href={`${base}?p=${k}${extra}`} className={current === k ? "on" : ""}>{l}</a>
+      ))}
+    </div>
+  );
+}
+
+export function BarChart({ data, format, tone }: { data: { label: string; value: number }[]; format?: (v: number) => string; tone?: "alt" }) {
+  const max = Math.max(1, ...data.map((d) => Math.abs(d.value)));
+  const every = Math.ceil(data.length / 12);
+  return (
+    <div className="chart">
+      {data.map((d, i) => (
+        <div className="col" key={d.label + i} title={`${d.label}: ${format ? format(d.value) : d.value}`}>
+          <div className={`b${tone ? " " + tone : ""}${d.value < 0 ? " neg" : ""}`} style={{ height: `${(Math.abs(d.value) / max) * 100}%` }} />
+          <small>{i % every === 0 ? d.label : " "}</small>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function NeedShopify() {
+  return (
+    <div className="note">
+      Para esta tela mostrar os dados da loja, falta colar a chave da Shopify (SHOPIFY_ADMIN_TOKEN) nas variáveis do Easypanel, no serviço hub. Depois clique em Implantar.
+    </div>
+  );
+}
+
+export function ErrorNote({ error }: { error: unknown }) {
+  const msg = String(error).replace(/^Error: /, "");
+  if (msg.includes("SHOPIFY_NAO_CONFIGURADA")) return <NeedShopify />;
+  return <div className="err">Não consegui carregar os dados agora: {msg.slice(0, 240)}</div>;
+}

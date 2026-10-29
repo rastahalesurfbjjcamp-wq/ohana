@@ -11,6 +11,7 @@ import { evolution } from "../lib/evolution";
 import { getSettings } from "../lib/settings";
 import { humanDelay, reserveSlot, sendMedia, sendText, sentByBot } from "../lib/send";
 import { hhmmLocal, isoDayLocal, nowLocal } from "../lib/time";
+import { dueBroadcasts, leadWelcome, runBroadcast, sendPollLink } from "./jobs2";
 
 type Marks = { daily?: string; weekly?: string; sync?: number };
 
@@ -40,6 +41,8 @@ async function tick() {
     const r = await db.scheduledMessage.updateMany({ where: { id: m.id, status: "SCHEDULED" }, data: { status: "SENDING" } });
     if (r.count) await enqueue("send-scheduled", { id: m.id }, { jobId: `send-${m.id}-${m.sendAt.getTime()}` });
   }
+
+  await dueBroadcasts();
 
   const s = await getSettings();
   const marks = await getMarks();
@@ -158,6 +161,12 @@ async function main() {
           return postToResults(await dailyReport(job.data.day, { withTip: true }));
         case "command":
           return runCommand(job.data as CommandJob);
+        case "broadcast":
+          return runBroadcast(job.data.id);
+        case "poll-link":
+          return sendPollLink(job.data.pollId);
+        case "lead-welcome":
+          return leadWelcome(job.data.leadId);
       }
     },
     { connection: redis(), concurrency: 4 },

@@ -27,7 +27,7 @@ export interface Metrics {
 }
 
 // Custo por peça: lote lançado (pela palavra-chave no nome do produto) ou custo da Shopify
-async function costResolver() {
+export async function costResolver() {
   const lots = await db.cost.findMany({ where: { kind: "STOCK_LOT", productKey: { not: null } }, orderBy: { createdAt: "desc" } });
   return (title: string, shopifyCost: number | null): number | null => {
     const t = title.toLowerCase();

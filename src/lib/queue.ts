@@ -14,7 +14,7 @@ export function queue() {
   return _queue;
 }
 
-export type JobName = "tick" | "send-scheduled" | "winback" | "sync-groups" | "daily-report" | "command";
+export type JobName = "tick" | "send-scheduled" | "winback" | "sync-groups" | "daily-report" | "command" | "broadcast" | "poll-link" | "lead-welcome";
 
 export async function enqueue(name: JobName, data: Record<string, unknown> = {}, opts: { delayMs?: number; jobId?: string } = {}) {
   return queue().add(name, data, {

@@ -31,6 +31,11 @@ export const DEFAULTS = {
     minDelayMs: 4000,
     maxDelayMs: 12000,
   },
+  leads: {
+    welcomeEnabled: true,
+    // {nome} vira o primeiro nome e {link} o link que leva ao grupo com vaga
+    welcomeText: "Oi {nome}, aqui é da {loja}! Seu cadastro no Grupo VIP foi feito. Entre no grupo por este link: {link}",
+  },
   costs: {
     taxRate: 0.06, // imposto sobre o faturamento
     paymentFeeRate: 0.045, // média das taxas de pagamento
@@ -50,6 +55,7 @@ export type Settings = {
   };
   sending: { maxPerHour: number; minDelayMs: number; maxDelayMs: number };
   costs: { taxRate: number; paymentFeeRate: number; packagingPerItem: number };
+  leads: { welcomeEnabled: boolean; welcomeText: string };
 };
 
 export async function getSettings(): Promise<Settings> {

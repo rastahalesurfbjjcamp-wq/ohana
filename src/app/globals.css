@@ -119,3 +119,32 @@ textarea.in { height: auto; min-height: 110px; padding: 10px 12px; resize: verti
   main.main { padding: 22px 16px 40px; }
   .g2 { grid-template-columns: 1fr; }
 }
+
+/* Etapa 2 */
+.nv.soon { color: #6f7873; }
+.nv .bdg.soon { background: #1a1f1d; color: #7d8681; font-weight: 500; }
+.g3 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.chart { display: flex; align-items: flex-end; gap: 4px; height: 160px; padding: 6px 0 0; }
+.chart .col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; height: 100%; justify-content: flex-end; }
+.chart .b { width: 100%; max-width: 28px; border-radius: 5px 5px 2px 2px; background: var(--lagoon); opacity: .85; min-height: 2px; }
+.chart .b.alt { background: var(--sky); }
+.chart .b.neg { background: var(--coral); }
+.chart small { font-size: 10.5px; color: var(--ink3); white-space: nowrap; }
+.funnel { display: flex; flex-direction: column; gap: 10px; }
+.funnel .st { display: grid; grid-template-columns: 170px 1fr 90px; gap: 14px; align-items: center; }
+.funnel .track { height: 30px; background: #151a18; border-radius: 8px; overflow: hidden; }
+.funnel .fill { height: 100%; background: linear-gradient(90deg, var(--lagoon), #2a9d57); border-radius: 8px; }
+.funnel .drop { font-size: 12px; color: var(--coral); }
+.thumb { width: 38px; height: 38px; border-radius: 8px; object-fit: cover; background: #181d1b; flex-shrink: 0; }
+.kanban { display: grid; grid-template-columns: repeat(3, minmax(260px, 1fr)); gap: 16px; align-items: start; }
+.kcol { background: #0d100f; border: 1px solid var(--line); border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 10px; min-height: 200px; }
+.kcol h4 { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; color: var(--ink2); }
+.card { background: var(--sf); border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.card .t { font-weight: 550; }
+.tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.tabs a { padding: 7px 12px; border-radius: 9px; font-size: 13px; color: var(--ink2); border: 1px solid var(--line); }
+.tabs a.on { background: var(--sf2); color: #fff; border-color: #333b38; }
+.big { font-family: Brico; font-size: 44px; font-weight: 600; letter-spacing: -.03em; line-height: 1; }
+.explain { font-size: 13.5px; color: var(--ink2); line-height: 1.55; }
+.code { font-family: ui-monospace, monospace; font-size: 12px; background: #0d100f; border: 1px solid var(--line); border-radius: 12px; padding: 14px; white-space: pre-wrap; word-break: break-all; color: #cfe; }
+@media (max-width: 860px) { .kanban { grid-template-columns: 1fr; } .funnel .st { grid-template-columns: 110px 1fr 70px; } }

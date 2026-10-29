@@ -161,3 +161,113 @@ model CommandLog {
   status     String   @default("done") // done | awaiting_confirmation | confirmed | canceled | error
   createdAt  DateTime @default(now())
 }
+
+// ---------- Etapa 2 ----------
+
+// Leads captados no formulário da página do Grupo VIP (ou importados)
+model Lead {
+  id        String   @id @default(cuid())
+  name      String?
+  phone     String   @unique // só dígitos, com DDI
+  email     String?
+  birthday  String?  // DD/MM
+  source    String   @default("grupo-vip") // página ou formulário de origem
+  utmSource String?
+  utmMedium String?
+  utmCampaign String?
+  status    String   @default("novo") // novo | no_grupo | cliente | descadastrado
+  welcomeSent Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([createdAt])
+}
+
+enum BroadcastStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  PAUSED
+  DONE
+  CANCELED
+}
+
+// Disparos em massa no privado
+model Broadcast {
+  id         String          @id @default(cuid())
+  name       String
+  text       String
+  mediaUrl   String?
+  mediaType  String?
+  audience   String          // leads | clientes | vip | inativos | recorrentes | lista
+  status     BroadcastStatus @default(DRAFT)
+  sendAt     DateTime?
+  total      Int             @default(0)
+  sent       Int             @default(0)
+  failed     Int             @default(0)
+  createdBy  String?
+  createdAt  DateTime        @default(now())
+  recipients BroadcastRecipient[]
+}
+
+model BroadcastRecipient {
+  id          String    @id @default(cuid())
+  broadcastId String
+  phone       String
+  name        String?
+  status      String    @default("pendente") // pendente | enviado | falhou | pulado
+  error       String?
+  sentAt      DateTime?
+  broadcast   Broadcast @relation(fields: [broadcastId], references: [id], onDelete: Cascade)
+
+  @@unique([broadcastId, phone])
+  @@index([broadcastId, status])
+}
+
+// Quem pediu para não receber mais mensagens
+model OptOut {
+  phone     String   @id
+  createdAt DateTime @default(now())
+}
+
+// Tarefas (kanban)
+model Task {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  status      String    @default("a_fazer") // a_fazer | fazendo | feito
+  priority    String    @default("normal")  // baixa | normal | alta
+  assignee    String?
+  dueDate     DateTime?
+  order       Int       @default(0)
+  createdBy   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+// Votações (enquete no grupo ou página fechada)
+model Poll {
+  id         String     @id @default(cuid())
+  question   String
+  options    String[]
+  mode       String     @default("grupo") // grupo | pagina
+  groupJids  String[]
+  imageUrls  String[]
+  closesAt   DateTime?
+  status     String     @default("aberta") // aberta | fechada
+  createdBy  String?
+  createdAt  DateTime   @default(now())
+  votes      PollVote[]
+}
+
+model PollVote {
+  id        String   @id @default(cuid())
+  pollId    String
+  phone     String
+  name      String?
+  option    Int
+  createdAt DateTime @default(now())
+  poll      Poll     @relation(fields: [pollId], references: [id], onDelete: Cascade)
+
+  @@unique([pollId, phone])
+}
