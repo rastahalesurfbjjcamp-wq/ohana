@@ -1,12 +1,12 @@
 "use client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState, useTransition } from "react";
 import {
   ArrowLeftRight, Bot, Box, CalendarClock, CalendarHeart, ChartNoAxesCombined, ChevronDown, ChevronRight, Contact,
   Gift, HeartHandshake, LayoutDashboard, LogOut, MessageCircle, MessagesSquare, Package, Percent, ReceiptText,
   RefreshCcw, Rocket, Route, Send, Settings, ShoppingBag, Sparkles, SquareCheckBig, Truck, UserPlus, Users, Vote,
-  Wallet, Warehouse, Workflow, Coins, Plug, LayoutTemplate, Medal, Crown, Calculator, Menu, X, type LucideIcon,
+  Wallet, Warehouse, Workflow, Coins, Plug, LayoutTemplate, Medal, Crown, Calculator, Menu, X, RefreshCw, type LucideIcon,
 } from "lucide-react";
 
 type Item = { href: string; icon: LucideIcon; label: string; badge?: number; soon?: boolean };
@@ -79,6 +79,8 @@ export function Sidebar({ name, store, connected, leaves, logout }: { name: stri
     Object.fromEntries(groups.map((g) => [g.label, g.items.some((i) => active(i.href)) || g.label === "Comunidade"])),
   );
   const [nav, setNav] = useState(false);
+  const router = useRouter();
+  const [refreshing, startRefresh] = useTransition();
   useEffect(() => { setNav(false); }, [path]);
   useEffect(() => { document.body.classList.toggle("nav-open", nav); }, [nav]);
   const initials = name.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase();
@@ -109,6 +111,7 @@ export function Sidebar({ name, store, connected, leaves, logout }: { name: stri
         <b>{store} Hub</b>
       </Link>
       <i className={`live${connected ? "" : " off"}`} title={connected ? "WhatsApp conectado" : "WhatsApp desconectado"} />
+      <button type="button" className={`mtop-b${refreshing ? " spin" : ""}`} onClick={() => startRefresh(() => router.refresh())} aria-label="Atualizar"><RefreshCw size={18} /></button>
     </header>
     {nav && <div className="nav-ov" onClick={() => setNav(false)} />}
     <nav className="mtabs" aria-label="Atalhos">

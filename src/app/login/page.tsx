@@ -17,15 +17,13 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   return (
     <div className="login">
       <form action={entrar} className="pnl card stack">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img className="login-logo" src="/brand/logo.png" alt={env.storeName()} />
-        <div className="brand">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img className="mark-img" src="/brand/lion.png" alt="" width={36} height={39} />
-          <div>
-            <b>{env.storeName()} Hub</b>
-            <small>Comunidade e vendas</small>
+        <div className="login-head">
+          <div className="hub-logo static" aria-label={`${env.storeName()} Hub`}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/brand/lion.png" alt="" />
+            <div className="hl-r"><b>{env.storeName()} Hub</b><i /><i /><i /></div>
           </div>
+          <small>Comunidade e vendas</small>
         </div>
         {erro && <div className="err">E-mail ou senha incorretos.</div>}
         <div className="field">

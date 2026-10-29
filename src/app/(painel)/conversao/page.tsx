@@ -112,7 +112,7 @@ export default async function Conversao({ searchParams }: { searchParams: Promis
           </div>
 
           <Panel title="O caminho do cliente" sub={`${period.label}: quantas pessoas chegam em cada etapa`}>
-            <div className="cols" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 0, alignItems: "stretch" }}>
+            <div className="cols funnel4" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 0, alignItems: "stretch" }}>
               {steps.map((s, i) => {
                 const keep = i > 0 && steps[i - 1].n ? s.n / steps[i - 1].n : null;
                 const isWorst = worst && s.label === worst.to.label;

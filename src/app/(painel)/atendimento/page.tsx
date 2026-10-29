@@ -77,7 +77,7 @@ export default async function Atendimento({ searchParams }: { searchParams: Prom
   return (
     <>
       <AutoRefresh seconds={12} />
-      <div className="inbox">
+      <div className={`inbox${sp.tel || sp.p ? " has-chat" : ""}`}>
         <aside className="ib-list">
           <form className="srch" action="/atendimento" style={{ minWidth: 0 }}>
             <Search size={15} className="dim" />
@@ -117,6 +117,7 @@ export default async function Atendimento({ searchParams }: { searchParams: Prom
           {phoneSel ? (
             <>
               <div className="ib-h">
+                <Link href="/atendimento" className="ib-back" aria-label="Voltar para a lista">‹</Link>
                 <span className="av-s">{initials(displayName)}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <b>{displayName}</b>
