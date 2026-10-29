@@ -314,3 +314,24 @@ h1 { font-family: Geist, system-ui, sans-serif; font-weight: 650; font-size: 34p
 .segc b { font-family: Geist; font-size: 24px; letter-spacing: -.03em; }
 .segc .d { font-size: 11.5px; color: var(--ink3); line-height: 1.35; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .av-s { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-size: 11.5px; font-weight: 700; background: linear-gradient(135deg, #1f3a2a, #16241d); color: #8fe3ae; flex-shrink: 0; }
+
+/* Peças genéricas no estilo novo (valem para todas as telas) */
+.note, .ok, .err { border-radius: 14px; padding: 14px 16px 14px 44px; font-size: 13.5px; line-height: 1.5; position: relative; }
+.note { background: rgba(247,201,40,.08); border: 1px solid rgba(247,201,40,.22); }
+.ok { background: rgba(52,194,106,.08); border: 1px solid rgba(52,194,106,.25); }
+.err { background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.25); }
+.note::before, .ok::before, .err::before { position: absolute; left: 16px; top: 13px; width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 800; }
+.note::before { content: "!"; background: rgba(247,201,40,.2); color: var(--sun); }
+.ok::before { content: "✓"; background: rgba(52,194,106,.2); color: var(--lagoon); }
+.err::before { content: "!"; background: rgba(239,68,68,.2); color: var(--coral); }
+.tabs { display: inline-flex; gap: 2px; flex-wrap: wrap; background: #0d100f; border: 1px solid #222826; border-radius: 13px; padding: 4px; align-self: flex-start; }
+.tabs a { padding: 7px 14px; border-radius: 9px; font-size: 13.5px; color: var(--ink2); border: 0; font-weight: 500; transition: color .15s, background .15s; }
+.tabs a:hover { color: #fff; }
+.tabs a.on { background: #1e2421; color: #fff; box-shadow: inset 0 1px 0 rgba(255,255,255,.05), 0 1px 2px rgba(0,0,0,.4); }
+.tb thead th { background: #0f1312; text-transform: uppercase; letter-spacing: .05em; font-size: 11px; }
+.tb tbody tr { transition: background .12s; }
+.tb tbody tr:hover { background: #131816; }
+.empty { color: var(--ink3); }
+.in, select.in, textarea.in { transition: border-color .15s, box-shadow .15s; }
+.in:focus, select.in:focus, textarea.in:focus { outline: none; border-color: rgba(52,194,106,.55); box-shadow: 0 0 0 3px rgba(52,194,106,.12); }
+.chip { font-weight: 600; }

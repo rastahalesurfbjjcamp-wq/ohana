@@ -73,7 +73,15 @@ export default async function Conversao({ searchParams }: { searchParams: Promis
     { label: "Compraram", n: t.bought },
   ];
   const worst = steps.slice(1).map((s, i) => ({ from: steps[i], to: s, keep: steps[i].n ? s.n / steps[i].n : 0 })).sort((a, b) => a.keep - b.keep)[0];
-  const devMax = Math.max(0.0001, ...(devices ?? []).map((d) => d.rate));
+  // aparelhos desconhecidos viram um "Outro" só
+  const devs: { device: string; sessions: number; purchased: number; rate: number }[] = [];
+  for (const d of devices ?? []) {
+    const key = DEVICE[d.device] ? d.device : "other";
+    const cur = devs.find((x) => x.device === key);
+    if (cur) { cur.sessions += d.sessions; cur.purchased += d.purchased; cur.rate = cur.sessions ? cur.purchased / cur.sessions : 0; }
+    else devs.push({ device: key, sessions: d.sessions, purchased: d.purchased, rate: d.rate });
+  }
+  const devMax = Math.max(0.0001, ...devs.map((d) => d.rate));
 
   return (
     <>
@@ -146,7 +154,7 @@ export default async function Conversao({ searchParams }: { searchParams: Promis
               {months.length ? <GoalBars items={months} goal={goal * 100} format={(v) => `${v.toFixed(2).replace(".", ",")}%`} /> : <div className="empty">Sem dados ainda.</div>}
             </Panel>
             <Panel title="Por aparelho" sub={period.label}>
-              {(devices ?? []).sort((a, b) => b.sessions - a.sessions).map((d) => {
+              {devs.sort((a, b) => b.sessions - a.sessions).map((d) => {
                 const [name, Icon] = DEVICE[d.device] ?? ["Outro", Laptop];
                 return (
                   <div className="lrow" key={d.device}>
@@ -160,7 +168,7 @@ export default async function Conversao({ searchParams }: { searchParams: Promis
                   </div>
                 );
               })}
-              {!devices?.length && <div className="empty">Sem dados de aparelho.</div>}
+              {!devs.length && <div className="empty">Sem dados de aparelho.</div>}
             </Panel>
           </div>
         </>

@@ -75,14 +75,15 @@ export default async function Calendario({ searchParams }: { searchParams: Promi
   const opps = upcomingHolidays(today, 120).filter((h) => (h.kind === "comercial" || h.kind === "nacional") && keepState(h)).slice(0, 4);
   const states = [...byUf.entries()].sort((a, b) => b[1] - a[1]);
   const stMax = states[0]?.[1] ?? 1;
-  const monthName = new Date(y, mo - 1, 1).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+  const mn = new Date(y, mo - 1, 1).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+  const monthName = mn[0].toUpperCase() + mn.slice(1);
 
   return (
     <>
       <Header title="Calendário de vendas" lede="Feriados nacionais, estaduais (pelo estado dos seus clientes) e datas boas para vender, junto com o que você já agendou.">
         <div className="seg">
           <Link href={link({ m: prevM })} aria-label="Mês anterior"><ChevronLeft size={15} /></Link>
-          <Link href={link({ m: today.slice(0, 7) })} className={month === today.slice(0, 7) ? "on" : ""} style={{ textTransform: "capitalize", minWidth: 150, textAlign: "center" }}>{monthName}</Link>
+          <Link href={link({ m: today.slice(0, 7) })} className={month === today.slice(0, 7) ? "on" : ""} style={{ minWidth: 150, textAlign: "center" }}>{monthName}</Link>
           <Link href={link({ m: nextM })} aria-label="Próximo mês"><ChevronRight size={15} /></Link>
         </div>
         {uf ? <Link className="btn" href={link({ uf: "" })}><MapPin size={15} /> {uf} · ver todos</Link> : <span className="btn" style={{ cursor: "default" }}><MapPin size={15} /> Todos os estados</span>}
