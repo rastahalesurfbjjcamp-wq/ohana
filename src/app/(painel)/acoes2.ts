@@ -73,6 +73,17 @@ export async function createBroadcast(f: FormData) {
   const people = new Map<string, string | null>();
   if (audience === "leads") {
     for (const l of await db.lead.findMany({ where: { status: { not: "descadastrado" } } })) people.set(l.phone, l.name);
+  } else if (audience === "selecionados") {
+    const sel = (await db.setting.findUnique({ where: { key: "_disparo_lista" } }))?.value as { phones?: string[] } | undefined;
+    const names = new Map((await db.lead.findMany({ where: { phone: { in: sel?.phones ?? [] } } })).map((l) => [l.phone, l.name]));
+    for (const p of sel?.phones ?? []) people.set(p, names.get(p) ?? null);
+  } else if (audience === "leads-nao-entrou") {
+    const leads = await db.lead.findMany({ where: { status: { not: "descadastrado" } } });
+    const inG = new Set((await db.contact.findMany({ where: { phone: { in: leads.map((l) => l.phone) }, memberships: { some: { group: { isCommunity: true } } } }, select: { phone: true } })).map((c) => c.phone));
+    for (const l of leads) if (!inG.has(l.phone)) people.set(l.phone, l.name);
+  } else if (audience === "saiu-30") {
+    const ev = await db.memberEvent.findMany({ where: { type: "LEAVE", createdAt: { gte: new Date(Date.now() - 30 * 864e5) }, group: { isCommunity: true } }, include: { contact: { include: { memberships: { where: { leftAt: null, group: { isCommunity: true } } } } } } });
+    for (const e of ev) if (!e.contact.memberships.length) people.set(e.contact.phone, e.contact.name);
   } else if (audience === "comunidade") {
     const members = await db.membership.findMany({ where: { leftAt: null, group: { isCommunity: true } }, include: { contact: true } });
     for (const m of members) people.set(m.contact.phone, m.contact.name);
@@ -91,6 +102,13 @@ export async function createBroadcast(f: FormData) {
   }
   const opt = new Set((await db.optOut.findMany()).map((o) => o.phone));
   for (const p of opt) people.delete(p);
+  if (f.get("skipRecent") === "on") {
+    const week = Date.now() - 7 * 864e5;
+    for (const c of await customers().catch(() => [])) {
+      const p = normalizePhone(c.phone);
+      if (p && c.lastOrderAt && Date.parse(c.lastOrderAt) > week) people.delete(p);
+    }
+  }
   if (!people.size) redirect("/disparos?erro=vazio");
 
   let mediaUrl: string | undefined;
@@ -159,4 +177,31 @@ export async function closePoll(f: FormData) {
   await auth();
   await db.poll.update({ where: { id: str(f, "id") }, data: { status: "fechada" } });
   revalidatePath("/votacoes");
+}
+
+// Leva os leads marcados para a tela de disparo (lista pronta)
+export async function leadsToBroadcast(f: FormData) {
+  await auth();
+  const phones = [...new Set(f.getAll("sel").map(String).map((p) => normalizePhone(p)).filter(Boolean))] as string[];
+  if (!phones.length) redirect("/leads");
+  await db.setting.upsert({ where: { key: "_disparo_lista" }, create: { key: "_disparo_lista", value: { phones, at: Date.now() } }, update: { value: { phones, at: Date.now() } } });
+  redirect("/disparos?lista=1");
+}
+
+// Manda a mensagem para o próprio número conectado, para conferir antes de disparar
+export async function sendBroadcastTest(f: FormData) {
+  const s = await auth();
+  const text = str(f, "text");
+  if (!text) redirect("/disparos?erro=campos");
+  const me = await evolution.ownerPhone();
+  if (!me) redirect("/disparos?erro=numero");
+  const body = text.replace(/\{nome\}/g, s.name.split(" ")[0]) + "\n\n(teste do disparo)";
+  const file = f.get("media");
+  if (file instanceof File && file.size > 0) {
+    const up = await saveUpload(file);
+    await evolution.sendMedia(me!, { url: up.url, type: up.type, caption: body });
+  } else {
+    await evolution.sendText(me!, body);
+  }
+  redirect("/disparos?teste=1");
 }

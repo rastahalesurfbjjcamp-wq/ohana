@@ -1,14 +1,22 @@
 import { Pause, Play, X } from "lucide-react";
 import { db } from "@/lib/db";
+import { env } from "@/lib/env";
+import { getSession } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
-import { Bar, Header, Kpi, Panel } from "@/components/ui";
-import { broadcastAction, createBroadcast } from "../acoes2";
+import { customers } from "@/lib/store";
+import { inSegment, normalizePhone, SEGMENTS, type SegmentKey } from "@/lib/segments";
+import { Bar, Panel } from "@/components/ui";
+import { BroadcastComposer, type Audience } from "@/components/BroadcastComposer";
+import { broadcastAction, createBroadcast, sendBroadcastTest } from "../acoes2";
 
 export const dynamic = "force-dynamic";
 
 const AUD: Record<string, string> = {
-  leads: "Leads do Grupo VIP",
-  comunidade: "Todos dos grupos da comunidade",
+  selecionados: "Leads selecionados",
+  leads: "Todos os leads",
+  "leads-nao-entrou": "Leads que não entraram no grupo",
+  "saiu-30": "Saíram do grupo nos últimos 30 dias",
+  comunidade: "Todos dos grupos da comunidade (no privado)",
   "clientes-todos": "Clientes: todos",
   "clientes-vip": "Clientes: VIP",
   "clientes-recorrentes": "Clientes: recorrentes",
@@ -20,52 +28,42 @@ const ST = {
   DRAFT: ["rascunho", "c-n"], SCHEDULED: ["agendado", "c-k"], SENDING: ["enviando", "c-s"], PAUSED: ["pausado", "c-n"], DONE: ["concluído", "c-l"], CANCELED: ["cancelado", "c-n"],
 } as const;
 
-export default async function Disparos({ searchParams }: { searchParams: Promise<{ ok?: string; erro?: string }> }) {
+export default async function Disparos({ searchParams }: { searchParams: Promise<{ ok?: string; erro?: string; lista?: string; teste?: string }> }) {
   const sp = await searchParams;
-  const [list, s, optouts] = await Promise.all([db.broadcast.findMany({ orderBy: { createdAt: "desc" }, take: 30 }), getSettings(), db.optOut.count()]);
+  const session = await getSession();
+  const [list, s, leads, selRow, shop] = await Promise.all([
+    db.broadcast.findMany({ orderBy: { createdAt: "desc" }, take: 30 }),
+    getSettings(),
+    db.lead.findMany({ where: { status: { not: "descadastrado" } }, select: { phone: true } }),
+    db.setting.findUnique({ where: { key: "_disparo_lista" } }),
+    customers().catch(() => []),
+  ]);
+  const inG = new Set((await db.contact.findMany({ where: { phone: { in: leads.map((l) => l.phone) }, memberships: { some: { group: { isCommunity: true } } } }, select: { phone: true } })).map((c) => c.phone));
+  const leftEv = await db.memberEvent.findMany({ where: { type: "LEAVE", createdAt: { gte: new Date(Date.now() - 30 * 864e5) }, group: { isCommunity: true } }, select: { contactId: true } });
+  const members = await db.membership.count({ where: { leftAt: null, group: { isCommunity: true } } });
+  const selected = ((selRow?.value as { phones?: string[] } | undefined)?.phones ?? []).length;
+  const seg = (k: SegmentKey) => shop.filter((c) => normalizePhone(c.phone) && inSegment(c, k)).length;
+  const audiences: Audience[] = [
+    ...(selected && sp.lista ? [{ key: "selecionados", label: "Leads selecionados", count: selected }] : []),
+    { key: "leads-nao-entrou", label: "Leads que não entraram no grupo", count: leads.filter((l) => !inG.has(l.phone)).length },
+    { key: "saiu-30", label: "Saíram do grupo nos últimos 30 dias", count: new Set(leftEv.map((e) => e.contactId)).size },
+    { key: "leads", label: "Todos os leads", count: leads.length },
+    ...(["vip", "recorrentes", "novos", "inativos", "todos"] as SegmentKey[]).map((k) => ({ key: `clientes-${k}`, label: `Clientes: ${SEGMENTS[k].label.toLowerCase()}`, hint: SEGMENTS[k].desc, count: seg(k) })),
+    { key: "comunidade", label: "Todos dos grupos da comunidade", hint: "Cada pessoa recebe no privado", count: members },
+    { key: "lista", label: "Colar uma lista de números", count: 0, unit: "" },
+  ];
   const fmt = new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
-  const sentMonth = list.filter((b) => b.createdAt.getTime() > Date.now() - 30 * 864e5).reduce((a, b) => a + b.sent, 0);
 
   return (
     <>
-      <Header title="Disparos" lede="Mensagem no privado para leads, clientes ou um grupo de clientes. O sistema manda aos poucos para proteger o número." />
-      {sp.ok && <div className="ok">Disparo criado. Ele começa no horário escolhido e você acompanha o andamento aqui.</div>}
+      {sp.ok && <div className="ok">Disparo criado. Ele começa no horário escolhido e você acompanha o andamento aqui embaixo.</div>}
+      {sp.teste && <div className="ok">Teste enviado para o número conectado. Confira no WhatsApp.</div>}
       {sp.erro === "vazio" && <div className="err">Ninguém com WhatsApp válido nesse público.</div>}
       {sp.erro === "campos" && <div className="err">Escreva a mensagem e escolha o público.</div>}
-      <div className="note">
-        Disparo pelo WhatsApp normal (não oficial) tem risco de bloqueio se muita gente denunciar. Mande para quem conhece a marca, com mensagens curtas e úteis. Hoje o limite é de {s.sending.maxPerHour} mensagens por hora. Para volumes grandes, a API oficial da Meta custa cerca de R$ 0,32 por mensagem de marketing.
-      </div>
-      <div className="grid g4">
-        <Kpi label="Enviadas (30 dias)" value={sentMonth.toLocaleString("pt-BR")} />
-        <Kpi label="Disparos ativos" value={list.filter((b) => b.status === "SENDING" || b.status === "SCHEDULED").length} />
-        <Kpi label="Pediram para sair" value={optouts} sub="não recebem mais" />
-        <Kpi label="Limite por hora" value={s.sending.maxPerHour} sub="muda em Configurações" />
-      </div>
-      <div className="grid g2" style={{ alignItems: "start" }}>
-        <Panel title="Novo disparo">
-          <form action={createBroadcast} className="stack">
-            <div className="field"><label>Nome (só para você)</label><input className="in" name="name" placeholder="Ex.: Lançamento Pura para VIPs" /></div>
-            <div className="field">
-              <label>Para quem</label>
-              <select className="in" name="audience" defaultValue="clientes-vip">
-                {Object.entries(AUD).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-              </select>
-            </div>
-            <div className="field"><label>Lista (só se escolher “Lista colada”)</label><textarea className="in" name="list" placeholder="Um WhatsApp por linha" style={{ minHeight: 70 }} /></div>
-            <div className="field">
-              <label>Mensagem</label>
-              <textarea className="in" name="text" required placeholder="Oi {nome}, ..." />
-              <span className="hint">{"{nome}"} vira o primeiro nome. No fim vai sozinho: “Para não receber mais, responda SAIR”.</span>
-            </div>
-            <div className="field"><label>Foto ou vídeo (opcional)</label><input className="in" type="file" name="media" accept="image/*,video/*" style={{ paddingTop: 8 }} /></div>
-            <div className="field"><label>Quando</label><input className="in" type="datetime-local" name="sendAt" /></div>
-            <div className="row">
-              <button className="btn pri" type="submit">Agendar</button>
-              <button className="btn" type="submit" name="now" value="1">Começar agora</button>
-            </div>
-          </form>
-        </Panel>
-        <Panel title="Disparos" body={false}>
+      {sp.erro === "numero" && <div className="err">Não achei o número conectado. Confira o WhatsApp em Configurações.</div>}
+      <BroadcastComposer action={createBroadcast} testAction={sendBroadcastTest} audiences={audiences} defaultAudience={selected && sp.lista ? "selecionados" : "leads-nao-entrou"}
+        store={env.storeName()} maxPerHour={s.sending.maxPerHour} owner={(session?.name ?? "Leonardo").split(" ")[0]} />
+        <Panel title="Disparos anteriores" sub="Andamento de cada envio" body={false}>
           {list.length ? (
             <table className="tb">
               <tbody>
@@ -98,7 +96,6 @@ export default async function Disparos({ searchParams }: { searchParams: Promise
             <div className="empty">Nenhum disparo ainda.</div>
           )}
         </Panel>
-      </div>
     </>
   );
 }
