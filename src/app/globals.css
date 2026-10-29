@@ -921,5 +921,6 @@ a.itile:hover { border-color: #34403b; transform: translateY(-1px); }
 /* Logo */
 .mark-img { width: 36px; height: auto; flex-shrink: 0; filter: drop-shadow(0 0 10px rgba(247,201,40,.18)); }
 .login-logo { width: 220px; max-width: 80%; height: auto; display: block; margin: 4px auto 10px; }
-.splash-img { width: min(340px, 72vw); height: auto; display: block; margin: 0 auto; animation: splashPulse 1.8s ease-in-out infinite; filter: drop-shadow(0 6px 30px rgba(52,194,106,.18)); }
-.splash-hub { margin-top: 14px; font-family: Elite, "Special Elite", monospace; font-size: 20px; letter-spacing: .04em; background: linear-gradient(90deg, #f7c928 0%, #fff 35%, #34c26a 70%, #f7c928 100%); background-size: 300% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: splashShine 2.4s linear infinite; }
+.splash-img { width: 64px; height: auto; display: block; margin: 0 auto; animation: splashPulse 1.8s ease-in-out infinite; filter: drop-shadow(0 6px 30px rgba(52,194,106,.18)); }
+.splash-hub { margin-top: 16px; font-family: Elite, "Special Elite", monospace; font-size: clamp(28px, 4.5vw, 40px); line-height: 1; letter-spacing: .04em; background: linear-gradient(90deg, #f7c928 0%, #fff 35%, #34c26a 70%, #f7c928 100%); background-size: 300% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: splashShine 2.4s linear infinite; }
+.splash-hub::after { content: ""; display: block; width: 120px; height: 6px; margin: 12px auto 0; border-radius: 2px; background: linear-gradient(180deg, #e22323 0 33%, #fac428 33% 66%, #3ca03c 66%); }
