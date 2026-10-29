@@ -883,3 +883,8 @@ a.itile:hover { border-color: #34403b; transform: translateY(-1px); }
 .cost-in.miss { border-color: rgba(247,201,40,.5); }
 .bulkbar { position: sticky; bottom: 14px; z-index: 5; margin: 0 14px 14px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 14px; border-radius: 14px; border: 1px solid rgba(52,194,106,.45); background: #121815; box-shadow: 0 10px 40px -10px rgba(0,0,0,.6); }
 .tb input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--lagoon); cursor: pointer; }
+
+/* Precificação */
+@media (min-width: 861px) { .psim { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); } .psim-out { position: sticky; top: 16px; } }
+.psim-sc { display: grid; gap: 10px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 560px) { .psim-sc { grid-template-columns: 1fr; } }

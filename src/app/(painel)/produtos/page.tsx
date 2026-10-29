@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertCircle, Megaphone, ReceiptText, Settings, ShoppingBag } from "lucide-react";
+import { AlertCircle, Calculator, Megaphone, ReceiptText, Settings, ShoppingBag } from "lucide-react";
 import { DateRange } from "@/components/DateRange";
 import { CostVoice } from "@/components/CostVoice";
 import { computeMetrics, type Metrics } from "@/lib/report";
@@ -38,6 +38,7 @@ export default async function Produtos({ searchParams }: { searchParams: Promise
     <>
       <Header title="Produtos e lucro" lede="Quanto sobra de verdade em cada peça, depois de custo, impostos, taxas, embalagem e anúncio.">
         <DateRange current={period.key} from={period.from} to={period.to} label={period.label} />
+        <Link className="btn" href="/precificacao"><Calculator size={15} /> Precificação</Link>
         <Link className="btn" href="/custos"><Settings size={15} /> Impostos e taxas</Link>
       </Header>
       {error ? <ErrorNote error={error} /> : null}
@@ -72,7 +73,7 @@ export default async function Produtos({ searchParams }: { searchParams: Promise
                           <div className="row" style={{ gap: 10, flexWrap: "nowrap" }}>
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             {r.product.image ? <img className="thumb" src={r.product.image} alt="" /> : <div className="thumb" />}
-                            <b style={{ fontWeight: 600 }}>{r.product.title}</b>
+                            <Link href={`/precificacao?produto=${encodeURIComponent(r.product.title)}`} style={{ color: "inherit", fontWeight: 600 }} title="Simular preço e lucro">{r.product.title}</Link>
                           </div>
                         </td>
                         <td className="r">{r.sold}</td>

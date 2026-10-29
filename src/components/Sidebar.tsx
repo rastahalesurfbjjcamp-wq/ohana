@@ -6,7 +6,7 @@ import {
   ArrowLeftRight, Bot, Box, CalendarClock, CalendarHeart, ChartNoAxesCombined, ChevronDown, ChevronRight, Contact,
   Gift, HeartHandshake, LayoutDashboard, LogOut, MessageCircle, MessagesSquare, Package, Percent, ReceiptText,
   RefreshCcw, Rocket, Route, Send, Settings, ShoppingBag, Sparkles, SquareCheckBig, Truck, UserPlus, Users, Vote,
-  Wallet, Warehouse, Workflow, Coins, Plug, LayoutTemplate, Medal, Crown, type LucideIcon,
+  Wallet, Warehouse, Workflow, Coins, Plug, LayoutTemplate, Medal, Crown, Calculator, type LucideIcon,
 } from "lucide-react";
 
 type Item = { href: string; icon: LucideIcon; label: string; badge?: number; soon?: boolean };
@@ -39,6 +39,7 @@ export function Sidebar({ name, store, connected, leaves, logout }: { name: stri
       items: [
         { href: "/financeiro", icon: Wallet, label: "Financeiro" },
         { href: "/produtos", icon: Box, label: "Produtos e lucro" },
+        { href: "/precificacao", icon: Calculator, label: "Precificação" },
         { href: "/estoque", icon: Warehouse, label: "Estoque" },
         { href: "/pedidos", icon: Package, label: "Pedidos" },
         { href: "/custos", icon: Coins, label: "Custos e impostos" },
