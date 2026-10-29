@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertTriangle, ArrowRight, BadgeDollarSign, CalendarClock, ClipboardList, CreditCard, FileText, Hourglass, LogIn, LogOut, Medal, Megaphone, MessageCircle, MousePointerClick, PackageX, Receipt, RotateCcw, ShoppingBag, ShoppingCart, Target, TrendingUp, Users, Wallet } from "lucide-react";
+import { AlertTriangle, ArrowRight, BadgeDollarSign, CalendarClock, ClipboardList, CreditCard, Crown, FileText, Hourglass, LogIn, LogOut, Medal, Megaphone, MessageCircle, MousePointerClick, PackageX, Receipt, RotateCcw, ShoppingBag, ShoppingCart, Target, TrendingUp, Users, Wallet } from "lucide-react";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { computeMetrics, type Metrics } from "@/lib/report";
@@ -66,6 +66,9 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
     db.chatMessage.findMany({ where: { fromMe: false }, orderBy: { createdAt: "desc" }, take: 8 }),
     db.task.findMany({ where: { status: { not: "feito" }, dueDate: { lte: dayRange(today).end } }, orderBy: { dueDate: "asc" }, take: 5 }),
   ]);
+  const clubAll = await db.clubMember.findMany({ where: { status: { not: "cancelado" } }, select: { paidUntil: true, joinedAt: true, status: true } }).catch(() => []);
+  const clubLate = clubAll.filter((x) => !x.paidUntil || x.paidUntil.getTime() < Date.now()).length;
+  const clubNew = clubAll.filter((x) => x.joinedAt >= pStart && x.joinedAt <= pEnd).length;
   const cartFeed = await db.recoveryCase.findMany({ where: { kind: { in: ["carrinho", "pix"] } }, orderBy: { createdAt: "desc" }, take: 8 });
   const [periodEv, liveEv] = await Promise.all([
     db.memberEvent.groupBy({ by: ["type"], where: { createdAt: { gte: pStart, lte: pEnd }, ...chosen }, _count: true }),
@@ -323,8 +326,9 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
           {lowVar.length > 0 && <Link href="/estoque" className="lrow" style={{ color: "inherit" }}><span className="tile sm t-s"><AlertTriangle size={15} /></span><div style={{ minWidth: 0, flex: 1 }}><div className="t" style={{ fontSize: 13.5 }}>{lowVar.length} tamanho(s) acabando</div><div className="s" style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{lowVar.slice(0, 2).map((x) => `${x.p} ${x.v} (${x.n})`).join(", ")}</div></div></Link>}
           {tasksDue.length > 0 && <Link href="/tarefas" className="lrow" style={{ color: "inherit" }}><span className="tile sm t-p"><ClipboardList size={15} /></span><div style={{ minWidth: 0, flex: 1 }}><div className="t" style={{ fontSize: 13.5 }}>{tasksDue.length} tarefa(s) para hoje ou atrasadas</div><div className="s" style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{tasksDue[0].title}</div></div></Link>}
           {m && m.missingCost.length > 0 && <Link href="/produtos" className="lrow" style={{ color: "inherit" }}><span className="tile sm t-s"><Wallet size={15} /></span><div style={{ minWidth: 0, flex: 1 }}><div className="t" style={{ fontSize: 13.5 }}>{m.missingCost.length} produto(s) vendidos sem custo</div><div className="s">o lucro fica maior do que é</div></div></Link>}
+          {clubAll.length > 0 && <Link href="/clube?f=atraso" className="lrow" style={{ color: "inherit" }}><span className="tile sm t-s"><Crown size={15} /></span><div><div className="t" style={{ fontSize: 13.5 }}>Clube: {clubAll.length - clubLate} em dia{clubNew ? `, ${clubNew} novo(s)` : ""}</div><div className="s">{clubLate ? `${clubLate} com mensalidade vencida` : "ninguém atrasado"}</div></div></Link>}
           {full.length > 0 && <Link href="/grupos" className="lrow" style={{ color: "inherit" }}><span className="tile sm t-c"><Users size={15} /></span><div><div className="t" style={{ fontSize: 13.5 }}>{full.length} grupo(s) cheio(s)</div><div className="s">o convite já manda para um com vaga</div></div></Link>}
-          {!zeroed.length && !lowVar.length && !tasksDue.length && !(m && m.missingCost.length) && !full.length && <div className="empty">Tudo em ordem.</div>}
+          {!clubAll.length && !zeroed.length && !lowVar.length && !tasksDue.length && !(m && m.missingCost.length) && !full.length && <div className="empty">Tudo em ordem.</div>}
         </section>
       </div>
 

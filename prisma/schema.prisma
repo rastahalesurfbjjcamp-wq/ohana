@@ -429,3 +429,55 @@ model Payout {
 
   @@unique([referralId, month])
 }
+
+// Clube de fidelidade: membro paga a mensalidade e ganha desconto, acesso antecipado e pontos
+model ClubMember {
+  id         String    @id @default(cuid())
+  name       String
+  cpf        String?   @unique // só dígitos
+  phone      String?
+  email      String?
+  customerId String?   // cliente na Shopify
+  code       String?   @unique // cupom de membro (desconto em toda compra)
+  discountId String?
+  codeActive Boolean   @default(true)
+  status     String    @default("ativo") // ativo | cancelado
+  fee        Float     @default(0)
+  paidUntil  DateTime?
+  points     Int       @default(0) // saldo
+  note       String?
+  joinedAt   DateTime  @default(now())
+  entries    ClubPoints[]
+  rewards    ClubReward[]
+
+  @@index([phone])
+  @@index([email])
+}
+
+model ClubPoints {
+  id        String     @id @default(cuid())
+  memberId  String
+  delta     Int
+  reason    String     // compra | estorno | mensalidade | resgate | evento | ajuste | bonus
+  ref       String     @default("")
+  note      String?
+  createdBy String?
+  createdAt DateTime   @default(now())
+  member    ClubMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([memberId, reason, ref])
+  @@index([memberId, createdAt])
+}
+
+model ClubReward {
+  id         String     @id @default(cuid())
+  memberId   String
+  code       String     @unique
+  discountId String?
+  value      Float
+  points     Int
+  usedAt     DateTime?
+  orderName  String?
+  createdAt  DateTime   @default(now())
+  member     ClubMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+}

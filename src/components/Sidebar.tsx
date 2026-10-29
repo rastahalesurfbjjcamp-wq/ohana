@@ -6,7 +6,7 @@ import {
   ArrowLeftRight, Bot, Box, CalendarClock, CalendarHeart, ChartNoAxesCombined, ChevronDown, ChevronRight, Contact,
   Gift, HeartHandshake, LayoutDashboard, LogOut, MessageCircle, MessagesSquare, Package, Percent, ReceiptText,
   RefreshCcw, Rocket, Route, Send, Settings, ShoppingBag, Sparkles, SquareCheckBig, Truck, UserPlus, Users, Vote,
-  Wallet, Warehouse, Workflow, Coins, Plug, LayoutTemplate, Medal, type LucideIcon,
+  Wallet, Warehouse, Workflow, Coins, Plug, LayoutTemplate, Medal, Crown, type LucideIcon,
 } from "lucide-react";
 
 type Item = { href: string; icon: LucideIcon; label: string; badge?: number; soon?: boolean };
@@ -49,6 +49,7 @@ export function Sidebar({ name, store, connected, leaves, logout }: { name: stri
         { href: "/assistente", icon: Bot, label: "Assistente IA" },
         { href: "/pos-venda", icon: HeartHandshake, label: "Pós-venda" },
         { href: "/atletas", icon: Medal, label: "Atletas e influenciadores" },
+        { href: "/clube", icon: Crown, label: "Clube de fidelidade" },
         { href: "/indique", icon: Gift, label: "Indique e ganhe" },
       ],
     },

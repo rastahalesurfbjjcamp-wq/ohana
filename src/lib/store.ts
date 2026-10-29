@@ -66,6 +66,8 @@ export interface Order {
   images: string[];
   shipStatus: string | null;
   codes: string[];
+  customerId: string | null;
+  cpf: string | null;
 }
 
 type RawOrder = {
@@ -77,7 +79,8 @@ type RawOrder = {
   displayFulfillmentStatus: string;
   currentSubtotalPriceSet: { shopMoney: { amount: string } };
   currentTotalPriceSet: { shopMoney: { amount: string } };
-  customer: { displayName: string } | null;
+  customer: { displayName: string; id?: string } | null;
+  localizedFields?: { nodes: { key: string; value: string }[] };
   shippingAddress: { provinceCode: string | null; city: string | null; phone: string | null } | null;
   customerJourneySummary: {
     firstVisit: { source: string | null; utmParameters: Record<string, string | null> | null } | null;
@@ -103,7 +106,8 @@ type RawOrder = {
 
 const ORDER_FIELDS = `id name createdAt cancelledAt displayFinancialStatus displayFulfillmentStatus
   currentSubtotalPriceSet{shopMoney{amount}} currentTotalPriceSet{shopMoney{amount}}
-  customer{displayName} shippingAddress{provinceCode city phone}
+  customer{id displayName} shippingAddress{provinceCode city phone}
+  localizedFields(first:3){ nodes{ key value } }
   customerJourneySummary{ firstVisit{ source utmParameters{source medium campaign content term} } lastVisit{ source utmParameters{source medium campaign content term} } }
   fulfillments(first:3){ displayStatus trackingInfo{number company url} }
   paymentGatewayNames email phone discountCodes
@@ -132,6 +136,8 @@ function mapOrder(o: RawOrder): Order {
     cancelled: !!o.cancelledAt,
     gateway: o.paymentGatewayNames?.[0] ?? null,
     codes: (o.discountCodes ?? []).map((c) => c.toUpperCase()),
+    customerId: o.customer?.id ?? null,
+    cpf: (o.localizedFields?.nodes.find((f) => f.key === "TAX_CREDENTIAL_BR")?.value ?? "").replace(/\D/g, "") || null,
     email: o.email ?? null,
     phone: o.phone ?? o.shippingAddress?.phone ?? null,
     images: o.lineItems.nodes.map((l) => l.image?.url).filter((x): x is string => !!x),

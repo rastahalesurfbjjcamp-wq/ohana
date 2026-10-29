@@ -10,6 +10,7 @@ import { transcribe } from "../lib/ai";
 import { evolution } from "../lib/evolution";
 import { getSettings } from "../lib/settings";
 import { humanDelay, reserveSlot, sendMedia, sendText, sentByBot } from "../lib/send";
+import { scanClub } from "../lib/club";
 import { hhmmLocal, isoDayLocal, nowLocal } from "../lib/time";
 import { dueBroadcasts, leadWelcome, runBroadcast, sendPollLink, waitlistNotify } from "./jobs2";
 import { scanFirstPurchases, scanRecovery, scanRepurchase, sendDueRecovery } from "../lib/recovery";
@@ -17,7 +18,7 @@ import { runFunnels } from "../lib/funnels";
 import { assistantReply } from "../lib/assistant";
 import { refreshReferralUsage } from "../lib/referral";
 
-type Marks = { payday?: string; daily?: string; weekly?: string; sync?: number; scan?: number; repurchase?: string; referral?: number };
+type Marks = { payday?: string; daily?: string; weekly?: string; sync?: number; scan?: number; repurchase?: string; referral?: number; club?: number };
 
 async function getMarks(): Promise<Marks> {
   const r = await db.setting.findUnique({ where: { key: "_marks" } });
@@ -95,6 +96,11 @@ async function tick() {
   if (hhmm >= "11:00" && marks.repurchase !== today) {
     await setMarks({ repurchase: today });
     await scanRepurchase().catch((e) => console.error("[recompra]", e));
+  }
+  // Clube de fidelidade: pontos das compras e cupom de quem atrasou, a cada 30 minutos
+  if (!marks.club || Date.now() - marks.club > 30 * 60_000) {
+    await setMarks({ club: Date.now() });
+    await scanClub().catch((e) => console.error("[clube]", e));
   }
   // Uso dos cupons do Indique e ganhe a cada 6 horas
   if (!marks.referral || Date.now() - marks.referral > 6 * 3600_000) {

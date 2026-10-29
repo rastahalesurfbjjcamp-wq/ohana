@@ -63,6 +63,19 @@ export const DEFAULTS = {
     repurchaseText: "Oi {nome}, sentimos sua falta na {loja}! Chegaram novidades e separamos o cupom {cupom} para você: {link}",
     storeUrl: "https://rastahale.com.br",
   },
+  club: {
+    enabled: true,
+    name: "Clube Rasta Hale",
+    fee: 29.9,
+    discountPct: 10,
+    pointsPerReal: 1,
+    valuePer100: 5,
+    monthlyPoints: 50,
+    eventPoints: 0,
+    minRedeem: 100,
+    graceDays: 5,
+    earlyHours: 48,
+  },
   referral: {
     enabled: true,
     percent: 10,
@@ -126,6 +139,7 @@ export type Settings = {
     repurchaseText: string;
     storeUrl: string;
   };
+  club: { enabled: boolean; name: string; fee: number; discountPct: number; pointsPerReal: number; valuePer100: number; monthlyPoints: number; eventPoints: number; minRedeem: number; graceDays: number; earlyHours: number };
   referral: { enabled: boolean; percent: number; commission: number; releaseDays: number; shareText: string };
   assistant: { enabled: boolean; instructions: string; useOrders: boolean; useStock: boolean; useSizes: boolean; sizeTable: string; useExchange: boolean; exchangeText: string; handoff: boolean };
 };
