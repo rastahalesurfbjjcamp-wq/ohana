@@ -416,3 +416,31 @@ select.in { appearance: none; padding-right: 34px; cursor: pointer; background-i
 .sz.w { background: rgba(247,201,40,.12); color: #f7d35a; }
 .sz.z { background: rgba(239,68,68,.13); color: #fca5a5; box-shadow: inset 0 0 0 1px rgba(239,68,68,.18); }
 .sz.na { background: #0f1312; color: #3a423e; }
+
+/* Menu de três pontinhos */
+.menu { position: relative; display: inline-block; }
+.menu-b { width: 32px; height: 32px; border-radius: 9px; border: 0; background: none; color: var(--ink2); cursor: pointer; display: grid; place-items: center; }
+.menu-b:hover { background: #1a1f1d; color: #fff; }
+.menu-p { position: absolute; right: 0; top: calc(100% + 4px); z-index: 40; min-width: 210px; background: #141917; border: 1px solid #262d2a; border-radius: 12px; padding: 6px; box-shadow: 0 20px 50px -10px rgba(0,0,0,.8); animation: dpIn .12s ease-out; }
+.menu-p a, .menu-p button { display: flex; width: 100%; align-items: center; gap: 9px; padding: 9px 10px; border-radius: 8px; font-size: 13.5px; color: var(--ink); background: none; border: 0; cursor: pointer; text-align: left; }
+.menu-p a:hover, .menu-p button:hover { background: #1e2421; }
+.menu-p .dn { color: var(--coral); }
+
+/* Link único e fila de grupos */
+.biglink { display: flex; align-items: center; gap: 12px; padding: 12px 12px 12px 18px; border-radius: 14px; background: #0c0f0e; border: 1px solid #222826; }
+.biglink .u { font: 650 24px Geist, system-ui; letter-spacing: -.02em; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chain { display: flex; align-items: stretch; gap: 8px; margin-top: 14px; overflow-x: auto; padding-bottom: 2px; }
+.chain .gq { flex: 1; min-width: 150px; border-radius: 12px; padding: 12px 14px; background: #101412; border: 1px solid #1f2523; }
+.chain .gq b { font-size: 14px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chain .gq small { font-size: 12.5px; }
+.chain .gq.now { border-color: rgba(52,194,106,.55); background: linear-gradient(180deg, rgba(52,194,106,.13), rgba(52,194,106,.04)); box-shadow: 0 0 24px -8px rgba(52,194,106,.5); }
+.chain .arr { display: grid; place-items: center; color: var(--ink3); }
+.act-card { display: flex; align-items: center; gap: 14px; padding: 14px; border-radius: 14px; border: 1px solid #222826; background: #101412; color: inherit; transition: border-color .15s, transform .15s; }
+.act-card:hover, .act-card.on { border-color: #34403b; transform: translateY(-1px); }
+.act-card.on { border-color: rgba(52,194,106,.45); }
+.act-card b { font-size: 14px; display: block; }
+.act-card small { font-size: 12.5px; color: var(--ink3); }
+.gav { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font: 700 11.5px Geist, system-ui; background: rgba(52,194,106,.1); color: var(--lagoon); border: 1px solid rgba(52,194,106,.25); flex-shrink: 0; }
+.in.file { padding: 5px; height: auto; }
+.in.file::file-selector-button { border: 0; border-radius: 9px; background: #1e2421; color: #fff; padding: 9px 14px; margin-right: 12px; font-weight: 600; cursor: pointer; }
+.in.file::file-selector-button:hover { background: var(--lagoon); color: #04140a; }

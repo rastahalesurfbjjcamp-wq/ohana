@@ -223,3 +223,37 @@ export function HRow({ label, value, max, right, tone = "", sub }: { label: Reac
     </div>
   );
 }
+
+// Barras para cima (entraram) e para baixo (saíram), por dia
+export function UpDownBars({ items, height = 260 }: { items: { label: string; up: number; down: number }[]; height?: number }) {
+  const W = 700, H = height, padB = 26, gap = 10;
+  const maxUp = Math.max(1, ...items.map((i) => i.up));
+  const maxDown = Math.max(1, ...items.map((i) => i.down));
+  const total = maxUp + maxDown;
+  const zero = 14 + ((H - padB - 28) * maxUp) / total;
+  const scale = (H - padB - 28) / total;
+  const bw = Math.max(4, (W - gap * (items.length - 1)) / items.length);
+  const every = Math.ceil(items.length / 10);
+  return (
+    <svg className="svgc" viewBox={`0 0 ${W} ${H}`}>
+      <line x1={0} x2={W} y1={zero} y2={zero} className="grid" />
+      {items.map((it, i) => {
+        const x = i * (bw + gap);
+        const hu = it.up * scale, hd = it.down * scale;
+        return (
+          <g key={i} className="pt">
+            <rect x={x} y={0} width={bw} height={H - padB} fill="transparent" />
+            {it.up > 0 && <rect x={x} y={zero - hu} width={bw} height={Math.max(2, hu)} rx={Math.min(7, bw / 3)} fill="#34c26a" />}
+            {it.down > 0 && <rect x={x} y={zero + 3} width={bw} height={Math.max(2, hd)} rx={Math.min(7, bw / 3)} fill="#b23636" />}
+            {(i % every === 0 || i === items.length - 1) && <text x={x + bw / 2} y={H - 6} textAnchor="middle" className="xlab">{it.label}</text>}
+            <g className="tip">
+              <rect x={Math.min(W - 120, Math.max(0, x + bw / 2 - 60))} y={2} width={120} height={40} rx={8} fill="#1b201e" stroke="#2d3531" />
+              <text x={Math.min(W - 60, Math.max(60, x + bw / 2))} y={19} textAnchor="middle" className="vlab" style={{ fontSize: 12 }}>{it.label}</text>
+              <text x={Math.min(W - 60, Math.max(60, x + bw / 2))} y={35} textAnchor="middle" className="ylab" style={{ fontSize: 11.5 }}>+{it.up} entraram · {it.down} saíram</text>
+            </g>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}

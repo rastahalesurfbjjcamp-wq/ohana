@@ -126,6 +126,20 @@ export const evolution = {
     });
   },
 
+  // Gestão dos grupos (nome, descrição, foto e quem pode mandar mensagem)
+  async updateSubject(groupJid: string, subject: string) {
+    return call("POST", `/group/updateGroupSubject/${inst()}?groupJid=${encodeURIComponent(groupJid)}`, { subject });
+  },
+  async updateDescription(groupJid: string, description: string) {
+    return call("POST", `/group/updateGroupDescription/${inst()}?groupJid=${encodeURIComponent(groupJid)}`, { description });
+  },
+  async updatePicture(groupJid: string, image: string) {
+    return call("POST", `/group/updateGroupPicture/${inst()}?groupJid=${encodeURIComponent(groupJid)}`, { image });
+  },
+  async updateSetting(groupJid: string, action: "announcement" | "not_announcement" | "locked" | "unlocked") {
+    return call("POST", `/group/updateSetting/${inst()}?groupJid=${encodeURIComponent(groupJid)}`, { action });
+  },
+
   async sendPoll(to: string, name: string, values: string[], selectableCount = 1) {
     return call("POST", `/message/sendPoll/${inst()}`, { number: to, name, values, selectableCount });
   },
