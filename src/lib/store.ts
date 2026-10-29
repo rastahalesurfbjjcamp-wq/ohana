@@ -77,7 +77,7 @@ type RawOrder = {
   currentSubtotalPriceSet: { shopMoney: { amount: string } };
   currentTotalPriceSet: { shopMoney: { amount: string } };
   customer: { displayName: string } | null;
-  shippingAddress: { provinceCode: string | null; city: string | null } | null;
+  shippingAddress: { provinceCode: string | null; city: string | null; phone: string | null } | null;
   customerJourneySummary: {
     firstVisit: { source: string | null; utmParameters: Record<string, string | null> | null } | null;
     lastVisit: { source: string | null; utmParameters: Record<string, string | null> | null } | null;
@@ -101,7 +101,7 @@ type RawOrder = {
 
 const ORDER_FIELDS = `id name createdAt cancelledAt displayFinancialStatus displayFulfillmentStatus
   currentSubtotalPriceSet{shopMoney{amount}} currentTotalPriceSet{shopMoney{amount}}
-  customer{displayName} shippingAddress{provinceCode city}
+  customer{displayName} shippingAddress{provinceCode city phone}
   customerJourneySummary{ firstVisit{ source utmParameters{source medium campaign content} } lastVisit{ source utmParameters{source medium campaign content} } }
   fulfillments(first:3){ displayStatus trackingInfo{number company url} }
   paymentGatewayNames email phone
@@ -130,7 +130,7 @@ function mapOrder(o: RawOrder): Order {
     cancelled: !!o.cancelledAt,
     gateway: o.paymentGatewayNames?.[0] ?? null,
     email: o.email ?? null,
-    phone: o.phone ?? null,
+    phone: o.phone ?? o.shippingAddress?.phone ?? null,
     images: o.lineItems.nodes.map((l) => l.image?.url).filter((x): x is string => !!x),
     shipStatus: o.fulfillments.find((f) => f.displayStatus)?.displayStatus ?? null,
     lines: o.lineItems.nodes.map((l) => ({
@@ -392,6 +392,9 @@ export interface Shipment {
   company: string | null;
   number: string | null;
   url: string | null;
+  orderedAt: string;
+  phone: string | null;
+  lastEvent: { status: string; message: string | null; at: string } | null;
 }
 
 export async function shipments(days = 30): Promise<Shipment[]> {
@@ -405,15 +408,17 @@ export async function shipments(days = 30): Promise<Shipment[]> {
           pageInfo: { hasNextPage: boolean; endCursor: string | null };
           nodes: {
             name: string;
+            createdAt: string;
+            phone: string | null;
             customer: { displayName: string } | null;
-            shippingAddress: { city: string | null; provinceCode: string | null } | null;
-            fulfillments: { createdAt: string; displayStatus: string; deliveredAt: string | null; trackingInfo: { number: string; company: string | null; url: string | null }[] }[];
+            shippingAddress: { city: string | null; provinceCode: string | null; phone: string | null } | null;
+            fulfillments: { createdAt: string; displayStatus: string; deliveredAt: string | null; trackingInfo: { number: string; company: string | null; url: string | null }[]; events: { nodes: { status: string; message: string | null; happenedAt: string }[] } }[];
           }[];
         };
       };
       const d: P = await gql<P>(
         `query($q:String,$after:String){ orders(first:100, after:$after, sortKey:CREATED_AT, reverse:true, query:$q){ pageInfo{hasNextPage endCursor}
-          nodes{ name customer{displayName} shippingAddress{city provinceCode} fulfillments(first:3){ createdAt displayStatus deliveredAt trackingInfo{number company url} } } } }`,
+          nodes{ name createdAt phone customer{displayName} shippingAddress{city provinceCode phone} fulfillments(first:3){ createdAt displayStatus deliveredAt trackingInfo{number company url} events(first:1, sortKey:HAPPENED_AT, reverse:true){ nodes{ status message happenedAt } } } } } }`,
         { q: `fulfillment_status:shipped created_at:>='${since}'`, after },
       );
       for (const o of d.orders.nodes) {
@@ -431,6 +436,9 @@ export async function shipments(days = 30): Promise<Shipment[]> {
           company: t?.company ?? null,
           number: t?.number ?? null,
           url: t?.url ?? null,
+          orderedAt: o.createdAt,
+          phone: o.phone ?? o.shippingAddress?.phone ?? null,
+          lastEvent: f.events?.nodes?.[0] ? { status: f.events.nodes[0].status, message: f.events.nodes[0].message, at: f.events.nodes[0].happenedAt } : null,
         });
       }
       after = d.orders.pageInfo.hasNextPage ? d.orders.pageInfo.endCursor : null;

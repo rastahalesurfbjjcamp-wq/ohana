@@ -615,3 +615,22 @@ select.in { appearance: none; padding-right: 34px; cursor: pointer; background-i
 .trk { font: 600 12px ui-monospace, SFMono-Regular, Menlo, monospace; padding: 4px 8px; border-radius: 7px; background: #0c0f0e; border: 1px solid #262d2a; color: #dfe5e1; display: inline-flex; align-items: center; gap: 5px; }
 a.trk:hover { border-color: var(--lagoon); }
 .tb tr.warn td { background: rgba(239,68,68,.045); }
+
+/* Faixa de números (logística) */
+.kstrip { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
+.ks { border-radius: 16px; border: 1px solid #1f2523; background: linear-gradient(180deg, #141917, #111513); padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; transition: transform .15s; }
+.ks:hover { transform: translateY(-2px); }
+.ks small { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink2); }
+.ks b { font: 650 28px Geist, system-ui; letter-spacing: -.03em; }
+.ks span { font-size: 12px; color: var(--ink3); }
+.ks.hl { border-color: rgba(52,194,106,.45); background: linear-gradient(160deg, rgba(52,194,106,.16), #111513 75%); box-shadow: 0 0 30px -14px rgba(52,194,106,.6); }
+.ks.hl b, .ks.hl small { color: var(--lagoon); }
+.ks.warn b { color: var(--sun); }
+.hist { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; height: 170px; align-items: end; padding-top: 10px; }
+.hist > div { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 6px; }
+.hist i { width: 100%; border-radius: 8px 8px 4px 4px; transition: filter .15s; }
+.hist > div:hover i { filter: brightness(1.2); }
+.hist small { font-size: 11px; color: var(--ink3); }
+.hist .hv { font-size: 11.5px; font-weight: 650; color: var(--ink2); }
+@media (max-width: 1200px) { .kstrip { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .kstrip { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
