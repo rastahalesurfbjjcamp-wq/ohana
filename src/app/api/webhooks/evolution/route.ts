@@ -58,15 +58,31 @@ export async function POST(req: NextRequest) {
         const key = d?.key as { remoteJid?: string; fromMe?: boolean; id?: string; participant?: string; participantAlt?: string; participantPn?: string } | undefined;
         if (!key?.remoteJid || !key.id) continue;
         if (!key.remoteJid.endsWith("@g.us")) {
-          // Conversa no privado: "SAIR" tira a pessoa dos disparos
-          const t = messageText(d?.message as Record<string, unknown> | undefined).toLowerCase();
-          if (!key.fromMe && /^(sair|parar|pare|cancelar|stop|descadastrar)\b/.test(t)) {
-            const phone = jidToPhone((key as { remoteJidAlt?: string }).remoteJidAlt ?? key.remoteJid);
-            if (phone) {
-              await db.optOut.upsert({ where: { phone }, create: { phone }, update: {} });
-              await db.lead.updateMany({ where: { phone }, data: { status: "descadastrado" } });
-            }
+          if (key.remoteJid.includes("broadcast") || key.remoteJid.includes("newsletter") || key.fromMe) continue;
+          const alt = (key as { remoteJidAlt?: string }).remoteJidAlt;
+          const phone = jidToPhone(key.remoteJid.endsWith("@lid") && alt ? alt : key.remoteJid);
+          if (!phone) continue;
+          const msg = d?.message as Record<string, unknown> | undefined;
+          const raw = messageText(msg);
+          const isAudio = !!msg?.audioMessage;
+          const text = raw || (isAudio ? "[áudio]" : msg?.imageMessage ? "[foto]" : msg?.videoMessage ? "[vídeo]" : msg?.documentMessage ? "[arquivo]" : "");
+          if (!text) continue;
+          const name = (d?.pushName as string | undefined) ?? undefined;
+          // Conversa no privado: guarda no atendimento
+          await db.chatThread.upsert({
+            where: { phone },
+            create: { phone, name, lastText: text.slice(0, 200), lastAt: new Date(), unread: 1 },
+            update: { name: name ?? undefined, lastText: text.slice(0, 200), lastAt: new Date(), unread: { increment: 1 }, status: "aberto" },
+          });
+          await db.chatMessage.upsert({ where: { messageId: key.id }, create: { phone, text, messageId: key.id }, update: {} });
+          // "SAIR" tira a pessoa dos disparos
+          if (/^(sair|parar|pare|cancelar|stop|descadastrar)\b/.test(raw.toLowerCase())) {
+            await db.optOut.upsert({ where: { phone }, create: { phone }, update: {} });
+            await db.lead.updateMany({ where: { phone }, data: { status: "descadastrado" } });
+            continue;
           }
+          // Assistente com IA (se ligado), espera alguns segundos para juntar mensagens seguidas
+          await enqueue("assistant", { phone, audioId: isAudio ? key.id : null }, { jobId: `ai-${phone}-${Math.floor(Date.now() / 15000)}`, delayMs: 12000 });
           continue;
         }
         const group = await db.group.findUnique({ where: { jid: key.remoteJid } });

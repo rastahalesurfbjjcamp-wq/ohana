@@ -90,6 +90,7 @@ export async function handleParticipants(groupJid: string, participants: unknown
         update: { leftAt: null, joinedAt: prev?.leftAt ? new Date() : prev?.joinedAt },
       });
       await db.memberEvent.create({ data: { type: leftRecently ? "RETURN" : "JOIN", groupId: group.id, contactId: contact.id } });
+      if (group.isCommunity) await import("./funnels").then((m) => m.funnelEvent("entrou_grupo", phone, contact.name)).catch(() => {});
       await db.group.update({ where: { id: group.id }, data: { size: { increment: 1 } } });
     }
 
@@ -97,6 +98,7 @@ export async function handleParticipants(groupJid: string, participants: unknown
       const byAdmin = !!authorPhone && authorPhone !== phone;
       await db.membership.updateMany({ where: { groupId: group.id, contactId: contact.id, leftAt: null }, data: { leftAt: new Date() } });
       const ev = await db.memberEvent.create({ data: { type: "LEAVE", groupId: group.id, contactId: contact.id, byAdmin } });
+      if (group.isCommunity && !byAdmin) await import("./funnels").then((m) => m.funnelEvent("saiu_grupo", phone, contact.name)).catch(() => {});
       await db.group.update({ where: { id: group.id }, data: { size: { decrement: 1 } } });
 
       const s = await getSettings();

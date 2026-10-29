@@ -12,8 +12,12 @@ import { getSettings } from "../lib/settings";
 import { humanDelay, reserveSlot, sendMedia, sendText, sentByBot } from "../lib/send";
 import { hhmmLocal, isoDayLocal, nowLocal } from "../lib/time";
 import { dueBroadcasts, leadWelcome, runBroadcast, sendPollLink } from "./jobs2";
+import { scanFirstPurchases, scanRecovery, scanRepurchase, sendDueRecovery } from "../lib/recovery";
+import { runFunnels } from "../lib/funnels";
+import { assistantReply } from "../lib/assistant";
+import { refreshReferralUsage } from "../lib/referral";
 
-type Marks = { daily?: string; weekly?: string; sync?: number };
+type Marks = { daily?: string; weekly?: string; sync?: number; scan?: number; repurchase?: string; referral?: number };
 
 async function getMarks(): Promise<Marks> {
   const r = await db.setting.findUnique({ where: { key: "_marks" } });
@@ -43,6 +47,8 @@ async function tick() {
   }
 
   await dueBroadcasts();
+  await sendDueRecovery().catch((e) => console.error("[recuperação]", e));
+  await runFunnels().catch((e) => console.error("[funis]", e));
 
   const s = await getSettings();
   const marks = await getMarks();
@@ -59,6 +65,22 @@ async function tick() {
   if (s.report.weeklyEnabled && nowLocal().getDay() === s.report.weeklyDay && hhmm >= s.report.weeklyTime && marks.weekly !== today) {
     await setMarks({ weekly: today });
     await postToResults(await weeklyReport());
+  }
+
+  // Recuperação e primeira compra a cada 5 minutos
+  if (!marks.scan || Date.now() - marks.scan > 5 * 60_000) {
+    await setMarks({ scan: Date.now() });
+    await enqueue("recovery-scan", {}, { jobId: `scan-${Date.now()}` });
+  }
+  // Recompra uma vez por dia, às 11h
+  if (hhmm >= "11:00" && marks.repurchase !== today) {
+    await setMarks({ repurchase: today });
+    await scanRepurchase().catch((e) => console.error("[recompra]", e));
+  }
+  // Uso dos cupons do Indique e ganhe a cada 6 horas
+  if (!marks.referral || Date.now() - marks.referral > 6 * 3600_000) {
+    await setMarks({ referral: Date.now() });
+    await refreshReferralUsage().catch(() => {});
   }
 
   // 4. Sincroniza os grupos a cada 6 horas (pega quem saiu com o sistema fora do ar)
@@ -167,6 +189,11 @@ async function main() {
           return sendPollLink(job.data.pollId);
         case "lead-welcome":
           return leadWelcome(job.data.leadId);
+        case "recovery-scan":
+          await scanRecovery();
+          return scanFirstPurchases();
+        case "assistant":
+          return assistantReply(job.data.phone, job.data.audioId);
       }
     },
     { connection: redis(), concurrency: 4 },

@@ -43,6 +43,7 @@ export async function POST(req: NextRequest) {
     },
     update: { name: name ?? undefined },
   });
+  await import("@/lib/funnels").then((m) => m.funnelEvent("lead_novo", phone, name)).catch(() => {});
   if (!lead.welcomeSent) await enqueue("lead-welcome", { leadId: lead.id }, { jobId: `welcome-${lead.id}`, delayMs: 5000 }).catch(() => {});
   return NextResponse.json({ ok: true, link: redirectLink() }, { headers: cors });
 }

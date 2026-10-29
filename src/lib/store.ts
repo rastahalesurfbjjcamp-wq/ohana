@@ -364,3 +364,62 @@ export const FULFILLMENT: Record<string, [string, string]> = {
   SCHEDULED: ["agendado", "c-k"],
   RESTOCKED: ["devolvido", "c-c"],
 };
+
+/* Entregas */
+export interface Shipment {
+  order: string;
+  customer: string;
+  city: string | null;
+  state: string | null;
+  shippedAt: string;
+  deliveredAt: string | null;
+  status: string;
+  company: string | null;
+  number: string | null;
+  url: string | null;
+}
+
+export async function shipments(days = 30): Promise<Shipment[]> {
+  return cached(`ship:${days}`, 120_000, async () => {
+    const since = new Date(Date.now() - days * 864e5).toISOString();
+    const out: Shipment[] = [];
+    let after: string | null = null;
+    do {
+      type P = {
+        orders: {
+          pageInfo: { hasNextPage: boolean; endCursor: string | null };
+          nodes: {
+            name: string;
+            customer: { displayName: string } | null;
+            shippingAddress: { city: string | null; provinceCode: string | null } | null;
+            fulfillments: { createdAt: string; displayStatus: string; deliveredAt: string | null; trackingInfo: { number: string; company: string | null; url: string | null }[] }[];
+          }[];
+        };
+      };
+      const d: P = await gql<P>(
+        `query($q:String,$after:String){ orders(first:100, after:$after, sortKey:CREATED_AT, reverse:true, query:$q){ pageInfo{hasNextPage endCursor}
+          nodes{ name customer{displayName} shippingAddress{city provinceCode} fulfillments(first:3){ createdAt displayStatus deliveredAt trackingInfo{number company url} } } } }`,
+        { q: `fulfillment_status:shipped created_at:>='${since}'`, after },
+      );
+      for (const o of d.orders.nodes) {
+        const f = o.fulfillments[0];
+        if (!f) continue;
+        const t = f.trackingInfo[0];
+        out.push({
+          order: o.name,
+          customer: o.customer?.displayName ?? "Cliente",
+          city: o.shippingAddress?.city ?? null,
+          state: o.shippingAddress?.provinceCode ?? null,
+          shippedAt: f.createdAt,
+          deliveredAt: f.deliveredAt,
+          status: f.displayStatus,
+          company: t?.company ?? null,
+          number: t?.number ?? null,
+          url: t?.url ?? null,
+        });
+      }
+      after = d.orders.pageInfo.hasNextPage ? d.orders.pageInfo.endCursor : null;
+    } while (after);
+    return out;
+  });
+}

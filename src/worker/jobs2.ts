@@ -39,7 +39,9 @@ export async function runBroadcast(id: string) {
       await enqueue("broadcast", { id }, { delayMs: wait, jobId: `bc-${id}-${Date.now()}` });
       return;
     }
-    const text = `${fill(b.text, r.name)}\n\n_Para não receber mais, responda SAIR._`;
+    // "{texto}": mensagem já pronta por pessoa (ex.: códigos do Indique e ganhe)
+    const body = b.text === "{texto}" ? r.name ?? "" : fill(b.text, r.name);
+    const text = `${body}\n\n_Para não receber mais, responda SAIR._`;
     try {
       if (b.mediaUrl && b.mediaType) await sendMedia(r.phone, { url: b.mediaUrl, type: b.mediaType as "image" | "video" | "document", caption: text });
       else await sendText(r.phone, text);

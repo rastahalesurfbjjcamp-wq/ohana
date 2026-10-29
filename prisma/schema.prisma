@@ -114,6 +114,7 @@ model ScheduledMessage {
   sentCount   Int            @default(0)
   error       String?
   createdBy   String?
+  launchId    String?
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 
@@ -270,4 +271,118 @@ model PollVote {
   poll      Poll     @relation(fields: [pollId], references: [id], onDelete: Cascade)
 
   @@unique([pollId, phone])
+}
+
+// ---------- Etapa 3 ----------
+
+// Recuperação e avisos automáticos (carrinho, Pix, rastreio, entregue, pós-venda)
+model RecoveryCase {
+  id             String    @id @default(cuid())
+  kind           String    // carrinho | pix | rastreio | entregue | avaliacao
+  refId          String    // id do checkout ou do pedido na Shopify
+  phone          String
+  name           String?
+  email          String?
+  value          Float     @default(0)
+  url            String?
+  product        String?
+  orderName      String?
+  tracking       String?
+  status         String    @default("ativo") // ativo | recuperado | concluido | sem_resposta | parado
+  step           Int       @default(0)
+  nextAt         DateTime?
+  sentCount      Int       @default(0)
+  lastSentAt     DateTime?
+  recoveredAt    DateTime?
+  recoveredValue Float?
+  createdAt      DateTime  @default(now())
+
+  @@unique([kind, refId])
+  @@index([status, nextAt])
+  @@index([kind, createdAt])
+}
+
+// Atendimento: conversas no privado
+model ChatThread {
+  phone     String   @id
+  name      String?
+  lastText  String?
+  lastAt    DateTime @default(now())
+  unread    Int      @default(0)
+  aiEnabled Boolean  @default(true)
+  status    String   @default("aberto") // aberto | resolvido
+  assignee  String?
+  messages  ChatMessage[]
+}
+
+model ChatMessage {
+  id        String     @id @default(cuid())
+  phone     String
+  fromMe    Boolean    @default(false)
+  by        String     @default("cliente") // cliente | equipe | ia | sistema
+  text      String
+  messageId String?    @unique
+  createdAt DateTime   @default(now())
+  thread    ChatThread @relation(fields: [phone], references: [phone], onDelete: Cascade)
+
+  @@index([phone, createdAt])
+}
+
+// Indique e ganhe
+model Referral {
+  id         String   @id @default(cuid())
+  phone      String   @unique
+  name       String?
+  email      String?
+  code       String   @unique
+  discountId String?
+  uses       Int      @default(0)
+  revenue    Float    @default(0)
+  createdAt  DateTime @default(now())
+}
+
+// Lançamentos (drops)
+model Launch {
+  id        String   @id @default(cuid())
+  name      String
+  opensAt   DateTime
+  closesAt  DateTime?
+  productKey String?
+  groupJids String[]
+  status    String   @default("planejado") // planejado | aberto | encerrado
+  createdBy String?
+  createdAt DateTime @default(now())
+}
+
+// Funis: sequência de mensagens no privado a partir de um gatilho
+model Funnel {
+  id        String      @id @default(cuid())
+  name      String
+  trigger   String      // lead_novo | entrou_grupo | primeira_compra | saiu_grupo
+  active    Boolean     @default(true)
+  steps     Json        // [{ delayMin, text }]
+  createdAt DateTime    @default(now())
+  runs      FunnelRun[]
+}
+
+model FunnelRun {
+  id        String    @id @default(cuid())
+  funnelId  String
+  phone     String
+  name      String?
+  step      Int       @default(0)
+  nextAt    DateTime?
+  status    String    @default("ativo") // ativo | concluido | parado
+  createdAt DateTime  @default(now())
+  funnel    Funnel    @relation(fields: [funnelId], references: [id], onDelete: Cascade)
+
+  @@unique([funnelId, phone])
+  @@index([status, nextAt])
+}
+
+// Diagnósticos gerados pela IA
+model Diagnosis {
+  id        String   @id @default(cuid())
+  content   String
+  createdAt DateTime @default(now())
 }
