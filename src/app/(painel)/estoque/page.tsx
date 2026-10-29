@@ -24,6 +24,7 @@ export default async function Estoque({ searchParams }: { searchParams: Promise<
       for (const l of o.lines) sold.set(`${l.title}||${l.variant}`, (sold.get(`${l.title}||${l.variant}`) ?? 0) + l.quantity);
     }
     for (const p of list) {
+      if (/gift ?card|vale.?presente|cart[aã]o.?presente/i.test(p.title)) continue;
       for (const v of p.variants) {
         const s30 = sold.get(`${p.title}||${v.title}`) ?? 0;
         const perDay = s30 / 30;

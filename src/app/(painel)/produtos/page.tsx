@@ -38,7 +38,7 @@ export default async function Produtos({ searchParams }: { searchParams: Promise
       <div className="grid g4">
         <Kpi icon={<Wallet size={15} />} label={`Faturamento (${period.label.toLowerCase()})`} value={brl(totalRevenue, 0)} />
         <Kpi icon={<Coins size={15} />} tone="k" label="Lucro dos produtos" value={brl(totalProfit, 0)} sub="só dos produtos com custo cadastrado" />
-        <Kpi icon={<Trophy size={15} />} tone="s" label="Mais lucrativo" value={best ? best.product.title.slice(0, 22) : "–"} sub={best ? brl(best.profit ?? 0, 0) : undefined} />
+        <Kpi icon={<Trophy size={15} />} tone="s" label="Mais lucrativo" value={best ? <span title={best.product.title} style={{ fontSize: 19, display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", lineHeight: 1.6 }}>{best.product.title}</span> : "–"} sub={best ? brl(best.profit ?? 0, 0) : undefined} />
         <Kpi icon={<AlertTriangle size={15} />} tone={missing.length ? "c" : "l"} label="Sem custo cadastrado" value={missing.length} sub={missing.length ? "o lucro deles não entra na conta" : "tudo certo"} />
       </div>
       {missing.length > 0 && (
