@@ -52,7 +52,7 @@ export default async function Financeiro({ searchParams }: { searchParams: Promi
   }
   const fixed = m && period.monthMode ? m.fixedCosts + m.variableCosts : 0;
   const profit = m ? m.profitBeforeFixed - fixed : 0;
-  const prevProfit = mp ? mp.profitBeforeFixed : 0;
+  const prevProfit = mp ? mp.profitBeforeFixed - (period.monthMode ? fixed : 0) : 0;
   const best = top.filter((t) => t.sold > 0).sort((a, b) => (b.profit ?? -1e9) - (a.profit ?? -1e9)).slice(0, 5);
   const bestMax = Math.max(1, ...best.map((b) => b.profit ?? 0));
   const adsShare = m && m.net ? (m.ads ?? 0) / m.net : 0;
@@ -95,7 +95,7 @@ export default async function Financeiro({ searchParams }: { searchParams: Promi
                 <Delta now={profit} before={prevProfit} />
               </div>
               <div className="dim" style={{ fontSize: 13, marginBottom: 18 }}>
-                {m.net ? `${pct(profit / m.net, 1)} do faturamento` : "Sem vendas no período"} · comparado com {prev.days} dia(s) antes
+                {m.net ? `${pct(profit / m.net, 1)} do faturamento` : "Sem vendas no período"} · comparado com {prev.from.slice(8)}/{prev.from.slice(5, 7)} a {prev.to.slice(8)}/{prev.to.slice(5, 7)}
               </div>
               <Waterfall steps={steps} format={(v) => brl(v, 0)} />
             </div>

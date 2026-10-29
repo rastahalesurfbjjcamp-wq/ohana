@@ -211,7 +211,7 @@ h1 { font-family: Geist, system-ui, sans-serif; font-weight: 650; font-size: 34p
 .lrow:first-child { border-top: 0; }
 .lrow .t { font-weight: 550; font-size: 14px; }
 .lrow .s { font-size: 12.5px; color: var(--ink3); margin-top: 2px; }
-.lrow .end { margin-left: auto; text-align: right; }
+.lrow .end { margin-left: auto; text-align: right; min-width: 84px; flex-shrink: 0; }
 
 /* Barra horizontal */
 .hbar { height: 8px; border-radius: 6px; background: #1d2321; overflow: hidden; }
@@ -245,7 +245,7 @@ h1 { font-family: Geist, system-ui, sans-serif; font-weight: 650; font-size: 34p
 .dp-pre button.on { background: rgba(52,194,106,.12); color: var(--lagoon); font-weight: 600; }
 .dp-cal { padding: 16px 18px; display: flex; gap: 22px; }
 .dp-m { width: 252px; }
-.dp-mh { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; font-weight: 600; font-size: 14px; text-transform: capitalize; }
+.dp-mh { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; font-weight: 600; font-size: 14px; }
 .dp-mh button { background: #1a1f1d; border: 1px solid #262d2a; color: var(--ink2); width: 30px; height: 30px; border-radius: 9px; cursor: pointer; display: grid; place-items: center; }
 .dp-g { display: grid; grid-template-columns: repeat(7, 36px); gap: 0; }
 .dp-g .wd { font-size: 11px; color: var(--ink3); text-align: center; padding-bottom: 6px; }

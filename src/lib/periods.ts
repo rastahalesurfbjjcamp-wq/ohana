@@ -49,6 +49,13 @@ export function daysBetween(from: string, to: string): string[] {
 // Período anterior do mesmo tamanho, para comparar
 export function previousPeriod(from: string, to: string) {
   const days = daysBetween(from, to).length;
+  // Começo de mês: compara com os mesmos dias do mês anterior
+  if (from.slice(8) === "01" && from.slice(0, 7) === to.slice(0, 7)) {
+    const pFrom = `${addDays(from, -1).slice(0, 7)}-01`;
+    const last = addDays(from, -1);
+    const pTo = `${pFrom.slice(0, 8)}${to.slice(8)}` > last ? last : `${pFrom.slice(0, 8)}${to.slice(8)}`;
+    return { from: pFrom, to: pTo, days: daysBetween(pFrom, pTo).length };
+  }
   const pTo = addDays(from, -1);
   return { from: addDays(pTo, -(days - 1)), to: pTo, days };
 }

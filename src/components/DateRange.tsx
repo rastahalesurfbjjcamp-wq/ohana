@@ -18,8 +18,8 @@ export function DateRange({ current, from, to, label, presets }: { current: stri
   const path = usePathname();
   const params = useSearchParams();
   const [open, setOpen] = useState(false);
-  const [a, setA] = useState<string | null>(current === "custom" ? from : null);
-  const [b, setB] = useState<string | null>(current === "custom" ? to : null);
+  const [a, setA] = useState<string | null>(from);
+  const [b, setB] = useState<string | null>(to);
   const [month, setMonth] = useState(() => { const d = new Date(to + "T12:00:00"); return new Date(d.getFullYear(), d.getMonth() - 1, 1); });
   const ref = useRef<HTMLDivElement>(null);
   const today = iso(new Date());
@@ -50,7 +50,7 @@ export function DateRange({ current, from, to, label, presets }: { current: stri
   return (
     <div className="dp" ref={ref}>
       <button type="button" className="btn" onClick={() => setOpen((o) => !o)}>
-        <CalendarDays size={16} /> {label} <span className="dim" style={{ fontWeight: 400 }}>{from === to ? fmt(from) : `${fmt(from)} a ${fmt(to)}`}</span> <ChevronDown size={14} />
+        <CalendarDays size={16} /> {current === "custom" ? "Período" : label} <span className="dim" style={{ fontWeight: 400 }}>{from === to ? fmt(from) : `${fmt(from)} a ${fmt(to)}`}</span> <ChevronDown size={14} />
       </button>
       {open && (
         <div className="dp-pop">
@@ -70,7 +70,7 @@ export function DateRange({ current, from, to, label, presets }: { current: stri
                   <div className="dp-m" key={mi}>
                     <div className="dp-mh">
                       {mi === 0 ? <button type="button" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}><ChevronLeft size={15} /></button> : <span style={{ width: 30 }} />}
-                      <span>{m.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}</span>
+                      <span>{(() => { const t = m.toLocaleDateString("pt-BR", { month: "long", year: "numeric" }); return t[0].toUpperCase() + t.slice(1); })()}</span>
                       {mi === 1 ? <button type="button" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}><ChevronRight size={15} /></button> : <span style={{ width: 30 }} />}
                     </div>
                     <div className="dp-g">
