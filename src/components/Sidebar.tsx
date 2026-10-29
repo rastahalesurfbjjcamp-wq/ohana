@@ -1,12 +1,12 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowLeftRight, Bot, Box, CalendarClock, CalendarHeart, ChartNoAxesCombined, ChevronDown, ChevronRight, Contact,
   Gift, HeartHandshake, LayoutDashboard, LogOut, MessageCircle, MessagesSquare, Package, Percent, ReceiptText,
   RefreshCcw, Rocket, Route, Send, Settings, ShoppingBag, Sparkles, SquareCheckBig, Truck, UserPlus, Users, Vote,
-  Wallet, Warehouse, Workflow, Coins, Plug, LayoutTemplate, Medal, Crown, Calculator, type LucideIcon,
+  Wallet, Warehouse, Workflow, Coins, Plug, LayoutTemplate, Medal, Crown, Calculator, Menu, X, type LucideIcon,
 } from "lucide-react";
 
 type Item = { href: string; icon: LucideIcon; label: string; badge?: number; soon?: boolean };
@@ -78,6 +78,9 @@ export function Sidebar({ name, store, connected, leaves, logout }: { name: stri
   const [open, setOpen] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(groups.map((g) => [g.label, g.items.some((i) => active(i.href)) || g.label === "Comunidade"])),
   );
+  const [nav, setNav] = useState(false);
+  useEffect(() => { setNav(false); }, [path]);
+  useEffect(() => { document.body.classList.toggle("nav-open", nav); }, [nav]);
   const initials = name.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase();
 
   const link = (it: Item, sub = false) => (
@@ -89,8 +92,33 @@ export function Sidebar({ name, store, connected, leaves, logout }: { name: stri
     </Link>
   );
 
+  const tabs: Item[] = [
+    { href: "/", icon: LayoutDashboard, label: "Início" },
+    { href: "/pedidos", icon: Package, label: "Pedidos" },
+    { href: "/entradas", icon: Users, label: "Comunidade" },
+    { href: "/clube", icon: Crown, label: "Clube" },
+  ];
+
   return (
-    <aside className="side">
+    <>
+    <header className="mtop">
+      <button type="button" className="mtop-b" onClick={() => setNav(true)} aria-label="Abrir menu"><Menu size={20} /></button>
+      <Link href="/" className="mtop-brand">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/brand/lion.png" alt="" width={26} height={28} />
+        <b>{store} Hub</b>
+      </Link>
+      <i className={`live${connected ? "" : " off"}`} title={connected ? "WhatsApp conectado" : "WhatsApp desconectado"} />
+    </header>
+    {nav && <div className="nav-ov" onClick={() => setNav(false)} />}
+    <nav className="mtabs" aria-label="Atalhos">
+      {tabs.map((t) => (
+        <Link key={t.href} href={t.href} className={active(t.href) ? "on" : ""}><t.icon size={20} strokeWidth={1.8} /><span>{t.label}</span></Link>
+      ))}
+      <button type="button" onClick={() => setNav(true)} className={nav ? "on" : ""}><Menu size={20} strokeWidth={1.8} /><span>Menu</span></button>
+    </nav>
+    <aside className={`side${nav ? " open" : ""}`}>
+      <button type="button" className="side-x" onClick={() => setNav(false)} aria-label="Fechar menu"><X size={18} /></button>
       <div className="brand">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img className="mark-img" src="/brand/lion.png" alt="" width={36} height={39} />
@@ -132,5 +160,6 @@ export function Sidebar({ name, store, connected, leaves, logout }: { name: stri
         </div>
       </div>
     </aside>
+    </>
   );
 }
