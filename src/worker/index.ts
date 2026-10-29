@@ -11,7 +11,7 @@ import { evolution } from "../lib/evolution";
 import { getSettings } from "../lib/settings";
 import { humanDelay, reserveSlot, sendMedia, sendText, sentByBot } from "../lib/send";
 import { hhmmLocal, isoDayLocal, nowLocal } from "../lib/time";
-import { dueBroadcasts, leadWelcome, runBroadcast, sendPollLink } from "./jobs2";
+import { dueBroadcasts, leadWelcome, runBroadcast, sendPollLink, waitlistNotify } from "./jobs2";
 import { scanFirstPurchases, scanRecovery, scanRepurchase, sendDueRecovery } from "../lib/recovery";
 import { runFunnels } from "../lib/funnels";
 import { assistantReply } from "../lib/assistant";
@@ -194,6 +194,8 @@ async function main() {
           return scanFirstPurchases();
         case "assistant":
           return assistantReply(job.data.phone, job.data.audioId);
+        case "waitlist-notify":
+          return waitlistNotify(job.data.ids);
       }
     },
     { connection: redis(), concurrency: 4 },

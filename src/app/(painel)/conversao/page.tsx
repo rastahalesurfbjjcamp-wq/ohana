@@ -1,3 +1,4 @@
+import { NumberInput } from "@/components/NumberInput";
 import { revalidatePath } from "next/cache";
 import { ArrowRight, ChevronRight, Laptop, Smartphone, Tablet, Target } from "lucide-react";
 import { DateRange } from "@/components/DateRange";
@@ -88,7 +89,7 @@ export default async function Conversao({ searchParams }: { searchParams: Promis
       <Header title="Conversão" lede="De cada pessoa que entra na loja, quantas compram, e em que parte do caminho as outras desistem.">
         <form action={saveGoal} className="row" style={{ gap: 6 }}>
           <span className="chip c-s" style={{ height: 40, padding: "0 12px" }}><Target size={14} /> Meta</span>
-          <input className="in" name="goal" defaultValue={(goal * 100).toFixed(2).replace(".", ",")} style={{ width: 74, height: 40 }} inputMode="decimal" aria-label="Meta de conversão em %" />
+          <NumberInput name="goal" defaultValue={goal * 100} decimals={2} step={0.1} suffix="%" max={100} label="Meta de conversão em %" width={150} />
           <button className="btn" type="submit">Salvar</button>
         </form>
         <DateRange current={period.key} from={period.from} to={period.to} label={period.label} />

@@ -1,3 +1,4 @@
+import { NumberInput } from "@/components/NumberInput";
 import { Trash2 } from "lucide-react";
 import { db } from "@/lib/db";
 import { getSettings } from "@/lib/settings";
@@ -51,7 +52,7 @@ export default async function Custos({ searchParams }: { searchParams: Promise<{
             <div className="row">
               <div className="field" style={{ width: 160 }}>
                 <label>Valor total (R$)</label>
-                <input className="in" name="amount" inputMode="decimal" placeholder="11000" required />
+                <NumberInput name="amount" prefix="R$" step={100} decimals={2} placeholder="11.000" required />
               </div>
               <div className="field" style={{ width: 140 }}>
                 <label>Mês</label>
@@ -64,7 +65,7 @@ export default async function Custos({ searchParams }: { searchParams: Promise<{
             <div className="row">
               <div className="field" style={{ width: 160 }}>
                 <label>Peças (só lote)</label>
-                <input className="in" name="units" inputMode="numeric" placeholder="200" />
+                <NumberInput name="units" suffix="peças" step={10} placeholder="200" />
               </div>
               <div className="field" style={{ flex: 1, minWidth: 180 }}>
                 <label>Palavra do produto (só lote)</label>
@@ -82,15 +83,15 @@ export default async function Custos({ searchParams }: { searchParams: Promise<{
             <div className="row">
               <div className="field" style={{ width: 150 }}>
                 <label>Imposto (%)</label>
-                <input className="in" name="taxRate" defaultValue={pctIn(s.costs.taxRate)} inputMode="decimal" />
+                <NumberInput name="taxRate" defaultValue={pctIn(s.costs.taxRate)} suffix="%" step={0.5} decimals={2} max={100} />
               </div>
               <div className="field" style={{ width: 170 }}>
                 <label>Taxas de pagamento (%)</label>
-                <input className="in" name="paymentFeeRate" defaultValue={pctIn(s.costs.paymentFeeRate)} inputMode="decimal" />
+                <NumberInput name="paymentFeeRate" defaultValue={pctIn(s.costs.paymentFeeRate)} suffix="%" step={0.5} decimals={2} max={100} />
               </div>
               <div className="field" style={{ width: 150 }}>
                 <label>Embalagem (R$/peça)</label>
-                <input className="in" name="packagingPerItem" defaultValue={String(s.costs.packagingPerItem).replace(".", ",")} inputMode="decimal" />
+                <NumberInput name="packagingPerItem" defaultValue={s.costs.packagingPerItem} prefix="R$" step={0.5} decimals={2} />
               </div>
             </div>
             <div>

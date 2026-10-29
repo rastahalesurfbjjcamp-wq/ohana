@@ -1,3 +1,4 @@
+import { NumberInput } from "@/components/NumberInput";
 import { db } from "@/lib/db";
 import { getSettings } from "@/lib/settings";
 import { Header, Kpi, Panel } from "@/components/ui";
@@ -28,7 +29,7 @@ export default async function PosVenda({ searchParams }: { searchParams: Promise
           <label className="check"><input type="checkbox" name="reviewEnabled" defaultChecked={s.postsale.reviewEnabled} /> <b>Pedir avaliação com foto depois da entrega</b></label>
           <div className="row">
             <span className="mut" style={{ fontSize: 13 }}>Mandar</span>
-            <input className="in" name="reviewDelayDays" defaultValue={s.postsale.reviewDelayDays} style={{ width: 70, height: 32 }} inputMode="numeric" />
+            <NumberInput size="sm" name="reviewDelayDays" defaultValue={s.postsale.reviewDelayDays} suffix="dias" />
             <span className="mut" style={{ fontSize: 13 }}>dias depois que a transportadora marcar como entregue</span>
           </div>
           <textarea className="in" name="reviewText" defaultValue={s.postsale.reviewText} />
@@ -39,7 +40,7 @@ export default async function PosVenda({ searchParams }: { searchParams: Promise
           <label className="check" style={{ marginTop: 8 }}><input type="checkbox" name="repurchaseEnabled" defaultChecked={s.postsale.repurchaseEnabled} /> <b>Chamar de volta quem está sem comprar</b></label>
           <div className="row">
             <span className="mut" style={{ fontSize: 13 }}>Quando completar</span>
-            <input className="in" name="repurchaseDays" defaultValue={s.postsale.repurchaseDays} style={{ width: 70, height: 32 }} inputMode="numeric" />
+            <NumberInput size="sm" name="repurchaseDays" defaultValue={s.postsale.repurchaseDays} suffix="dias" step={5} />
             <span className="mut" style={{ fontSize: 13 }}>dias desde a última compra</span>
           </div>
           <textarea className="in" name="repurchaseText" defaultValue={s.postsale.repurchaseText} />

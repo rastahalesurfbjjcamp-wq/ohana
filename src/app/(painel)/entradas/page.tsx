@@ -1,3 +1,4 @@
+import { NumberInput } from "@/components/NumberInput";
 import { db } from "@/lib/db";
 import { getSettings } from "@/lib/settings";
 import { formatPhone } from "@/lib/phone";
@@ -69,7 +70,7 @@ export default async function Entradas() {
             </div>
             <div className="field">
               <label>Esperar quantos minutos antes de mandar</label>
-              <input className="in" name="delayMinutes" defaultValue={s.winback.delayMinutes} inputMode="numeric" style={{ maxWidth: 140 }} />
+              <div><NumberInput name="delayMinutes" defaultValue={s.winback.delayMinutes} suffix="min" step={5} width={170} /></div>
             </div>
             <label className="check">
               <input type="checkbox" name="onlyIfNotRemovedByAdmin" defaultChecked={s.winback.onlyIfNotRemovedByAdmin} /> Não mandar para quem foi removido por um admin

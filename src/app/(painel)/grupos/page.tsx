@@ -1,3 +1,4 @@
+import { NumberInput } from "@/components/NumberInput";
 import Link from "next/link";
 import { Megaphone, RefreshCw, ShieldCheck, Users } from "lucide-react";
 import { db } from "@/lib/db";
@@ -34,7 +35,7 @@ function Row({ g, nested }: { g: G; nested?: boolean }) {
         </div>
       </td>
       <td style={{ width: 100 }}>
-        <input className="in" name={`cap_${g.id}`} defaultValue={g.capacity} style={{ width: 80, height: 32 }} inputMode="numeric" />
+        <NumberInput size="sm" name={`cap_${g.id}`} defaultValue={g.capacity} step={50} />
       </td>
     </tr>
   );

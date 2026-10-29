@@ -1,3 +1,4 @@
+import { NumberInput } from "@/components/NumberInput";
 import { db } from "@/lib/db";
 import { formatPhone } from "@/lib/phone";
 import { getSettings } from "@/lib/settings";
@@ -19,8 +20,8 @@ function StepFields({ prefix, i, step }: { prefix: string; i: number; step?: { d
       <div className="row" style={{ gap: 8 }}>
         <b style={{ fontSize: 13 }}>Mensagem {i + 1}</b>
         <span className="dim" style={{ fontSize: 12 }}>enviar</span>
-        <input className="in" name={`${prefix}${i}_delay`} defaultValue={step ? (hours ? step.delayMin / 60 : step.delayMin) : ""} style={{ width: 70, height: 32 }} inputMode="numeric" />
-        <select className="in" name={`${prefix}${i}_unit`} defaultValue={hours ? "h" : "m"} style={{ width: 110, height: 32 }}>
+        <NumberInput size="sm" name={`${prefix}${i}_delay`} defaultValue={step ? (hours ? step.delayMin / 60 : step.delayMin) : ""} />
+        <select className="in" name={`${prefix}${i}_unit`} defaultValue={hours ? "h" : "m"} style={{ width: 120, height: 34 }}>
           <option value="m">minutos</option>
           <option value="h">horas</option>
         </select>
@@ -101,7 +102,7 @@ export default async function Recuperacao({ searchParams }: { searchParams: Prom
             <textarea className="in" name="trackingText" defaultValue={s.recovery.trackingText} style={{ minHeight: 70 }} />
             <div className="row">
               <span className="mut" style={{ fontSize: 13 }}>Considerar entrega atrasada depois de</span>
-              <input className="in" name="delayedDays" defaultValue={s.recovery.delayedDays} style={{ width: 70, height: 32 }} inputMode="numeric" />
+              <NumberInput size="sm" name="delayedDays" defaultValue={s.recovery.delayedDays} suffix="dias" />
               <span className="mut" style={{ fontSize: 13 }}>dias</span>
             </div>
             <p className="dim" style={{ fontSize: 12 }}>Cartão recusado: a Shopify trata como checkout não concluído, então entra na recuperação de carrinho.</p>

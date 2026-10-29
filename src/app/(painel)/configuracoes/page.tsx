@@ -1,3 +1,4 @@
+import { NumberInput } from "@/components/NumberInput";
 import Link from "next/link";
 import { Smartphone } from "lucide-react";
 import { AutoRefresh } from "@/components/AutoRefresh";
@@ -78,15 +79,15 @@ export default async function Configuracoes({ searchParams }: { searchParams: Pr
             <div className="row">
               <div className="field" style={{ width: 170 }}>
                 <label>Máximo por hora</label>
-                <input className="in" name="maxPerHour" defaultValue={s.sending.maxPerHour} inputMode="numeric" />
+                <NumberInput name="maxPerHour" defaultValue={s.sending.maxPerHour} step={5} min={1} suffix="/h" />
               </div>
               <div className="field" style={{ width: 150 }}>
                 <label>Intervalo mínimo (s)</label>
-                <input className="in" name="minDelay" defaultValue={s.sending.minDelayMs / 1000} inputMode="numeric" />
+                <NumberInput name="minDelay" defaultValue={s.sending.minDelayMs / 1000} suffix="seg" />
               </div>
               <div className="field" style={{ width: 150 }}>
                 <label>Intervalo máximo (s)</label>
-                <input className="in" name="maxDelay" defaultValue={s.sending.maxDelayMs / 1000} inputMode="numeric" />
+                <NumberInput name="maxDelay" defaultValue={s.sending.maxDelayMs / 1000} suffix="seg" />
               </div>
             </div>
             <div>{isAdmin && <button className="btn" type="submit">Salvar</button>}</div>

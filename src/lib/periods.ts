@@ -1,11 +1,12 @@
 import { addDays, isoDayLocal } from "./time";
 
-export type PeriodKey = "hoje" | "ontem" | "7d" | "30d" | "90d" | "mes" | "mes-passado" | "custom";
+export type PeriodKey = "hoje" | "ontem" | "7d" | "30d" | "60d" | "90d" | "mes" | "mes-passado" | "custom";
 export const PERIODS: { key: PeriodKey; label: string }[] = [
   { key: "hoje", label: "Hoje" },
   { key: "ontem", label: "Ontem" },
   { key: "7d", label: "7 dias" },
   { key: "30d", label: "30 dias" },
+  { key: "60d", label: "60 dias" },
   { key: "mes", label: "Este mês" },
   { key: "mes-passado", label: "Mês passado" },
   { key: "90d", label: "90 dias" },
@@ -27,6 +28,7 @@ export function resolvePeriod(p: string | undefined, fallback: PeriodKey = "30d"
     case "ontem": from = to = addDays(today, -1); break;
     case "7d": from = addDays(today, -6); break;
     case "30d": from = addDays(today, -29); break;
+    case "60d": from = addDays(today, -59); break;
     case "90d": from = addDays(today, -89); break;
     case "mes": from = `${today.slice(0, 7)}-01`; break;
     case "mes-passado": {

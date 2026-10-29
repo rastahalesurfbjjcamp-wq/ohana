@@ -389,3 +389,17 @@ model Diagnosis {
   content   String
   createdAt DateTime @default(now())
 }
+
+// Lista de espera: quem pediu para ser avisado quando o tamanho voltar
+model Waitlist {
+  id         String    @id @default(cuid())
+  phone      String
+  name       String?
+  product    String
+  variant    String    @default("")
+  createdAt  DateTime  @default(now())
+  notifiedAt DateTime?
+
+  @@unique([phone, product, variant])
+  @@index([product])
+}

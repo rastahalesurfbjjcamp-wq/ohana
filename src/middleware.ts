@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 import { env } from "@/lib/env";
 
-const PUBLIC = ["/login", "/api/auth/login", "/api/webhooks", "/api/health", "/api/media", "/fonts", "/api/leads", "/g", "/votar", "/api/votar"];
+const PUBLIC = ["/login", "/api/auth/login", "/api/webhooks", "/api/health", "/api/media", "/fonts", "/api/leads", "/api/avise", "/g", "/votar", "/api/votar"];
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;

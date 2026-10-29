@@ -75,3 +75,23 @@ export async function leadWelcome(leadId: string) {
   await sendText(lead.phone, fill(s.leads.welcomeText, lead.name));
   await db.lead.update({ where: { id: lead.id }, data: { welcomeSent: true } });
 }
+
+// Avisa quem estava na lista de espera que o tamanho voltou (só quando o dono clica no botão)
+export async function waitlistNotify(ids: string[]) {
+  const s = await getSettings();
+  for (let i = 0; i < ids.length; i++) {
+    const w = await db.waitlist.findUnique({ where: { id: ids[i] } });
+    if (!w || w.notifiedAt) continue;
+    if (await db.optOut.findUnique({ where: { phone: w.phone } })) continue;
+    const wait = await reserveSlot();
+    if (wait > 0) {
+      await enqueue("waitlist-notify", { ids: ids.slice(i) }, { delayMs: wait });
+      return;
+    }
+    const nm = (w.name ?? "").split(" ")[0];
+    const text = `Oi${nm ? ` ${nm}` : ""}! O ${w.product}${w.variant ? ` no tamanho ${w.variant}` : ""} que você pediu voltou para o estoque. Garante o seu aqui: ${s.postsale.storeUrl}`;
+    await sendText(w.phone, text);
+    await db.waitlist.update({ where: { id: w.id }, data: { notifiedAt: new Date() } });
+    await humanDelay();
+  }
+}

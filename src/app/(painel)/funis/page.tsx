@@ -1,3 +1,4 @@
+import { NumberInput } from "@/components/NumberInput";
 import { db } from "@/lib/db";
 import { TRIGGERS } from "@/lib/funnels";
 import { Header, Panel } from "@/components/ui";
@@ -15,8 +16,8 @@ function StepRow({ i, step }: { i: number; step?: Step }) {
     <div className="stack" style={{ gap: 6, padding: 12, border: "1px solid var(--line)", borderRadius: 12 }}>
       <div className="row" style={{ gap: 8 }}>
         <b style={{ fontSize: 13 }}>Mensagem {i + 1}</b>
-        <input className="in" name={`s${i}_delay`} defaultValue={val} style={{ width: 70, height: 32 }} inputMode="numeric" />
-        <select className="in" name={`s${i}_unit`} defaultValue={unit} style={{ width: 110, height: 32 }}>
+        <NumberInput size="sm" name={`s${i}_delay`} defaultValue={val} />
+        <select className="in" name={`s${i}_unit`} defaultValue={unit} style={{ width: 120, height: 34 }}>
           <option value="m">minutos</option><option value="h">horas</option><option value="d">dias</option>
         </select>
         <span className="dim" style={{ fontSize: 12 }}>{i === 0 ? "depois do gatilho" : "depois da anterior"}</span>
