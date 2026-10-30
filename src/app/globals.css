@@ -1105,3 +1105,4 @@ a.itile:hover { border-color: #34403b; transform: translateY(-1px); }
 .nav-splash .splash { min-height: 0; }
 .tile.brand { background: #f3f5f4; border: 1px solid #2a312e; }
 .tile.brand svg path[fill="#ffffff"] { fill: #111; }
+.msgprev { white-space: pre-wrap; font: 13px/1.5 Geist, system-ui; background: #0f1312; border: 1px solid #222826; border-radius: 12px; padding: 12px 14px; color: var(--ink2); margin: 0; max-height: 280px; overflow: auto; }

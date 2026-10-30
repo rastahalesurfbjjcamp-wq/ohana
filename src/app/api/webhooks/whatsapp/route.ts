@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { creds } from "@/lib/integrations";
+import { enqueue } from "@/lib/queue";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +34,10 @@ export async function POST(req: NextRequest) {
           update: { name: name ?? undefined, lastText: text.slice(0, 200), lastAt: new Date(), unread: { increment: 1 }, status: "aberto" },
         });
         await db.chatMessage.upsert({ where: { messageId: m.id }, create: { phone, text, messageId: m.id }, update: {} });
+        if (/^\s*resgat/i.test(raw)) {
+          const mem = await db.clubMember.findFirst({ where: { phone, status: { not: "cancelado" } } });
+          if (mem) await enqueue("club-msg", { memberId: mem.id, kind: "resgatar" }, { jobId: `cr-${mem.id}-${Math.floor(Date.now() / 60_000)}` }).catch(() => null);
+        }
         if (/^(sair|parar|pare|cancelar|stop|descadastrar)\b/i.test(raw.trim())) {
           await db.optOut.upsert({ where: { phone }, create: { phone }, update: {} });
           await db.lead.updateMany({ where: { phone }, data: { status: "descadastrado" } });

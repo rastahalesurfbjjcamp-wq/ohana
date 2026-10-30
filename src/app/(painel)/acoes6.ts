@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { addPoints, cpfValid, createMemberCode, createPrizeReward, createReward, digits, findShopifyCustomer, registerPayment, scanClub, setCodeActive, tagCustomer } from "@/lib/club";
+import { addPoints, cpfValid, createMemberCode, createPrizeReward, createReward, digits, findShopifyCustomer, registerPayment, scanClub, setMemberAccess, tagCustomer } from "@/lib/club";
 import { getSettings, saveSetting } from "@/lib/settings";
 import { normalizePhone } from "@/lib/segments";
 
@@ -105,8 +105,8 @@ export async function cancelMember(f: FormData) {
   const m = await db.clubMember.findUnique({ where: { id: str(f, "id") } });
   if (m) {
     const on = m.status === "cancelado";
-    if (m.discountId) await setCodeActive(m.discountId, on).catch(() => null);
-    await db.clubMember.update({ where: { id: m.id }, data: { status: on ? "ativo" : "cancelado", codeActive: on } });
+    await db.clubMember.update({ where: { id: m.id }, data: { status: on ? "ativo" : "cancelado" } });
+    await setMemberAccess(m, on).catch(() => null);
   }
   revalidatePath("/clube");
   redirect(back(q, "ok=1"));
@@ -132,6 +132,11 @@ export async function saveClubRules(f: FormData) {
     valuePer100: n("valuePer100", c.valuePer100), monthlyPoints: Math.round(n("monthlyPoints", c.monthlyPoints)), eventPoints: Math.round(n("eventPoints", c.eventPoints)),
     minRedeem: Math.round(n("minRedeem", c.minRedeem)), graceDays: Math.round(n("graceDays", c.graceDays)), earlyHours: Math.round(n("earlyHours", c.earlyHours)),
   });
+  // porcentagem ou nome mudou: atualiza o desconto automático da loja
+  if (c.autoDiscountId && (Math.min(50, n("discountPct", c.discountPct)) !== c.discountPct || (str(f, "name") && str(f, "name") !== c.name))) {
+    const { updateClubAutoDiscount } = await import("@/lib/club");
+    await updateClubAutoDiscount().catch(() => null);
+  }
   revalidatePath("/clube");
   redirect("/clube?ok=regras");
 }
@@ -193,8 +198,8 @@ export async function cancelSubscription(f: FormData) {
       const { cancelSubscription: cancelAt } = await import("@/lib/appmax");
       await cancelAt(m!.subscriptionId, "Cancelado pelo painel do Hub");
     }
-    if (m!.discountId) await setCodeActive(m!.discountId, false).catch(() => null);
-    await db.clubMember.update({ where: { id: m!.id }, data: { status: "cancelado", canceledAt: new Date(), codeActive: false } });
+    await db.clubMember.update({ where: { id: m!.id }, data: { status: "cancelado", canceledAt: new Date() } });
+    await setMemberAccess(m!, false).catch(() => null);
     await db.clubEvent.create({ data: { memberId: m!.id, kind: "cancelou", text: "Assinatura cancelada pelo painel" } });
   } catch (e) {
     rethrow(e);
@@ -202,4 +207,25 @@ export async function cancelSubscription(f: FormData) {
   }
   revalidatePath("/clube");
   redirect(back(q, "ok=cancelado"));
+}
+
+/* Mensagens do clube no WhatsApp */
+export async function toggleClubMsg(f: FormData) {
+  await admin();
+  const k = str(f, "key");
+  if (k !== "msgWelcome" && k !== "msgPoints") return;
+  await saveSetting("club", { [k]: f.get("on") === "1" });
+  revalidatePath("/clube");
+}
+
+export async function launchClubMsg(f: FormData) {
+  await admin();
+  const text = str(f, "text").slice(0, 1500);
+  const s = (await getSettings()).club;
+  const members = await db.clubMember.findMany({ where: { status: { not: "cancelado" }, phone: { not: null } }, select: { id: true, status: true, paidUntil: true } });
+  const ids = members.filter((m) => m.paidUntil && m.paidUntil.getTime() + s.graceDays * 864e5 >= Date.now()).map((m) => m.id);
+  if (!ids.length) redirect("/clube?msgs=1&erro=Nenhum membro em dia para avisar");
+  const { enqueue } = await import("@/lib/queue");
+  await enqueue("club-launch", { ids, text }, { jobId: `cl-${Date.now()}` });
+  redirect(`/clube?msgs=1&ok=aviso&n=${ids.length}`);
 }

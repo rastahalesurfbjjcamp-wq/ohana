@@ -11,7 +11,9 @@ import { ConfirmButton } from "@/components/ConfirmButton";
 import { clubMessage, digits, findMembers, findShopifyCustomer, fmtCpf, maskCpf, memberState } from "@/lib/club";
 import { waLink } from "@/lib/partners";
 import { normalizePhone } from "@/lib/segments";
-import { addMember, adjustPoints, cancelMember, cancelSubscription, eventCheckin, payMember, redeemPoints, redeemPrize, saveClubRules, savePrize, scanClubNow, togglePrize, updateMember } from "../acoes6";
+import { addMember, adjustPoints, cancelMember, cancelSubscription, eventCheckin, launchClubMsg, payMember, redeemPoints, redeemPrize, saveClubRules, savePrize, scanClubNow, toggleClubMsg, togglePrize, updateMember } from "../acoes6";
+import { AutoToggle } from "@/components/AutoToggle";
+import { LAUNCH_DEFAULT, clubText } from "@/lib/clubMsg";
 import { env } from "@/lib/env";
 import { hasAppmax } from "@/lib/appmax";
 import { products } from "@/lib/store";
@@ -19,9 +21,9 @@ import { products } from "@/lib/store";
 export const dynamic = "force-dynamic";
 
 const REASON: Record<string, string> = { compra: "Compra", estorno: "Estorno", mensalidade: "Mensalidade", resgate: "Resgate", evento: "Evento", ajuste: "Ajuste", bonus: "Bônus" };
-const OK: Record<string, string> = { cancelado: "Assinatura cancelada. O cupom de membro foi desligado.", pago: "Mensalidade registrada. O cupom de membro está ligado.", entrada: "Entrada no evento registrada.", ajuste: "Pontos ajustados.", regras: "Regras salvas.", "1": "Salvo." };
+const OK: Record<string, string> = { cancelado: "Assinatura cancelada. O cupom de membro foi desligado.", pago: "Mensalidade registrada. O cupom de membro está ligado.", entrada: "Entrada no evento registrada.", ajuste: "Pontos ajustados.", regras: "Regras salvas.", aviso: "Aviso de lançamento na fila. As mensagens saem aos poucos, com a proteção do número.", "1": "Salvo." };
 
-export default async function Clube({ searchParams }: { searchParams: Promise<{ premios?: string; q?: string; novo?: string; erro?: string; ok?: string; cupom?: string; criado?: string; regras?: string; somados?: string; f?: string; editar?: string }> }) {
+export default async function Clube({ searchParams }: { searchParams: Promise<{ premios?: string; q?: string; novo?: string; erro?: string; ok?: string; cupom?: string; criado?: string; regras?: string; somados?: string; f?: string; editar?: string; msgs?: string; n?: string }> }) {
   const sp = await searchParams;
   const { club: c, postsale } = await getSettings();
   const store = postsale.storeUrl;
@@ -64,12 +66,15 @@ export default async function Clube({ searchParams }: { searchParams: Promise<{ 
       <Header title="Clube de fidelidade" lede={`${c.name}: mensalidade de ${brl(c.fee)}, ${c.discountPct}% de desconto em toda compra, acesso antecipado e pontos que viram desconto ou entrada nos eventos.`}>
         <form action={scanClubNow}><button className="btn" type="submit" title="Puxa as compras dos últimos 30 dias e soma os pontos"><RefreshCw size={15} /> Atualizar pontos</button></form>
         <Link className="btn" href={sp.premios ? "/clube" : "/clube?premios=1"}><Gift size={15} /> Recompensas</Link>
+        <Link className="btn" href={sp.msgs ? "/clube" : "/clube?msgs=1"}><MessageCircle size={15} /> Mensagens</Link>
         <Link className="btn" href={sp.regras ? "/clube" : "/clube?regras=1"}><Settings2 size={15} /> Regras</Link>
         <Link className="btn pri" href={sp.novo ? "/clube" : "/clube?novo=1"}><Plus size={16} /> Novo membro</Link>
       </Header>
       {sp.ok && <div className="ok">{OK[sp.ok] ?? "Salvo."}</div>}
       {sp.somados && <div className="ok">{Number(sp.somados) ? `${sp.somados} pontos somados das compras.` : "Nenhuma compra nova de membro para somar."}</div>}
       {sp.erro && sp.erro !== "nome" && <div className="err">{sp.erro}</div>}
+
+      {sp.msgs && <MsgPanel all={all} c={c} n={sp.n} />}
 
       {sp.regras && (
         <Panel title="Regras do clube" sub="Valem para todos os membros" right={<Link className="menu-b" href="/clube" aria-label="Fechar"><X size={16} /></Link>}>
@@ -386,4 +391,35 @@ export default async function Clube({ searchParams }: { searchParams: Promise<{ 
       </Panel>
     </>
   );
+}
+
+type Mem = { id: string; phone: string | null; status: string; paidUntil: Date | null };
+async function MsgPanel({ all, c, n }: { all: Mem[]; c: Awaited<ReturnType<typeof getSettings>>["club"]; n?: string }) {
+        const sample = all.find((m) => m.phone && m.status !== "cancelado");
+        const [pw, pp] = sample ? await Promise.all([clubText(sample.id, "boasvindas"), clubText(sample.id, "pontos", { pts: 120, order: "#4400" })]) : [null, null];
+        const emDia = all.filter((m) => m.status !== "cancelado" && m.phone && m.paidUntil && m.paidUntil.getTime() + c.graceDays * 864e5 >= Date.now()).length;
+        return (
+          <Panel title="Mensagens para os membros" sub="Saem pelo número do WhatsApp conectado, com a proteção de envio" right={<Link className="menu-b" href="/clube" aria-label="Fechar"><X size={16} /></Link>}>
+            {n && <div className="ok" style={{ marginBottom: 12 }}>{n} membros vão receber o aviso.</div>}
+            <div className="cols c-1-1" style={{ gap: 14 }}>
+              <div className="stack" style={{ gap: 8 }}>
+                <div className="row" style={{ justifyContent: "space-between" }}><b>Boas-vindas ao assinar</b><AutoToggle action={toggleClubMsg} k="msgWelcome" on={c.msgWelcome} label="Os novos membros" /></div>
+                <p className="dim" style={{ fontSize: 12.5 }}>Um minuto depois do pagamento: regras, como usar o desconto, cupom e link dos pontos.</p>
+                {pw && <pre className="msgprev">{pw}</pre>}
+              </div>
+              <div className="stack" style={{ gap: 8 }}>
+                <div className="row" style={{ justifyContent: "space-between" }}><b>Pontos de cada compra</b><AutoToggle action={toggleClubMsg} k="msgPoints" on={c.msgPoints} label="Os membros que comprarem" /></div>
+                <p className="dim" style={{ fontSize: 12.5 }}>Quando a compra de um membro soma pontos. Se ele responder RESGATAR, recebe o link para trocar na hora.</p>
+                {pp && <pre className="msgprev">{pp}</pre>}
+              </div>
+            </div>
+            <form action={launchClubMsg} className="stack" style={{ gap: 8, marginTop: 18 }}>
+              <b>Aviso de lançamento</b>
+              <p className="dim" style={{ fontSize: 12.5 }}>Vai para os {emDia} membros em dia. Use {"{nome}"}, {"{pontos}"}, {"{valor}"}, {"{horas}"}, {"{pct}"}, {"{clube}"} e {"{link}"}: cada um recebe com os próprios números.</p>
+              <textarea className="in" name="text" rows={6} defaultValue={LAUNCH_DEFAULT} />
+              <div><ConfirmButton className="btn pri sm" disabled={!emDia} message={`Mandar o aviso para ${emDia} membros agora?`}>Mandar aviso de lançamento</ConfirmButton></div>
+            </form>
+            <p className="dim" style={{ fontSize: 12.5, marginTop: 12 }}>Desconto automático no checkout: {c.autoDiscountId ? `ativo (${c.discountPct}% para quem tem a marcação "clube" na Shopify)` : "sendo criado na loja (o Hub cria sozinho em alguns minutos)"}.</p>
+          </Panel>
+        );
 }

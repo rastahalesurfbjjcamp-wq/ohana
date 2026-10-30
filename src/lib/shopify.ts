@@ -179,3 +179,8 @@ async function shopifyqlOnce(q: string): Promise<Record<string, string>[]> {
 export async function shopCreatedAt(): Promise<string> {
   return swr("shop-created", 86_400_000, async () => (await gql<{ shop: { createdAt: string } }>(`{ shop { createdAt } }`)).shop.createdAt.slice(0, 10));
 }
+
+// Chamadas que dependem de recursos novos da Shopify (descontos com segmento, tags em descontos)
+export async function gqlNew<T>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
+  return gql<T>(query, variables, QL_VERSION);
+}

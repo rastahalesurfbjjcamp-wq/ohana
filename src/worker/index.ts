@@ -10,15 +10,15 @@ import { transcribe } from "../lib/ai";
 import { evolution } from "../lib/evolution";
 import { getSettings } from "../lib/settings";
 import { humanDelay, reserveSlot, sendMedia, sendText, sentByBot } from "../lib/send";
-import { ensureMemberCode, scanClub } from "../lib/club";
+import { ensureClubAutoDiscount, ensureMemberCode, scanClub } from "../lib/club";
 import { hhmmLocal, isoDayLocal, nowLocal } from "../lib/time";
-import { dueBroadcasts, leadWelcome, runBroadcast, sendPollLink, waitlistNotify } from "./jobs2";
+import { dueBroadcasts, leadWelcome, runBroadcast, sendPollLink, waitlistNotify, clubMsg, clubLaunch } from "./jobs2";
 import { scanFirstPurchases, scanRecovery, scanRepurchase, sendDueRecovery } from "../lib/recovery";
 import { runFunnels } from "../lib/funnels";
 import { assistantReply } from "../lib/assistant";
 import { refreshReferralUsage } from "../lib/referral";
 
-type Marks = { payday?: string; daily?: string; weekly?: string; sync?: number; scan?: number; repurchase?: string; referral?: number; club?: number; wa?: number; monthly?: string };
+type Marks = { payday?: string; daily?: string; weekly?: string; sync?: number; scan?: number; repurchase?: string; referral?: number; club?: number; wa?: number; monthly?: string; autoDisc?: number };
 
 async function getMarks(): Promise<Marks> {
   const r = await db.setting.findUnique({ where: { key: "_marks" } });
@@ -108,6 +108,11 @@ async function tick() {
     await setMarks({ wa: Date.now() });
     const state = await evolution.connectionState().catch(() => null);
     if (state && state !== "unknown") await db.setting.upsert({ where: { key: "_whatsapp" }, create: { key: "_whatsapp", value: { state, at: new Date().toISOString() } }, update: { value: { state, at: new Date().toISOString() } } }).catch(() => null);
+  }
+  // Desconto automático do clube na loja (cria uma vez; tenta de novo a cada 10 minutos se falhar)
+  if (s.club.enabled && !s.club.autoDiscountId && (!marks.autoDisc || Date.now() - marks.autoDisc > 10 * 60_000)) {
+    await setMarks({ autoDisc: Date.now() });
+    await ensureClubAutoDiscount().catch((e) => console.error("[clube desconto automático]", e));
   }
   // Membros que pagaram e ainda estão sem cupom: tenta criar de novo a cada minuto
   {
@@ -238,6 +243,10 @@ async function main() {
           return assistantReply(job.data.phone, job.data.audioId);
         case "waitlist-notify":
           return waitlistNotify(job.data.ids);
+        case "club-msg":
+          return clubMsg(job.data.memberId, job.data.kind, { pts: job.data.pts, order: job.data.order });
+        case "club-launch":
+          return clubLaunch(job.data.ids, job.data.text);
       }
     },
     { connection: redis(), concurrency: 4 },

@@ -2,8 +2,9 @@
 import { db } from "./db";
 import { getSettings } from "./settings";
 import { createCustomer, createOrder, createSubscription, FAILED, orderStatus, PAID, payCard, payPix } from "./appmax";
-import { cpfValid, digits, ensureMemberCode, findShopifyCustomer, registerPayment, setCodeActive } from "./club";
-import { redis } from "./queue";
+import { cpfValid, digits, ensureMemberCode, findShopifyCustomer, registerPayment, setMemberAccess } from "./club";
+import { enqueue, redis } from "./queue";
+import { memberToken } from "./clubMember";
 import { normalizePhone } from "./segments";
 
 export type StartInput = { name: string; cpf: string; phone: string; email: string; method: "pix" | "cartao"; ip?: string; card?: { number: string; cvv: string; month: string; year: string; holder: string } };
@@ -64,7 +65,7 @@ export async function checkStatus(id: string) {
   if (ck.status === "pago") {
     const m = ck.memberId ? await db.clubMember.findUnique({ where: { id: ck.memberId } }) : null;
     const code = m?.code ?? (m ? await ensureMemberCode(m.id).catch(() => null) : null);
-    return { status: "pago" as const, code, gerando: !code };
+    return { status: "pago" as const, code, gerando: !code, area: m ? `/assinar/meu?t=${memberToken(m.id)}` : null };
   }
   if (ck.status !== "pendente" || !ck.orderId) return { status: ck.status };
   if (ck.pixExpires && ck.pixExpires.getTime() < Date.now() - 60_000) {
@@ -104,7 +105,7 @@ export async function activate(checkoutId: string) {
     m = await db.clubMember.create({ data: { name: ck.name, cpf: ck.cpf, phone: ck.phone, email: ck.email, customerId: shop?.id ?? null, fee: s.fee, provider: "appmax", payMethod: ck.method, cardLast4: ck.cardLast4 } });
   } else {
     m = await db.clubMember.update({ where: { id: m.id }, data: { status: "ativo", canceledAt: null, provider: "appmax", payMethod: ck.method, cardLast4: ck.cardLast4 ?? m.cardLast4, email: m.email ?? ck.email, phone: m.phone ?? ck.phone } });
-    if (m.discountId && !m.codeActive) await setCodeActive(m.discountId, true).then(() => db.clubMember.update({ where: { id: m!.id }, data: { codeActive: true } })).catch(() => null);
+    if (!m.codeActive) await setMemberAccess(m, true).catch(() => null);
   }
   await registerPayment(m.id, 1, "assinatura", `pedido-${ck.orderId}`);
   try {
@@ -115,6 +116,7 @@ export async function activate(checkoutId: string) {
   }
   await db.clubCheckout.update({ where: { id: ck.id }, data: { memberId: m.id } });
   if (!m.code) await ensureMemberCode(m.id).catch(() => null);
+  if (s.msgWelcome) await enqueue("club-msg", { memberId: m.id, kind: "boasvindas" }, { jobId: `cw-${m.id}-${ck.id}`, delayMs: 60_000 }).catch(() => null);
   await event(m.id, "assinou", `Assinou o clube pelo ${ck.method === "pix" ? "Pix" : `cartão final ${ck.cardLast4 ?? ""}`}`, s.fee);
   return db.clubMember.findUnique({ where: { id: m.id } });
 }
@@ -155,8 +157,8 @@ export async function handleAppmaxEvent(h: Hook) {
     return "falhou";
   }
   if (ev === "subscription_cancelation" || ev === "subscription_canceled" || ev === "subscription_cancelled") {
-    await db.clubMember.update({ where: { id: m.id }, data: { status: "cancelado", canceledAt: new Date(), codeActive: false } });
-    if (m.discountId) await setCodeActive(m.discountId, false).catch(() => null);
+    await db.clubMember.update({ where: { id: m.id }, data: { status: "cancelado", canceledAt: new Date() } });
+    await setMemberAccess(m, false).catch(() => null);
     await event(m.id, "cancelou", "Cancelou a assinatura");
     return "cancelado";
   }

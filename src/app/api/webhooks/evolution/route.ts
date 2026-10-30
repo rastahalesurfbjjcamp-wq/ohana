@@ -81,6 +81,14 @@ export async function POST(req: NextRequest) {
             await db.lead.updateMany({ where: { phone }, data: { status: "descadastrado" } });
             continue;
           }
+          // Membro do clube pedindo para resgatar pontos: manda o link da área do membro
+          if (/^\s*resgat/i.test(raw)) {
+            const mem = await db.clubMember.findFirst({ where: { phone, status: { not: "cancelado" } } });
+            if (mem) {
+              await enqueue("club-msg", { memberId: mem.id, kind: "resgatar" }, { jobId: `cr-${mem.id}-${Math.floor(Date.now() / 60_000)}` });
+              continue;
+            }
+          }
           // Assistente com IA (se ligado), espera alguns segundos para juntar mensagens seguidas
           await enqueue("assistant", { phone, audioId: isAudio ? key.id : null }, { jobId: `ai-${phone}-${Math.floor(Date.now() / 15000)}`, delayMs: 12000 });
           continue;

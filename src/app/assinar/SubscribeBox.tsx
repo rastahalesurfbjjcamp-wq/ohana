@@ -26,6 +26,7 @@ export function SubscribeBox({ fee, ready, storeUrl, clubName }: { fee: number; 
   const [copied, setCopied] = useState(false);
   const poll = useRef<ReturnType<typeof setInterval> | null>(null);
   const [slow, setSlow] = useState(false);
+  const [area, setArea] = useState<string | null>(null);
 
   // volta para a confirmação se a pessoa recarregar a página depois de pagar
   useEffect(() => {
@@ -38,6 +39,11 @@ export function SubscribeBox({ fee, ready, storeUrl, clubName }: { fee: number; 
     const u = new URL(location.href);
     if (u.searchParams.get("pedido") !== ckId) { u.searchParams.set("pedido", ckId); history.replaceState(null, "", u.toString()); }
   }, [done, ckId]);
+  // link da área do membro
+  useEffect(() => {
+    if (!done?.code || !ckId || area) return;
+    fetch(`/api/clube/status?id=${ckId}`, { cache: "no-store" }).then((x) => x.json()).then((r) => r?.area && setArea(r.area)).catch(() => null);
+  }, [done, ckId, area]);
   // pagou e o cupom ainda está sendo criado: pergunta a cada 3 s
   useEffect(() => {
     if (!done || done.code || !ckId) return;
@@ -46,6 +52,7 @@ export function SubscribeBox({ fee, ready, storeUrl, clubName }: { fee: number; 
     const check = async () => {
       if (stop) return;
       const r = await fetch(`/api/clube/status?id=${ckId}`, { cache: "no-store" }).then((x) => x.json()).catch(() => null);
+      if (r?.area) setArea(r.area);
       if (r?.code) { setDone({ code: r.code }); return; }
       if (Date.now() - started > 4 * 60_000) setSlow(true);
       setTimeout(check, 3000);
@@ -111,7 +118,9 @@ export function SubscribeBox({ fee, ready, storeUrl, clubName }: { fee: number; 
           <>
             <div className="sb-code">{done.code}</div>
             <p style={{ fontSize: 13 }}>É um cupom único e pessoal, ligado ao seu CPF e ao seu cadastro na loja. Na hora de comprar, use o mesmo e-mail{f.email ? ` (${f.email.trim()})` : ""} que você colocou aqui.</p>
-            <a className="sb-btn" style={{ marginTop: 18, textDecoration: "none" }} href={`${storeUrl.replace(/\/$/, "")}/discount/${done.code}`}>Ir para a loja com o cupom aplicado</a>
+            <p style={{ fontSize: 13 }}>Daqui pra frente, comprando com a sua conta da loja, o desconto do clube entra sozinho no checkout. Cada compra soma pontos que você troca por desconto.</p>
+            <a className="sb-btn" style={{ marginTop: 14, textDecoration: "none" }} href={`${storeUrl.replace(/\/$/, "")}/discount/${done.code}`}>Ir para a loja com o cupom aplicado</a>
+            {area && <a href={area} style={{ display: "block", marginTop: 12, fontSize: 13, color: "#1f7a3d", fontWeight: 600 }}>Ver meus pontos e resgates</a>}
           </>
         ) : (
           <div className="sb-gen" role="status" aria-live="polite">

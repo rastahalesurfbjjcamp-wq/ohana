@@ -77,6 +77,10 @@ export const DEFAULTS = {
     minRedeem: 100,
     graceDays: 5,
     earlyHours: 48,
+    autoDiscountId: "", // desconto automático no checkout para quem tem a marcação "clube"
+    segmentId: "",
+    msgWelcome: false, // mensagens no WhatsApp para os membros (começam desligadas)
+    msgPoints: false,
   },
   referral: {
     enabled: true,
@@ -157,7 +161,7 @@ export type Settings = {
     repurchaseText: string;
     storeUrl: string;
   };
-  club: { enabled: boolean; name: string; fee: number; discountPct: number; pointsPerReal: number; valuePer100: number; monthlyPoints: number; eventPoints: number; minRedeem: number; graceDays: number; earlyHours: number };
+  club: { enabled: boolean; name: string; fee: number; discountPct: number; pointsPerReal: number; valuePer100: number; monthlyPoints: number; eventPoints: number; minRedeem: number; graceDays: number; earlyHours: number; autoDiscountId: string; segmentId: string; msgWelcome: boolean; msgPoints: boolean };
   referral: { enabled: boolean; percent: number; discountType: string; fixedAmount: number; minSubtotal: number; commission: number; releaseDays: number; shareText: string };
   assistant: { enabled: boolean; instructions: string; useOrders: boolean; useStock: boolean; useSizes: boolean; sizeTable: string; useExchange: boolean; exchangeText: string; handoff: boolean };
 };

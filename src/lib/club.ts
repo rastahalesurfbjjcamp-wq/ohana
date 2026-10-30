@@ -3,7 +3,9 @@ import { db } from "./db";
 import { getSettings } from "./settings";
 import { gql, ordersBetween, type Order } from "./store";
 import { normalizePhone } from "./segments";
-import { redis } from "./queue";
+import { enqueue, redis } from "./queue";
+import { gqlNew } from "./shopify";
+import { saveSetting } from "./settings";
 
 export const digits = (v: string | null | undefined) => (v ?? "").replace(/\D/g, "");
 export const maskCpf = (c: string | null) => (c && c.length === 11 ? `${c.slice(0, 3)}.***.***-${c.slice(9)}` : c ?? "");
@@ -87,7 +89,7 @@ async function withRetry<T>(f: () => Promise<T>, tries = 4): Promise<T> {
 }
 
 async function discountCreate(input: Record<string, unknown>) {
-  const d = await withRetry(() => gql<{ discountCodeBasicCreate: { codeDiscountNode: { id: string } | null; userErrors: { message: string }[] } }>(
+  const d = await withRetry(() => gqlNew<{ discountCodeBasicCreate: { codeDiscountNode: { id: string } | null; userErrors: { message: string }[] } }>(
     `mutation($input: DiscountCodeBasicInput!){ discountCodeBasicCreate(basicCodeDiscount:$input){ codeDiscountNode{ id } userErrors{ message } } }`,
     { input },
   ));
@@ -158,9 +160,56 @@ export async function ensureMemberCode(memberId: string): Promise<string | null>
 
 export async function setCodeActive(discountId: string, on: boolean) {
   const m = on ? "discountCodeActivate" : "discountCodeDeactivate";
-  const d = await gql<Record<string, { userErrors: { message: string }[] }>>(`mutation($id:ID!){ ${m}(id:$id){ userErrors{ message } } }`, { id: discountId });
+  const d = await gqlNew<Record<string, { userErrors: { message: string }[] }>>(`mutation($id:ID!){ ${m}(id:$id){ userErrors{ message } } }`, { id: discountId });
   const e = d[m]?.userErrors[0];
   if (e) throw new Error(e.message);
+}
+
+export async function untagCustomer(customerId: string, tag = "clube") {
+  await gql(`mutation($id:ID!,$t:[String!]!){ tagsRemove(id:$id, tags:$t){ userErrors{ message } } }`, { id: customerId, t: [tag] }).catch(() => null);
+}
+
+// Liga ou desliga o benefício do membro: cupom pessoal e a marcação "clube" (que dá o desconto automático no checkout)
+export async function setMemberAccess(m: { id: string; discountId: string | null; customerId: string | null }, on: boolean) {
+  if (m.discountId) await setCodeActive(m.discountId, on).catch(() => null);
+  if (m.customerId) await (on ? tagCustomer(m.customerId) : untagCustomer(m.customerId));
+  await db.clubMember.update({ where: { id: m.id }, data: { codeActive: on } }).catch(() => null);
+}
+
+// Desconto automático do clube: vale sozinho no checkout para clientes com a marcação "clube"
+export async function ensureClubAutoDiscount(force = false) {
+  const st = await getSettings();
+  const c = st.club;
+  if (c.autoDiscountId && !force) return c.autoDiscountId;
+  let segmentId = c.segmentId;
+  if (!segmentId) {
+    const r = await gqlNew<{ segmentCreate: { segment: { id: string } | null; userErrors: { message: string }[] } }>(
+      `mutation($n:String!,$q:String!){ segmentCreate(name:$n, query:$q){ segment{ id } userErrors{ message } } }`,
+      { n: `${c.name} (membros)`, q: "customer_tags CONTAINS 'clube'" },
+    );
+    if (r.segmentCreate.userErrors[0]) throw new Error(r.segmentCreate.userErrors[0].message);
+    segmentId = r.segmentCreate.segment!.id;
+    await saveSetting("club", { segmentId });
+  }
+  const d = await gqlNew<{ discountAutomaticBasicCreate: { automaticDiscountNode: { id: string } | null; userErrors: { message: string }[] } }>(
+    `mutation($input: DiscountAutomaticBasicInput!){ discountAutomaticBasicCreate(automaticBasicDiscount:$input){ automaticDiscountNode{ id } userErrors{ message } } }`,
+    { input: { title: `${c.name} · ${c.discountPct}%`, startsAt: new Date().toISOString(), context: { customerSegments: { add: [segmentId] } }, customerGets: { value: { percentage: c.discountPct / 100 }, items: { all: true } }, combinesWith: { orderDiscounts: true, productDiscounts: false, shippingDiscounts: true } } },
+  );
+  if (d.discountAutomaticBasicCreate.userErrors[0]) throw new Error(d.discountAutomaticBasicCreate.userErrors[0].message);
+  const id = d.discountAutomaticBasicCreate.automaticDiscountNode!.id;
+  await saveSetting("club", { autoDiscountId: id });
+  return id;
+}
+
+// Mudou a porcentagem do clube: atualiza o desconto automático
+export async function updateClubAutoDiscount() {
+  const c = (await getSettings()).club;
+  if (!c.autoDiscountId) return;
+  const d = await gqlNew<{ discountAutomaticBasicUpdate: { userErrors: { message: string }[] } }>(
+    `mutation($id:ID!,$input: DiscountAutomaticBasicInput!){ discountAutomaticBasicUpdate(id:$id, automaticBasicDiscount:$input){ userErrors{ message } } }`,
+    { id: c.autoDiscountId, input: { title: `${c.name} · ${c.discountPct}%`, customerGets: { value: { percentage: c.discountPct / 100 }, items: { all: true } } } },
+  );
+  if (d.discountAutomaticBasicUpdate.userErrors[0]) throw new Error(d.discountAutomaticBasicUpdate.userErrors[0].message);
 }
 
 export async function tagCustomer(customerId: string, tag = "clube") {
@@ -194,7 +243,8 @@ export async function createReward(memberId: string, points: number, by?: string
     title: `Resgate de pontos ${m.name}`, code, startsAt: new Date().toISOString(), context: contextFor(m.customerId),
     usageLimit: 1, appliesOncePerCustomer: true,
     customerGets: { value: { discountAmount: { amount: value.toFixed(2), appliesOnEachItem: false } }, items: { all: true } },
-    combinesWith: { orderDiscounts: false, productDiscounts: true, shippingDiscounts: true }, tags: ["clube", "resgate"],
+    // soma com os 10% do clube
+    combinesWith: { orderDiscounts: true, productDiscounts: true, shippingDiscounts: true }, tags: ["clube", "resgate"],
   });
   const r = await db.clubReward.create({ data: { memberId, code, discountId: id, value, points } });
   await addPoints(memberId, -points, "resgate", r.id, `Cupom ${code} de R$ ${value.toFixed(2).replace(".", ",")}`, by);
@@ -210,10 +260,8 @@ export async function registerPayment(memberId: string, months: number, by?: str
   const until = new Date(base);
   until.setMonth(until.getMonth() + months);
   await db.clubMember.update({ where: { id: m.id }, data: { paidUntil: until, status: "ativo" } });
-  if (m.discountId && !m.codeActive) {
-    await setCodeActive(m.discountId, true).catch(() => null);
-    await db.clubMember.update({ where: { id: m.id }, data: { codeActive: true } });
-  }
+  if (!m.codeActive) await setMemberAccess(m, true);
+  else if (m.customerId) await tagCustomer(m.customerId);
   const month = new Date().toISOString().slice(0, 7);
   for (let i = 0; i < months; i++) await addPoints(m.id, s.monthlyPoints, "mensalidade", ref ? `${ref}-${i}` : `${month}-${i}-${Date.now()}`, `Mensalidade paga`, by);
   return until;
@@ -252,20 +300,16 @@ export async function scanClub(days = 4) {
     }
     if (!PAID.has(o.financial) || !isActiveAt(m, new Date(o.createdAt), s.graceDays)) continue;
     const pts = Math.floor(o.subtotal * s.pointsPerReal);
-    if (await addPoints(m.id, pts, "compra", o.id, `Pedido ${o.name}`)) given += pts;
+    if (await addPoints(m.id, pts, "compra", o.id, `Pedido ${o.name}`)) {
+      given += pts;
+      if (s.msgPoints && pts > 0) await enqueue("club-msg", { memberId: m.id, kind: "pontos", pts, order: o.name }, { jobId: `cp-${o.id}`, delayMs: 60_000 }).catch(() => null);
+    }
   }
   // cupom de membro: desliga de quem passou da tolerância, religa de quem está em dia
   for (const m of members) {
-    if (!m.discountId) continue;
+    if (!m.discountId && !m.customerId) continue;
     const ok = isActiveAt(m, new Date(), s.graceDays);
-    if (ok !== m.codeActive) {
-      try {
-        await setCodeActive(m.discountId, ok);
-        await db.clubMember.update({ where: { id: m.id }, data: { codeActive: ok } });
-      } catch {
-        // tenta de novo na próxima rodada
-      }
-    }
+    if (ok !== m.codeActive) await setMemberAccess(m, ok).catch(() => null);
   }
   return { points: given };
 }
@@ -297,7 +341,7 @@ export async function createPrizeReward(memberId: string, prizeId: string, by?: 
     title: `Resgate ${p.title} - ${m.name}`, code, startsAt: new Date().toISOString(), context: contextFor(m.customerId),
     usageLimit: 1, appliesOncePerCustomer: true,
     customerGets: { value: { percentage: 1 }, items: { products: { productsToAdd: [p.productId] } } },
-    combinesWith: { orderDiscounts: false, productDiscounts: false, shippingDiscounts: true }, tags: ["clube", "resgate", "peca"],
+    combinesWith: { orderDiscounts: true, productDiscounts: false, shippingDiscounts: true }, tags: ["clube", "resgate", "peca"],
   });
   const r = await db.clubReward.create({ data: { memberId, code, discountId: id, value: 0, points: p.points } });
   await addPoints(memberId, -p.points, "resgate", r.id, `${p.title} (cupom ${code})`, by);

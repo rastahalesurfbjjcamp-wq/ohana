@@ -95,3 +95,35 @@ export async function waitlistNotify(ids: string[]) {
     await humanDelay();
   }
 }
+
+// Mensagem do clube para um membro (boas-vindas, pontos da compra, resposta ao RESGATAR)
+export async function clubMsg(memberId: string, kind: string, extra: { pts?: number; order?: string } = {}) {
+  const s = await getSettings();
+  if (kind === "boasvindas" && !s.club.msgWelcome) return;
+  if (kind === "pontos" && !s.club.msgPoints) return;
+  const m = await db.clubMember.findUnique({ where: { id: memberId } });
+  if (!m?.phone || m.status === "cancelado") return;
+  if (await db.optOut.findUnique({ where: { phone: m.phone } })) return;
+  const { clubText } = await import("../lib/clubMsg");
+  const text = await clubText(memberId, kind, extra);
+  if (!text) return;
+  const wait = await reserveSlot();
+  if (wait > 0) { await enqueue("club-msg", { memberId, kind, ...extra }, { delayMs: wait }); return; }
+  await sendText(m.phone, text);
+  await db.clubEvent.create({ data: { memberId, kind: "voltou", text: kind === "boasvindas" ? "Recebeu a mensagem de boas-vindas" : kind === "pontos" ? `Recebeu o aviso de ${extra.pts ?? 0} pontos` : "Pediu para resgatar e recebeu o link" } }).catch(() => null);
+}
+
+// Aviso de lançamento para os membros em dia (só quando o dono manda pelo painel)
+export async function clubLaunch(ids: string[], text: string) {
+  const { clubText } = await import("../lib/clubMsg");
+  for (let i = 0; i < ids.length; i++) {
+    const m = await db.clubMember.findUnique({ where: { id: ids[i] } });
+    if (!m?.phone || m.status === "cancelado") continue;
+    if (await db.optOut.findUnique({ where: { phone: m.phone } })) continue;
+    const wait = await reserveSlot();
+    if (wait > 0) { await enqueue("club-launch", { ids: ids.slice(i), text }, { delayMs: wait }); return; }
+    const msg = await clubText(m.id, "lancamento", { text });
+    if (msg) await sendText(m.phone, msg);
+    await humanDelay();
+  }
+}
