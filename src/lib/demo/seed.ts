@@ -13,11 +13,19 @@ let running: Promise<void> | null = null;
 export async function ensureDemoSeed(force = false) {
   if (running) return running;
   running = (async () => {
-    const mark = await db.setting.findUnique({ where: { key: "_demo_seed" } }).catch(() => null);
-    const mv = mark?.value as { day?: string; v?: number } | undefined;
-    if (!force && mv?.day === day() && mv?.v === SEED_V) return;
-    await seed();
-    await db.setting.upsert({ where: { key: "_demo_seed" }, create: { key: "_demo_seed", value: { day: day(), v: SEED_V } }, update: { value: { day: day(), v: SEED_V } } });
+    const fresh = async () => {
+      const mark = await db.setting.findUnique({ where: { key: "_demo_seed" } }).catch(() => null);
+      const mv = mark?.value as { day?: string; v?: number } | undefined;
+      return !force && mv?.day === day() && mv?.v === SEED_V;
+    };
+    if (await fresh()) return;
+    // painel e worker sobem juntos: só um processo popula (trava no Postgres enquanto durar)
+    await db.$transaction(async (tx) => {
+      const [{ ok }] = await tx.$queryRaw<{ ok: boolean }[]>`SELECT pg_try_advisory_xact_lock(424242) AS ok`;
+      if (!ok || (await fresh())) return;
+      await seed();
+      await db.setting.upsert({ where: { key: "_demo_seed" }, create: { key: "_demo_seed", value: { day: day(), v: SEED_V } }, update: { value: { day: day(), v: SEED_V } } });
+    }, { timeout: 600_000, maxWait: 10_000 });
   })().finally(() => { running = null; });
   return running;
 }
