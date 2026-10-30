@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { env } from "@/lib/env";
 import { randomBytes } from "node:crypto";
 import { getSession } from "@/lib/auth";
 import { creds } from "@/lib/integrations";
@@ -8,10 +9,10 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   const s = await getSession();
-  if (!s || s.role !== "ADMIN") return NextResponse.redirect(new URL("/login", req.url));
+  if (!s || s.role !== "ADMIN") return NextResponse.redirect(new URL("/login", env.appUrl()));
   const c = (await creds()).shopify;
   const shop = normalizeShop(req.nextUrl.searchParams.get("shop") ?? c.domain ?? "");
-  if (!shop || !c.clientId || !c.clientSecret) return NextResponse.redirect(new URL("/integracoes?shopify=faltam-dados", req.url));
+  if (!shop || !c.clientId || !c.clientSecret) return NextResponse.redirect(new URL("/integracoes?shopify=faltam-dados", env.appUrl()));
   const state = randomBytes(16).toString("hex");
   const url = new URL(`https://${shop}/admin/oauth/authorize`);
   url.searchParams.set("client_id", c.clientId);

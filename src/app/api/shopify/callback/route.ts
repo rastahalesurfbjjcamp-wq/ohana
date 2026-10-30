@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { env } from "@/lib/env";
 import { getSession } from "@/lib/auth";
 import { creds, saveIntegration } from "@/lib/integrations";
 import { normalizeShop, validHmac } from "@/lib/shopifyOauth";
@@ -7,9 +8,9 @@ import { testIntegration } from "@/app/(painel)/integracoes/actions";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
-  const back = (q: string) => NextResponse.redirect(new URL(`/integracoes?shopify=${q}`, req.url));
+  const back = (q: string) => NextResponse.redirect(new URL(`/integracoes?shopify=${q}`, env.appUrl()));
   const s = await getSession();
-  if (!s || s.role !== "ADMIN") return NextResponse.redirect(new URL("/login", req.url));
+  if (!s || s.role !== "ADMIN") return NextResponse.redirect(new URL("/login", env.appUrl()));
   const p = req.nextUrl.searchParams;
   const c = (await creds()).shopify;
   const shop = normalizeShop(p.get("shop") ?? "");
