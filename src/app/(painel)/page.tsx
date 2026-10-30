@@ -230,7 +230,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
         </div>
       </div>
 
-      {obDone < ob.length && (
+      {obDone < ob.length && process.env.DEMO_MODE !== "1" && (
         <Link href="/comecar" className="callout lagoon" style={{ alignItems: "center" }}>
           <b>Falta pouco para a loja ficar pronta: {obDone} de {ob.length} passos.</b>
           <span className="dim">Próximo: {ob.find((x) => !x.done)?.title}</span>

@@ -1,4 +1,5 @@
 "use server";
+import { demoBlock } from "@/lib/demo/guard";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
@@ -63,6 +64,7 @@ export async function testIntegration(p: Provider) {
 }
 
 export async function saveProvider(f: FormData) {
+  demoBlock("/integracoes?demo=bloqueado");
   await admin();
   const p = String(f.get("provider")) as Provider;
   const values: Record<string, string> = {};
@@ -85,6 +87,7 @@ export async function retest(f: FormData) {
 }
 
 export async function disconnect(f: FormData) {
+  demoBlock("/integracoes?demo=bloqueado");
   await admin();
   const p = String(f.get("provider")) as Provider;
   await removeIntegration(p);
@@ -94,6 +97,7 @@ export async function disconnect(f: FormData) {
 
 // Mensagem de teste pela API oficial para um número informado no painel
 export async function wabaTest(f: FormData) {
+  demoBlock("/integracoes?demo=bloqueado");
   await admin();
   const phone = String(f.get("phone") ?? "").replace(/\D/g, "");
   const { wabaButtons } = await import("@/lib/waba");

@@ -60,6 +60,8 @@ async function tick() {
   await sendDueRecovery().catch((e) => console.error("[recuperação]", e));
   await runFunnels().catch((e) => console.error("[funis]", e));
 
+  // demonstração: volta tudo ao original de madrugada
+  if (process.env.DEMO_MODE === "1" && hhmmLocal() >= "03:00") await (await import("../lib/demo/seed")).ensureDemoSeed().catch((e) => console.error("[demo]", e));
   const s = await getSettings();
   const marks = await getMarks();
   const today = isoDayLocal();
@@ -214,6 +216,8 @@ async function runCommand(d: CommandJob) {
 }
 
 async function main() {
+  // demonstração: respostas fictícias no lugar de Shopify, Meta e WhatsApp
+  if (process.env.DEMO_MODE === "1") (await import("../lib/demo/patch")).installDemoFetch();
   const worker = new Worker(
     "hub",
     async (job) => {

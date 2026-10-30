@@ -28,7 +28,10 @@ export default async function PainelLayout({ children }: { children: React.React
   return (
     <div className="app">
       <Sidebar name={session.name} store={env.storeName()} connected={connected} leaves={leaves} logout={sair} />
-      <main className="main">{children}</main>
+      <main className="main">
+        {process.env.DEMO_MODE === "1" && <div className="demo-bar">Demonstração com dados fictícios. Pode mexer à vontade: toda noite tudo volta ao original. Mensagens não são enviadas de verdade.</div>}
+        {children}
+      </main>
       <TableSort />
       <ChunkGuard />
       <NavProgress name={env.storeName()} />

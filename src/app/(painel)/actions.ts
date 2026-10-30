@@ -1,4 +1,5 @@
 "use server";
+import { demoBlock } from "@/lib/demo/guard";
 // Ações do painel (formulários e botões).
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -231,6 +232,7 @@ export async function deleteCost(formData: FormData) {
 
 /* WhatsApp e acessos */
 export async function waCreate() {
+  demoBlock("/configuracoes?demo=bloqueado");
   await admin();
   const state = await evolution.connectionState();
   if (state === "not_created") await evolution.createInstance();
@@ -239,12 +241,14 @@ export async function waCreate() {
 }
 
 export async function waWebhook() {
+  demoBlock("/configuracoes?demo=bloqueado");
   await admin();
   await evolution.setWebhook();
   redirect("/configuracoes?ok=webhook");
 }
 
 export async function waLogout() {
+  demoBlock("/configuracoes?demo=bloqueado");
   await admin();
   await evolution.logout();
   await db.setting.deleteMany({ where: { key: "_whatsapp" } });
@@ -252,6 +256,7 @@ export async function waLogout() {
 }
 
 export async function saveSending(formData: FormData) {
+  demoBlock("/configuracoes?demo=bloqueado");
   await admin();
   await saveSetting("sending", {
     maxPerHour: Math.max(1, num(formData, "maxPerHour") || 200),
@@ -262,6 +267,7 @@ export async function saveSending(formData: FormData) {
 }
 
 export async function saveUser(formData: FormData) {
+  demoBlock("/configuracoes?demo=bloqueado");
   const s = await admin();
   const id = str(formData, "id");
   const phone = str(formData, "phone").replace(/\D/g, "") || null;
