@@ -31,6 +31,7 @@ async function execute(name: string, i: Record<string, unknown>, by: string): Pr
       const p = i.periodo as string;
       if (p === "semana") return weeklyReport();
       if (p === "mes") return monthReport();
+      if (p === "fechamento") return (await import("./monthly")).monthlyClosing();
       return dailyReport(p === "ontem" ? addDays(today, -1) : today);
     }
     case "lancar_custo_fixo":
@@ -97,7 +98,7 @@ export async function handleCommand(fromPhone: string, input: string, wasAudio: 
     // Sem IA: entende só pedidos de relatório simples
     const t = text.toLowerCase();
     if (/relat[oó]rio|resultado|vendas/.test(t)) {
-      const periodo = t.includes("ontem") ? "ontem" : t.includes("semana") ? "semana" : /m[eê]s/.test(t) ? "mes" : "hoje";
+      const periodo = /fechamento|m[eê]s passado/.test(t) ? "fechamento" : t.includes("ontem") ? "ontem" : t.includes("semana") ? "semana" : /m[eê]s/.test(t) ? "mes" : "hoje";
       return execute("relatorio", { periodo }, fromPhone);
     }
     return null;

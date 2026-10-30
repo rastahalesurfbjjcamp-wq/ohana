@@ -129,6 +129,8 @@ export async function saveReport(formData: FormData) {
     weeklyEnabled: on(formData, "weeklyEnabled"),
     weeklyDay: num(formData, "weeklyDay") || 1,
     weeklyTime: str(formData, "weeklyTime") || "08:00",
+    monthlyEnabled: on(formData, "monthlyEnabled"),
+    monthlyTime: str(formData, "monthlyTime") || "09:00",
     items: {
       revenue: on(formData, "i_revenue"),
       ads: on(formData, "i_ads"),
@@ -147,7 +149,7 @@ export async function sendReportNow(formData: FormData) {
   const p = str(formData, "periodo");
   const today = isoDayLocal();
   const text =
-    p === "semana" ? await weeklyReport() : p === "mes" ? await monthReport() : await dailyReport(p === "ontem" ? addDays(today, -1) : today, { withTip: true });
+    p === "fechamento" ? await (await import("@/lib/monthly")).monthlyClosing() : p === "semana" ? await weeklyReport() : p === "mes" ? await monthReport() : await dailyReport(p === "ontem" ? addDays(today, -1) : today, { withTip: true });
   const { getSettings } = await import("@/lib/settings");
   const s = await getSettings();
   if (s.report.target === "privado") {

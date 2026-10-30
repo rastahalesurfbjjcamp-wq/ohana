@@ -82,6 +82,13 @@ export default async function Relatorio({ searchParams }: { searchParams: Promis
               </div>
             </div>
             <label className="check" style={{ marginTop: 10, fontSize: 13 }}><input type="checkbox" name="weeklyEnabled" defaultChecked={s.report.weeklyEnabled} /> Mandar o resumo da semana</label>
+            <div className="row" style={{ marginTop: 14, alignItems: "flex-end" }}>
+              <div className="field" style={{ flex: 1, minWidth: 260 }}>
+                <label>Fechamento do mês (todo dia 1)</label>
+                <TimeField name="monthlyTime" defaultValue={s.report.monthlyTime ?? "09:00"} label="no dia 1" />
+              </div>
+            </div>
+            <label className="check" style={{ marginTop: 10, fontSize: 13 }}><input type="checkbox" name="monthlyEnabled" defaultChecked={s.report.monthlyEnabled ?? true} /> Mandar o fechamento do mês: faturamento bruto e líquido, cupons, gasto, ROAS, ROI, lucro real, campeões e o que repor</label>
             <h3 style={{ fontSize: 15, fontWeight: 600, margin: "22px 0 12px" }}>O que vem no relatório</h3>
             <div className="ckgrid">
               {ITEMS.map(([k, label]) => (
@@ -90,11 +97,12 @@ export default async function Relatorio({ searchParams }: { searchParams: Promis
             </div>
             <div className="row" style={{ marginTop: 18, gap: 10, alignItems: "center" }}>
               <span className="dim" style={{ fontSize: 12.5 }}>Enviar teste de:</span>
-              <select className="in" name="periodo" defaultValue="ontem" style={{ height: 34, width: 130 }}>
+              <select className="in" name="periodo" defaultValue="ontem" style={{ height: 34, width: 200 }}>
                 <option value="hoje">Hoje</option>
                 <option value="ontem">Ontem</option>
                 <option value="semana">Semana</option>
-                <option value="mes">Mês</option>
+                <option value="mes">Mês até hoje</option>
+                <option value="fechamento">Fechamento do mês passado</option>
               </select>
             </div>
             <div className="callout" style={{ marginTop: 18, background: "#0f1312", border: "1px solid #222826", color: "var(--ink2)" }}>

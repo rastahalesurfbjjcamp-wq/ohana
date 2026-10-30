@@ -18,7 +18,7 @@ import { runFunnels } from "../lib/funnels";
 import { assistantReply } from "../lib/assistant";
 import { refreshReferralUsage } from "../lib/referral";
 
-type Marks = { payday?: string; daily?: string; weekly?: string; sync?: number; scan?: number; repurchase?: string; referral?: number; club?: number; wa?: number };
+type Marks = { payday?: string; daily?: string; weekly?: string; sync?: number; scan?: number; repurchase?: string; referral?: number; club?: number; wa?: number; monthly?: string };
 
 async function getMarks(): Promise<Marks> {
   const r = await db.setting.findUnique({ where: { key: "_marks" } });
@@ -75,6 +75,12 @@ async function tick() {
   if (s.report.weeklyEnabled && nowLocal().getDay() === s.report.weeklyDay && hhmm >= s.report.weeklyTime && marks.weekly !== today) {
     await setMarks({ weekly: today });
     await postToResults(await weeklyReport());
+  }
+  // 4. Fechamento do mês anterior, todo dia 1
+  if (s.report.monthlyEnabled && today.slice(8) === "01" && hhmm >= s.report.monthlyTime && marks.monthly !== today) {
+    await setMarks({ monthly: today });
+    const { monthlyClosing } = await import("../lib/monthly");
+    await postToResults(await monthlyClosing()).catch((e) => console.error("[fechamento]", e));
   }
   // Dia 1: lembrete para pagar as comissões dos atletas do mês anterior
   if (today.slice(8) === "01" && hhmm >= "09:00" && marks.payday !== today) {

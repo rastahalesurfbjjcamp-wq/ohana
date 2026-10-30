@@ -16,6 +16,8 @@ export const DEFAULTS = {
     weeklyEnabled: true,
     weeklyDay: 1, // segunda
     weeklyTime: "08:00",
+    monthlyEnabled: true, // fechamento do mês anterior, todo dia 1
+    monthlyTime: "09:00",
     items: {
       revenue: true,
       ads: true,
@@ -129,6 +131,8 @@ export type Settings = {
     weeklyEnabled: boolean;
     weeklyDay: number;
     weeklyTime: string;
+    monthlyEnabled: boolean;
+    monthlyTime: string;
     items: Record<keyof (typeof DEFAULTS)["report"]["items"], boolean>;
   };
   sending: { maxPerHour: number; minDelayMs: number; maxDelayMs: number };

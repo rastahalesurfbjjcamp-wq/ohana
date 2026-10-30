@@ -24,7 +24,7 @@ export const COMMAND_TOOLS: Anthropic.Tool[] = [
     input_schema: {
       type: "object",
       properties: {
-        periodo: { type: "string", enum: ["hoje", "ontem", "semana", "mes"], description: "semana = últimos 7 dias; mes = mês atual até hoje" },
+        periodo: { type: "string", enum: ["hoje", "ontem", "semana", "mes", "fechamento"], description: "semana = últimos 7 dias; mes = mês atual até hoje; fechamento = mês passado completo (fechamento do mês)" },
       },
       required: ["periodo"],
     },
