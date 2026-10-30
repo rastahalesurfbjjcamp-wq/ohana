@@ -37,7 +37,7 @@ export const PRODUCTS: DProduct[] = (() => {
   return P.map(([title, price, cost, line, weight, created], i) => {
     const sizes = line === "gi" ? ["A1", "A2", "A3"] : line === "cap" ? ["Único"] : line === "kids" ? ["4", "6", "8", "10"] : ["P", "M", "G", "GG"];
     const stock = sizes.map((_, k) => {
-      const base = Math.floor(r() * 26) + 2;
+      const base = Math.floor(r() * 90) + 12;
       if (i === 2 && k === 1) return 0; // tamanho esgotado
       if (i === 4 && k === 3) return 1;
       if (i === 9 && k === 0) return 2;
@@ -63,7 +63,7 @@ export type DCustomer = { id: string; name: string; email: string; phone: string
 export const CUSTOMERS: DCustomer[] = (() => {
   const r = rng(22);
   const out: DCustomer[] = [];
-  for (let i = 0; i < 1500; i++) {
+  for (let i = 0; i < 9000; i++) {
     const f = pick(r, FIRST), l = pick(r, LAST), l2 = pick(r, LAST);
     const st = wpick(r, STATES.map((s) => [s, s[1]] as [typeof s, number]));
     const ddd = { RJ: "21", SP: "11", SC: "48", PR: "41", MG: "31", ES: "27", BA: "71", PE: "81", CE: "85", RS: "51" }[st[0]] ?? "21";
@@ -84,11 +84,11 @@ export const ATHLETES = [
   { code: "MESTREJOCA", name: "Mestre Joca", ig: "@mestrejoca", pct: 15, kind: "atleta" },
 ];
 export const CAMPAIGNS = [
-  { id: "238001", acc: "1001", name: "[VENDAS] Rashguards · Remarketing", objective: "OUTCOME_SALES", daily: 95, kind: "vendas" },
-  { id: "238002", acc: "1001", name: "[VENDAS] Coleção Verão · Público amplo", objective: "OUTCOME_SALES", daily: 140, kind: "vendas" },
-  { id: "238003", acc: "1001", name: "[VENDAS] Kimonos · Interesse jiu-jitsu", objective: "OUTCOME_SALES", daily: 55, kind: "vendas" },
-  { id: "238004", acc: "1001", name: "[LEAD] Grupo VIP · Lançamento", objective: "OUTCOME_LEADS", daily: 45, kind: "leads" },
-  { id: "238005", acc: "1002", name: "Perfil · Novos seguidores", objective: "OUTCOME_ENGAGEMENT", daily: 35, kind: "perfil" },
+  { id: "238001", acc: "1001", name: "[VENDAS] Rashguards · Remarketing", objective: "OUTCOME_SALES", daily: 640, kind: "vendas" },
+  { id: "238002", acc: "1001", name: "[VENDAS] Coleção Verão · Público amplo", objective: "OUTCOME_SALES", daily: 980, kind: "vendas" },
+  { id: "238003", acc: "1001", name: "[VENDAS] Kimonos · Interesse jiu-jitsu", objective: "OUTCOME_SALES", daily: 380, kind: "vendas" },
+  { id: "238004", acc: "1001", name: "[LEAD] Grupo VIP · Lançamento", objective: "OUTCOME_LEADS", daily: 120, kind: "leads" },
+  { id: "238005", acc: "1002", name: "Perfil · Novos seguidores", objective: "OUTCOME_ENGAGEMENT", daily: 95, kind: "perfil" },
 ];
 
 export type DOrder = {
@@ -108,7 +108,7 @@ function dayVolume(daysAgo: number, r: () => number) {
   const week = wd === 0 || wd === 6 ? 1.15 : wd === 1 ? 1.1 : 1;
   const launch = [7, 38, 66, 98, 132, 170, 210, 255, 300, 340].some((x) => Math.abs(daysAgo - x) <= 1) ? 2.3 : 1;
   const bf = daysAgo >= 335 && daysAgo <= 342 ? 2.6 : 1; // black friday do ano passado
-  return Math.max(2, Math.round((11 + r() * 7) * growth * week * launch * bf));
+  return Math.max(6, Math.round((40 + r() * 22) * growth * week * launch * bf));
 }
 
 let cache: { day: string; orders: DOrder[] } | null = null;
@@ -119,7 +119,7 @@ export function ORDERS(): DOrder[] {
   const out: DOrder[] = [];
   const now = Date.now();
   let n = 2400;
-  const clubCodes = Array.from({ length: 40 }, (_, i) => `CLUBE${strip(CUSTOMERS[i * 7].name.split(" ")[0]).toUpperCase().slice(0, 6)}${String.fromCharCode(65 + (i % 26))}${i}`);
+  const clubCodes = Array.from({ length: CLUB_SIZE }, (_, i) => CLUB_CODE_FOR(i));
   for (let daysAgo = 420; daysAgo >= 0; daysAgo--) {
     const count = dayVolume(daysAgo, r);
     // fuso: o dia em Brasília começa às 03:00 UTC
@@ -143,8 +143,8 @@ export function ORDERS(): DOrder[] {
       if (cr < 0.1) code = pick(r, ATHLETES).code;
       else if (cr < 0.17) code = "COMUNIDADE10";
       else if (cr < 0.23) code = "BEMVINDO10";
-      else if (cr < 0.27 && daysAgo < 120) code = pick(r, clubCodes);
-      else if (cr < 0.29 && daysAgo < 90) code = "BEMVINDOIG";
+      else if (cr < 0.36 && daysAgo < 150) code = pick(r, clubCodes);
+      else if (cr < 0.39 && daysAgo < 90) code = "BEMVINDOIG";
       const pct = code ? (code === "MESTREJOCA" ? 0.15 : 0.1) : 0;
       const discount = Math.round(gross * pct * 100) / 100;
       for (const l of lines) l.net = Math.round(l.gross * (1 - pct) * 100) / 100;
@@ -177,4 +177,6 @@ export function ORDERS(): DOrder[] {
   cache = { day: today, orders: out };
   return out;
 }
-export const CLUB_CODE_FOR = (i: number) => `CLUBE${strip(CUSTOMERS[i * 7].name.split(" ")[0]).toUpperCase().slice(0, 6)}${String.fromCharCode(65 + (i % 26))}${i}`;
+export const CLUB_SIZE = 1837;
+export const CLUB_CUSTOMER = (i: number) => CUSTOMERS[(i * 3) % CUSTOMERS.length];
+export function CLUB_CODE_FOR(i: number) { return `CLUBE${strip(CLUB_CUSTOMER(i).name.split(" ")[0]).toUpperCase().slice(0, 6)}${String.fromCharCode(65 + (i % 26))}${i}`; }
