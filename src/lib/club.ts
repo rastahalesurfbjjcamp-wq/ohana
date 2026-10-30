@@ -166,7 +166,7 @@ export async function setCodeActive(discountId: string, on: boolean) {
 }
 
 export async function untagCustomer(customerId: string, tag = "clube") {
-  await gql(`mutation($id:ID!,$t:[String!]!){ tagsRemove(id:$id, tags:$t){ userErrors{ message } } }`, { id: customerId, t: [tag] }).catch(() => null);
+  await gqlNew(`mutation($id:ID!,$t:[String!]!){ tagsRemove(id:$id, tags:$t){ userErrors{ message } } }`, { id: customerId, t: [tag] }).catch(() => null);
 }
 
 // Liga ou desliga o benefício do membro: cupom pessoal e a marcação "clube" (que dá o desconto automático no checkout)
@@ -213,7 +213,7 @@ export async function updateClubAutoDiscount() {
 }
 
 export async function tagCustomer(customerId: string, tag = "clube") {
-  await gql(`mutation($id:ID!,$t:[String!]!){ tagsAdd(id:$id, tags:$t){ userErrors{ message } } }`, { id: customerId, t: [tag] }).catch(() => null);
+  await gqlNew(`mutation($id:ID!,$t:[String!]!){ tagsAdd(id:$id, tags:$t){ userErrors{ message } } }`, { id: customerId, t: [tag] }).catch(() => null);
 }
 
 // Lança pontos uma vez só por motivo + referência
@@ -310,6 +310,8 @@ export async function scanClub(days = 4) {
     if (!m.discountId && !m.customerId) continue;
     const ok = isActiveAt(m, new Date(), s.graceDays);
     if (ok !== m.codeActive) await setMemberAccess(m, ok).catch(() => null);
+    // garante a marcação "clube" (desconto automático) uma vez por dia em quem está em dia
+    else if (ok && m.customerId && (await redis().set(`clube:tag:${m.id}`, "1", "EX", 86_400, "NX").catch(() => "OK"))) await tagCustomer(m.customerId);
   }
   return { points: given };
 }
