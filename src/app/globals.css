@@ -1110,4 +1110,3 @@ a.itile:hover { border-color: #34403b; transform: translateY(-1px); }
 .msgprev { white-space: pre-wrap; font: 13px/1.5 Geist, system-ui; background: #0f1312; border: 1px solid #222826; border-radius: 12px; padding: 12px 14px; color: var(--ink2); margin: 0; max-height: 280px; overflow: auto; }
 
 /* faixa da demonstração */
-.demo-bar { margin: -6px 0 16px; padding: 10px 14px; border-radius: 12px; border: 1px dashed rgba(247,201,40,.5); background: rgba(247,201,40,.08); color: #f7d35a; font-size: 13px; }
