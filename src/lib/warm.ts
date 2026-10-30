@@ -1,13 +1,15 @@
 // Deixa prontos os dados dos períodos mais usados, para trocar de data sem esperar.
 // Roda em segundo plano, no máximo a cada 4 minutos, enquanto alguém usa o painel.
 import { computeMetrics } from "./report";
-import { campStats } from "./meta";
+import { campStats, metaAccounts, metaAds } from "./meta";
 import { partnerStats } from "./partners";
 import { resolvePeriod, type PeriodKey } from "./periods";
 import { beyondOrdersWindow } from "./shopify";
-import { customers, ordersBetween, products, recentOrders } from "./store";
+import { customers, funnelByDay, ordersBetween, products, recentOrders } from "./store";
+import { addDays, isoDayLocal } from "./time";
+import { getSettings } from "./settings";
 import { dayRange } from "./time";
-import { salesSeries } from "./history";
+import { couponSales, salesSeries } from "./history";
 
 let last = 0;
 let running = false;
@@ -31,6 +33,14 @@ export function warmSoon() {
       await step(() => campStats(p.from, p.to));
       await step(() => partnerStats(p.from, p.to));
     }
+    // telas que abrem com 30 dias (Campanhas, Origem, Pedidos) e 90 dias (Precificação)
+    const today = isoDayLocal();
+    const d30 = resolvePeriod("30d");
+    await step(() => metaAds(d30.from, d30.to));
+    await step(() => funnelByDay(d30.from, d30.to));
+    await step(() => metaAccounts());
+    await step(async () => { const st = await getSettings(); if (st.ads.perfilCoupons.length) await couponSales(st.ads.perfilCoupons, d30.from, d30.to); });
+    await step(() => ordersBetween(dayRange(addDays(today, -89)).start, dayRange(today).end));
     await step(() => customers());
   })().finally(() => { running = false; });
 }
