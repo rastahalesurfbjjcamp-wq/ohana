@@ -13,9 +13,9 @@ import { CostTableBar, SelectAll } from "@/components/CostTableBar";
 
 export const dynamic = "force-dynamic";
 
-export default async function Produtos({ searchParams }: { searchParams: Promise<{ p?: string; de?: string; ate?: string; todos?: string; salvos?: string }> }) {
-  const { p, de, ate, todos, salvos } = await searchParams;
-  const backUrl = `/produtos?${new URLSearchParams({ ...(p ? { p } : {}), ...(de ? { de } : {}), ...(ate ? { ate } : {}), ...(todos ? { todos } : {}) })}`;
+export default async function Produtos({ searchParams }: { searchParams: Promise<{ p?: string; de?: string; ate?: string; todos?: string; salvos?: string; semcusto?: string }> }) {
+  const { p, de, ate, todos, salvos, semcusto } = await searchParams;
+  const backUrl = `/produtos?${new URLSearchParams({ ...(p ? { p } : {}), ...(de ? { de } : {}), ...(ate ? { ate } : {}), ...(todos ? { todos } : {}), ...(semcusto ? { semcusto } : {}) })}`;
   const period = resolvePeriod(p, "30d", de, ate);
   const s = await getSettings();
   let rows: ProductProfit[] = [];
@@ -30,7 +30,8 @@ export default async function Produtos({ searchParams }: { searchParams: Promise
   const missing = sold.filter((r) => r.cost == null);
   const revenue = m?.net ?? sold.reduce((a, r) => a + r.revenue, 0);
   const adsShare = m?.ads && revenue ? m.ads / revenue : 0;
-  const list = (todos ? rows : sold).sort((a, b) => b.revenue - a.revenue);
+  const list = (semcusto ? missing : todos ? rows : sold).sort((a, b) => b.revenue - a.revenue);
+  const keep = `${p ? `&p=${p}` : ""}${de ? `&de=${de}` : ""}${ate ? `&ate=${ate}` : ""}`;
   const real = (r: ProductProfit) => (r.profit == null ? null : r.profit - r.revenue * adsShare);
   const maxMargin = Math.max(0.01, ...list.map((r) => { const x = real(r); return x != null && r.revenue ? x / r.revenue : 0; }));
 
@@ -47,15 +48,22 @@ export default async function Produtos({ searchParams }: { searchParams: Promise
         <Kpi icon={<ShoppingBag size={15} />} label="Faturamento líquido" value={brl(revenue, 0)} sub={`${m?.orders ?? 0} pedidos · ${period.label.toLowerCase()}`} />
         <Kpi icon={<Megaphone size={15} />} tone="k" label="Anúncios" value={m?.ads != null ? brl(m.ads, 0) : "–"} sub={m?.ads != null ? `${pct(adsShare, 0)} do faturamento, puxado do Meta` : "conecte o Meta Ads"} />
         <Kpi icon={<ReceiptText size={15} />} tone="p" label="Impostos e taxas" value={brl(m?.taxesFees ?? 0, 0)} sub={`imposto ${pct(s.costs.taxRate, 1)} e pagamento ${pct(s.costs.paymentFeeRate, 1)}`} />
-        <div className={`pnl kpi${missing.length ? " warnk" : ""}`}>
+        <Link href={semcusto ? `/produtos?${keep.slice(1)}` : `/produtos?semcusto=1${keep}`} className={`pnl kpi${missing.length ? " warnk" : ""}${semcusto ? " on" : ""}`} style={{ color: "inherit" }}>
           <small><span className={`tile sm ${missing.length ? "t-s" : "t-l"}`} style={{ width: 28, height: 28, borderRadius: 8 }}><AlertCircle size={15} /></span> Sem custo cadastrado</small>
           <span className="num" style={missing.length ? { color: "var(--sun)" } : undefined}>{missing.length} produto{missing.length === 1 ? "" : "s"}</span>
-          <div className="sub">{missing.length ? "o lucro deles fica incompleto" : "tudo com custo"}</div>
-        </div>
+          <div className="sub">{semcusto ? "mostrando só eles · ver todos" : missing.length ? "clique para ver só eles" : "tudo com custo"}</div>
+        </Link>
       </div>
+      {semcusto && (
+        <div className="callout" style={{ marginBottom: 14, alignItems: "center" }}>
+          <b>{missing.length ? `${missing.length} produto${missing.length === 1 ? "" : "s"} vendido${missing.length === 1 ? "" : "s"} sem custo no período.` : "Pronto, todos os produtos vendidos têm custo."}</b>
+          <span className="dim">{missing.length ? "Digite o custo de cada peça na linha e salve. Os que forem preenchidos saem da lista." : "O lucro já está completo."}</span>
+          <Link className="act" href={`/produtos?${keep.slice(1)}`}>Ver todos os produtos</Link>
+        </div>
+      )}
       <div className="cols c-2-1" style={{ alignItems: "start" }}>
-        <Panel title="Lucro por produto" sub={`${todos ? "Todos os produtos" : "Os vendidos"} no período. Clique no título da coluna para ordenar, digite o custo direto na linha ou marque vários para aplicar o mesmo custo.`} body={false}
-          right={<Link className="btn sm ghost" href={todos ? "/produtos" : `/produtos?todos=1${p ? `&p=${p}` : ""}`}>{todos ? "Só os vendidos" : `Ver os ${rows.length}`}</Link>}>
+        <Panel title={semcusto ? "Produtos sem custo" : "Lucro por produto"} sub={`${todos ? "Todos os produtos" : "Os vendidos"} no período. Clique no título da coluna para ordenar, digite o custo direto na linha ou marque vários para aplicar o mesmo custo.`} body={false}
+          right={semcusto ? undefined : <Link className="btn sm ghost" href={todos ? "/produtos" : `/produtos?todos=1${p ? `&p=${p}` : ""}`}>{todos ? "Só os vendidos" : `Ver os ${rows.length}`}</Link>}>
           {list.length ? (
             <form action={saveCostTable}>
             <input type="hidden" name="back" value={backUrl} />
@@ -93,7 +101,7 @@ export default async function Produtos({ searchParams }: { searchParams: Promise
             </div>
             <CostTableBar />
             </form>
-          ) : !error && <div className="empty">Nenhuma venda no período.</div>}
+          ) : !error && <div className="empty">{semcusto ? "Nenhum produto vendido sem custo." : "Nenhuma venda no período."}</div>}
         </Panel>
         <section className="pnl" style={{ padding: 22, borderColor: "rgba(52,194,106,.35)" }}>
           <h3 style={{ fontSize: 15, fontWeight: 600 }}>Preencher os custos falando</h3>

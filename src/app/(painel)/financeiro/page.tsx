@@ -65,7 +65,7 @@ export default async function Financeiro({ searchParams }: { searchParams: Promi
 
   let tip: { tone: "sun" | "coral" | "lagoon"; text: string; href?: string; act?: string } | null = null;
   if (m) {
-    if (m.missingCost.length) tip = { tone: "sun", text: `${m.missingCost.length} produto(s) vendidos sem custo cadastrado. Enquanto isso, o lucro aparece maior do que é.`, href: "/custos", act: "Cadastrar custo" };
+    if (m.missingCost.length) tip = { tone: "sun", text: `${m.missingCost.length} produto(s) vendidos sem custo cadastrado. Enquanto isso, o lucro aparece maior do que é.`, href: `/produtos?semcusto=1&${period.key === "custom" ? `p=custom&de=${period.from}&ate=${period.to}` : `p=${period.key}`}`, act: "Cadastrar custo" };
     else if (adsShare > 0.35) tip = { tone: "coral", text: `Os anúncios levaram ${pct(adsShare, 0)} do faturamento. Acima de 35% o lucro some rápido. Vale cortar o que não vende.`, href: "/campanhas", act: "Ver campanhas" };
     else if (mp && m.aov < mp.aov * 0.92) tip = { tone: "sun", text: `O ticket médio caiu para ${brl(m.aov, 0)} (antes ${brl(mp.aov, 0)}). Um kit ou frete grátis a partir de um valor ajuda a subir.` };
     else if (profit > 0) tip = { tone: "lagoon", text: `Sobrou ${pct(profit / (m.net || 1), 1)} do faturamento. Bom sinal: mantenha o que está funcionando.` };
