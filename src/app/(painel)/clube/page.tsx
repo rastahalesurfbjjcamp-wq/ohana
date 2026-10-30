@@ -23,7 +23,7 @@ export const dynamic = "force-dynamic";
 const REASON: Record<string, string> = { compra: "Compra", estorno: "Estorno", mensalidade: "Mensalidade", resgate: "Resgate", evento: "Evento", ajuste: "Ajuste", bonus: "Bônus" };
 const OK: Record<string, string> = { cancelado: "Assinatura cancelada. O cupom de membro foi desligado.", pago: "Mensalidade registrada. O cupom de membro está ligado.", entrada: "Entrada no evento registrada.", ajuste: "Pontos ajustados.", regras: "Regras salvas.", aviso: "Aviso de lançamento na fila. As mensagens saem aos poucos, com a proteção do número.", "1": "Salvo." };
 
-export default async function Clube({ searchParams }: { searchParams: Promise<{ premios?: string; q?: string; novo?: string; erro?: string; ok?: string; cupom?: string; criado?: string; regras?: string; somados?: string; f?: string; editar?: string; msgs?: string; n?: string }> }) {
+export default async function Clube({ searchParams }: { searchParams: Promise<{ premios?: string; q?: string; novo?: string; erro?: string; ok?: string; cupom?: string; criado?: string; regras?: string; somados?: string; f?: string; editar?: string; msgs?: string; n?: string; pg?: string }> }) {
   const sp = await searchParams;
   const { club: c, postsale } = await getSettings();
   const store = postsale.storeUrl;
@@ -54,6 +54,13 @@ export default async function Clube({ searchParams }: { searchParams: Promise<{ 
     sp.premios ? products().catch(() => []) : Promise.resolve([]),
   ]);
   const subs = all.filter((m) => m.subscriptionId || m.provider === "appmax");
+  // tabelas longas: mostra por páginas para a tela abrir rápido
+  const SUBS_SHOW = 30, PER = 100;
+  const subsView = [...subs].sort((a, b) => (b.lastChargeAt?.getTime() ?? 0) - (a.lastChargeAt?.getTime() ?? 0)).slice(0, SUBS_SHOW);
+  const pages = Math.max(1, Math.ceil(list.length / PER));
+  const pg = Math.min(pages, Math.max(1, Number(sp.pg) || 1));
+  const listView = list.slice((pg - 1) * PER, pg * PER);
+  const pgHref = (n: number) => `/clube?${new URLSearchParams({ ...(filter ? { f: filter } : {}), ...(n > 1 ? { pg: String(n) } : {}) }).toString()}`;
   const subLink = `${env.appUrl().replace(/\/$/, "")}/assinar`;
   const pixN = subs.filter((m) => m.status !== "cancelado" && m.payMethod === "pix").length;
   const cardN = subs.filter((m) => m.status !== "cancelado" && m.payMethod === "cartao").length;
@@ -174,7 +181,7 @@ export default async function Clube({ searchParams }: { searchParams: Promise<{ 
             <div style={{ overflowX: "auto" }}>
               <table className="tb">
                 <thead><tr><th>Membro</th><th>Situação</th><th>Pagamento</th><th>Próxima cobrança</th><th>Última</th><th /></tr></thead>
-                <tbody>{subs.map((m) => {
+                <tbody>{subsView.map((m) => {
                   const s2 = st(m);
                   const tone = m.status === "cancelado" ? "c-n" : m.lastChargeStatus === "falhou" ? "c-s" : s2.tone === "l" ? "c-l" : s2.tone === "c" ? "c-c" : "c-s";
                   const label = m.status === "cancelado" ? "Cancelada" : m.lastChargeStatus === "falhou" ? "Cobrança recusada" : s2.label;
@@ -190,6 +197,7 @@ export default async function Clube({ searchParams }: { searchParams: Promise<{ 
                   );
                 })}</tbody>
               </table>
+              {subs.length > SUBS_SHOW && <div className="dim" style={{ padding: "12px 20px", fontSize: 13 }}>Mostrando as {SUBS_SHOW} cobranças mais recentes de {subs.length.toLocaleString("pt-BR")} assinaturas.</div>}
             </div>
           ) : <div className="empty" style={{ padding: 20 }}>Ninguém assinou pela página ainda. Mande o link no grupo e no Instagram.</div>}
         </Panel>
@@ -370,7 +378,7 @@ export default async function Clube({ searchParams }: { searchParams: Promise<{ 
             <table className="tb">
               <thead><tr><th>Membro</th><th>CPF</th><th>Situação</th><th>Pago até</th><th>Cupom</th><th className="r">Pontos</th><th className="r">Vale</th></tr></thead>
               <tbody>
-                {list.map((m) => {
+                {listView.map((m) => {
                   const s = st(m);
                   return (
                     <tr key={m.id}>
@@ -386,6 +394,15 @@ export default async function Clube({ searchParams }: { searchParams: Promise<{ 
                 })}
               </tbody>
             </table>
+            {pages > 1 && (
+              <div className="row" style={{ justifyContent: "space-between", alignItems: "center", padding: "12px 20px", fontSize: 13 }}>
+                <span className="dim">{((pg - 1) * PER + 1).toLocaleString("pt-BR")} a {Math.min(pg * PER, list.length).toLocaleString("pt-BR")} de {list.length.toLocaleString("pt-BR")} membros</span>
+                <div className="row" style={{ gap: 8 }}>
+                  {pg > 1 && <Link className="btn sm ghost" href={pgHref(pg - 1)}>Anteriores</Link>}
+                  {pg < pages && <Link className="btn sm ghost" href={pgHref(pg + 1)}>Próximos</Link>}
+                </div>
+              </div>
+            )}
           </div>
         ) : <div className="empty-art"><Crown size={26} className="dim" /><div>Nenhum membro ainda. Clique em Novo membro para cadastrar o primeiro.</div></div>}
       </Panel>
