@@ -92,6 +92,7 @@ function shopifyql(q: string) {
     if (g === "discount_code") return o.code ?? "";
     if (g === "product_title") return l?.p.title ?? "";
     if (g === "session_device_type") return "mobile";
+    if (g === "customer_id") return o.customer.id.replace(/\D/g, "");
     return "_";
   };
   type Acc = Record<string, number>;
@@ -129,6 +130,7 @@ function shopifyql(q: string) {
   let rows = [...acc.entries()].map(([k, a]) => {
     const row: Record<string, string> = {};
     if (dim) row[dim] = k;
+    if (dim === "customer_id") { const c = CUSTOMERS.find((x) => x.id.endsWith(`/${k}`)); row.customer_name = c?.name ?? ""; row.customer_email = c?.email ?? ""; }
     for (const c of cols) {
       if (c === "conversion_rate") row[c] = String((a.sessions ? (a.sessions_that_completed_checkout ?? 0) / a.sessions : 0).toFixed(4));
       else if (c === "average_order_value") row[c] = String(a.orders ? ((a.net_sales ?? 0) / a.orders).toFixed(2) : 0);

@@ -207,10 +207,10 @@ export async function drawRaffle(month = monthKey()) {
 
 export type TopBuyer = { id: string; name: string; email: string | null; phone: string | null; orders: number; spent: number };
 export async function topBuyers(n = 5): Promise<TopBuyer[]> {
-  const r = await gql<{ customers: { nodes: { id: string; displayName: string; defaultEmailAddress: { emailAddress: string } | null; defaultPhoneNumber: { phoneNumber: string } | null; numberOfOrders: string; amountSpent: { amount: string } }[] } }>(
-    `query($n:Int!){ customers(first:$n, sortKey: AMOUNT_SPENT, reverse: true){ nodes{ id displayName defaultEmailAddress{ emailAddress } defaultPhoneNumber{ phoneNumber } numberOfOrders amountSpent{ amount } } } }`, { n },
-  );
-  return r.customers.nodes.map((c) => ({ id: c.id, name: c.displayName, email: c.defaultEmailAddress?.emailAddress ?? null, phone: (c.defaultPhoneNumber?.phoneNumber ?? "").replace(/\D/g, "") || null, orders: Number(c.numberOfOrders) || 0, spent: Number(c.amountSpent.amount) || 0 }));
+  // quem mais comprou nos últimos 12 meses (relatório da Shopify, sem o limite de 60 dias dos pedidos)
+  const { shopifyql } = await import("./shopify");
+  const rows = await shopifyql(`FROM sales SHOW net_sales, orders GROUP BY customer_id, customer_name, customer_email SINCE -365d UNTIL today ORDER BY net_sales DESC LIMIT ${n + 3}`);
+  return rows.filter((r) => r.customer_id && r.customer_id !== "0").slice(0, n).map((r) => ({ id: `gid://shopify/Customer/${r.customer_id.replace(/\D/g, "")}`, name: r.customer_name || r.customer_email || "Cliente", email: r.customer_email || null, phone: null, orders: Number(r.orders) || 0, spent: Number(r.net_sales) || 0 }));
 }
 
 // Club de graça por um ano (ex.: top compradores). Cria o membro, cupom, marcação e o kit.

@@ -168,7 +168,7 @@ export async function ClubPlus({ all, c, evento, endereco }: { all: ClubMember[]
           )) : <div className="empty" style={{ padding: 16 }}><CalendarDays size={18} className="dim" /> Nenhum evento. Crie o primeiro.</div>}
         </Panel>
 
-        <Panel title="Top 5 compradores" sub="Quem mais gastou na loja · ganham o club de graça por 1 ano">
+        <Panel title="Top 5 compradores" sub="Últimos 12 meses · ganham o club de graça por 1 ano">
           {top === null ? <div className="dim" style={{ fontSize: 13 }}>Não consegui ler os clientes da Shopify agora.</div> : top.map((b) => (
             <div className="lrow" key={b.id}>
               <div><div className="t">{b.name}</div><div className="s">{b.orders} pedido(s)</div></div>
