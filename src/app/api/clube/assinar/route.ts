@@ -19,7 +19,7 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ error: "Dados inválidos" }, { status: 400 });
   }
-  const input: StartInput = { name: String(body.name ?? ""), cpf: String(body.cpf ?? ""), phone: String(body.phone ?? ""), email: String(body.email ?? ""), method: body.method === "cartao" ? "cartao" : "pix", ip, card: body.card };
+  const input: StartInput = { name: String(body.name ?? ""), cpf: String(body.cpf ?? ""), phone: String(body.phone ?? ""), email: String(body.email ?? ""), method: body.method === "cartao" ? "cartao" : "pix", ip, card: body.card, extra: body.extra && typeof body.extra === "object" ? Object.fromEntries(Object.entries(body.extra).map(([k, v]) => [k, String(v ?? "").slice(0, 120)])) : undefined };
   const err = validate(input);
   if (err) return NextResponse.json({ error: err }, { status: 400 });
   const out = await startCheckout(input);

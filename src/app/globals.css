@@ -1110,3 +1110,16 @@ a.itile:hover { border-color: #34403b; transform: translateY(-1px); }
 .msgprev { white-space: pre-wrap; font: 13px/1.5 Geist, system-ui; background: #0f1312; border: 1px solid #222826; border-radius: 12px; padding: 12px 14px; color: var(--ink2); margin: 0; max-height: 280px; overflow: auto; }
 
 /* faixa da demonstração */
+
+/* Rasta Hale Club: níveis */
+.c-p { background: rgba(192,132,252,.12); color: #c084fc; }
+.lv { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.lvc { border: 1px solid var(--line); border-radius: 16px; padding: 16px; background: #0f1312; display: flex; flex-direction: column; }
+.lvc h4 { font-size: 15px; font-weight: 650; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.lvc .m { color: var(--ink3); font-size: 12px; margin-top: 2px; }
+.lvc ul { list-style: none; margin: 12px 0 0; display: flex; flex-direction: column; gap: 7px; font-size: 13px; color: #c9d0cc; flex: 1; }
+.lvc li::before { content: "✓ "; color: var(--lagoon); }
+.lvc .n { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line2); display: flex; justify-content: space-between; font-size: 12.5px; color: var(--ink2); }
+.lvc .n b { color: #fff; }
+@media (max-width: 1100px) { .lv { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .lv { grid-template-columns: 1fr; } }

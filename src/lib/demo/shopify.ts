@@ -155,6 +155,8 @@ export function demoShopify(query: string, v: Record<string, unknown> = {}): { d
     const id = `gid://shopify/DiscountCodeNode/${880000 + seq++}`;
     if (name === "segmentCreate") return { data: ok(name, { segment: { id: "gid://shopify/Segment/1" } }) };
     if (name === "customerCreate") return { data: ok(name, { customer: { id: `gid://shopify/Customer/${99000 + seq}` } }) };
+    if (name === "draftOrderCreate") return { data: ok(name, { draftOrder: { id: `gid://shopify/DraftOrder/${700 + seq}` } }) };
+    if (name === "draftOrderComplete") { const n = 30000 + seq; return { data: ok(name, { draftOrder: { order: { id: `gid://shopify/Order/${n}`, name: `#${n}` } } }) }; }
     if (name.startsWith("discountAutomatic")) return { data: ok(name, { automaticDiscountNode: { id: "gid://shopify/DiscountAutomaticNode/1" } }) };
     return { data: ok(name, { codeDiscountNode: { id } }) };
   }
@@ -182,8 +184,9 @@ export function demoShopify(query: string, v: Record<string, unknown> = {}): { d
     const qq = String(v.q ?? "");
     const em = qq.match(/email:(\S+)/)?.[1];
     const ph = qq.match(/phone:\+?(\d+)/)?.[1];
-    const list = em ? all.filter((c) => c.defaultEmailAddress.emailAddress === em) : ph ? all.filter((c) => c.defaultPhoneNumber.phoneNumber.endsWith(ph.slice(-11))) : all;
-    const first = Number(q.match(/customers\(first: ?(\d+)/)?.[1] ?? 250);
+    let list = em ? all.filter((c) => c.defaultEmailAddress.emailAddress === em) : ph ? all.filter((c) => c.defaultPhoneNumber.phoneNumber.endsWith(ph.slice(-11))) : all;
+    if (/AMOUNT_SPENT|TOTAL_SPENT/.test(q)) list = [...list].sort((a, b) => Number(b.amountSpent.amount) - Number(a.amountSpent.amount));
+    const first = Number(v.n ?? q.match(/customers\(first: ?(\d+)/)?.[1] ?? 250);
     return { data: { customers: page(list, first, v.after as string | undefined) } };
   }
   if (/\bshop ?\{/.test(q)) return { data: { shop: { name: DEMO_STORE, createdAt: new Date(Date.now() - 425 * 864e5).toISOString(), currencyCode: "BRL", myshopifyDomain: "mare-alta-demo.myshopify.com" } } };

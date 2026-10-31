@@ -281,7 +281,13 @@ export async function scanClub(days = 4) {
   const byPhone = new Map(members.filter((m) => m.phone).map((m) => [m.phone!, m]));
   const rewards = await db.clubReward.findMany({ where: { usedAt: null } });
   const rewardBy = new Map(rewards.map((r) => [r.code.toUpperCase(), r]));
-  const orders = await ordersBetween(new Date(Date.now() - days * 864e5), new Date());
+  // pega o mês inteiro para contar as compras com desconto (limite por mês)
+  const { monthKey, pointsRate } = await import("./clubPlus");
+  const month = monthKey();
+  const monthStart = new Date(`${month}-01T03:00:00Z`);
+  const since = new Date(Math.min(monthStart.getTime(), Date.now() - days * 864e5));
+  const orders = await ordersBetween(since, new Date());
+  const uses = new Map<string, number>();
   let given = 0;
   for (const o of orders) {
     for (const c of o.codes) {
@@ -299,16 +305,22 @@ export async function scanClub(days = 4) {
       continue;
     }
     if (!PAID.has(o.financial) || !isActiveAt(m, new Date(o.createdAt), s.graceDays)) continue;
-    const pts = Math.floor(o.subtotal * s.pointsPerReal);
+    if (o.subtotal > 0 && new Date(o.createdAt) >= monthStart && new Date(o.createdAt) >= m.joinedAt) uses.set(m.id, (uses.get(m.id) ?? 0) + 1);
+    const pts = Math.floor(o.subtotal * pointsRate(m, s));
     if (await addPoints(m.id, pts, "compra", o.id, `Pedido ${o.name}`)) {
       given += pts;
       if (s.msgPoints && pts > 0) await enqueue("club-msg", { memberId: m.id, kind: "pontos", pts, order: o.name }, { jobId: `cp-${o.id}`, delayMs: 60_000 }).catch(() => null);
     }
   }
-  // cupom de membro: desliga de quem passou da tolerância, religa de quem está em dia
+  // compras com desconto no mês: guarda e desliga o desconto de quem chegou no limite (volta no dia 1)
+  for (const m of members) {
+    const n = uses.get(m.id) ?? 0;
+    if (n !== m.monthUses || m.usesMonth !== month) { await db.clubMember.update({ where: { id: m.id }, data: { monthUses: n, usesMonth: month } }).catch(() => null); m.monthUses = n; m.usesMonth = month; }
+  }
+  // cupom de membro: desliga de quem passou da tolerância ou do limite do mês, religa de quem está em dia
   for (const m of members) {
     if (!m.discountId && !m.customerId) continue;
-    const ok = isActiveAt(m, new Date(), s.graceDays);
+    const ok = isActiveAt(m, new Date(), s.graceDays) && !(s.usesPerMonth > 0 && m.monthUses >= s.usesPerMonth);
     if (ok !== m.codeActive) await setMemberAccess(m, ok).catch(() => null);
     // garante a marcação "clube" (desconto automático) uma vez por dia em quem está em dia
     else if (ok && m.customerId && (await redis().set(`clube:tag:${m.id}`, "1", "EX", 86_400, "NX").catch(() => "OK"))) await tagCustomer(m.customerId);

@@ -32,6 +32,13 @@ export function MemberArea({ token }: { token: string }) {
     setBusy(false);
     if (r.error) setErr(r.error); else { setNovo(r.code); setV(r.view); }
   };
+  const entrar = async (meetId: string, title: string, pts: number) => {
+    if (!v || !confirm(`Trocar ${pts} pontos pela entrada em ${title}?`)) return;
+    setBusy(true); setErr("");
+    const r = await fetch("/api/clube/evento", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ t: v.token, meetId }) }).then((x) => x.json()).catch(() => ({ error: "Sem conexão. Tente de novo." }));
+    setBusy(false);
+    if (r.error) setErr(r.error); else setV(r.view);
+  };
   const copy = (c: string) => navigator.clipboard?.writeText(c).then(() => { setCopied(c); setTimeout(() => setCopied(""), 1800); }).catch(() => null);
   const shop = (c: string) => `${(v?.store ?? "").replace(/\/$/, "")}/discount/${c}`;
 
@@ -53,19 +60,52 @@ export function MemberArea({ token }: { token: string }) {
   const toNext = 100 - (v.points % 100);
   return (
     <div className="mc-stack">
-      <div className="mc-card">
+      <div className="mc-card mc-lvl">
         <div className="mc-row"><b className="mc-hi">Oi, {v.first}</b><span className={`mc-chip ${v.ok ? "mc-ok" : "mc-bad"}`}>{v.status}</span></div>
-        {v.paidUntil && <p className="mc-dim">Assinatura paga até {new Date(v.paidUntil).toLocaleDateString("pt-BR")}</p>}
+        <p className="mc-dim">{v.months ? `Membro há ${v.months} ${v.months === 1 ? "mês" : "meses"}` : "Membro novo"} · nível <b>{v.tierName}</b></p>
+        {v.nextTier ? (
+          <>
+            <div className="mc-bar mc-gold"><i style={{ width: `${Math.min(100, (v.months / v.nextTier) * 100)}%` }} /></div>
+            <p className="mc-dim">Falta{v.monthsToNext > 1 ? "m" : ""} {v.monthsToNext} {v.monthsToNext === 1 ? "mês" : "meses"} para o nível {v.nextTier} meses: {v.nextPerks.join(" e ").toLowerCase()}.</p>
+          </>
+        ) : <p className="mc-dim">Você está no nível mais alto do club. Obrigado por estar com a gente.</p>}
+        {v.paidUntil && <p className="mc-dim" style={{ fontSize: 12 }}>Assinatura paga até {new Date(v.paidUntil).toLocaleDateString("pt-BR")}</p>}
       </div>
 
+      {v.kit && v.kit.status !== "enviado" && (
+        <div className="mc-card"><div className="mc-t">Seu kit de boas-vindas</div><p className="mc-p">Camiseta exclusiva do club + patch da bandeira. {v.kit.orderName ? `Pedido ${v.kit.orderName}, já está na nossa expedição.` : "Estamos separando para enviar."}</p></div>
+      )}
+
       <div className="mc-card">
-        <div className="mc-t">Seu desconto de {v.discountPct}%</div>
-        <p className="mc-p">Entra sozinho no checkout quando você compra entrando na sua conta da loja, ou usando no checkout o mesmo e-mail da assinatura. Aparece como &quot;{v.club}&quot; no resumo do pedido.</p>
+        <div className="mc-t">{v.usesPerMonth ? `Seus descontos de ${v.monthLabel}` : `Seu desconto de ${v.discountPct}%`}</div>
+        <p className="mc-p">{v.usesPerMonth ? `${v.discountPct}% em até ${v.usesPerMonth} compras por mês. Entra sozinho no checkout quando você compra com a sua conta da loja. Renova todo dia 1.` : `Entra sozinho no checkout quando você compra com a sua conta da loja. Aparece como "${v.club}" no resumo do pedido.`}</p>
+        {v.usesPerMonth && v.usesLeft !== null && (
+          <>
+            <div className="mc-dots">{Array.from({ length: v.usesPerMonth }, (_, i) => <i key={i} className={i < v.usesPerMonth! - v.usesLeft! ? "u" : ""}>{i + 1}</i>)}</div>
+            <p className="mc-dim">{v.usesLeft ? <>Você ainda tem <b>{v.usesLeft} compra{v.usesLeft > 1 ? "s" : ""}</b> com desconto este mês.</> : "Você usou os descontos deste mês. Eles voltam no dia 1."}</p>
+          </>
+        )}
         {v.code && (
           <p className="mc-p mc-dim">Se por algum motivo não aparecer, use o seu cupom pessoal: <button type="button" className="mc-link" onClick={() => copy(v.code!)}>{v.code}{copied === v.code ? " (copiado)" : ""}</button></p>
         )}
-        <a className="sb-btn" href={v.store} style={{ textDecoration: "none" }}>Ir para a loja</a>
+        <a className="sb-btn" href={v.earlyLink || v.store} style={{ textDecoration: "none" }}>{v.earlyLink ? "Ver o acesso antecipado" : "Ir para a loja"}</a>
       </div>
+
+      {v.birthday && (
+        <div className="mc-card mc-bday">
+          <div className="mc-row"><span className="mc-t" style={{ margin: 0 }}>Feliz aniversário! 🎉</span>{v.birthday.until && <span className="mc-chip mc-y">até {dt(v.birthday.until)}</span>}</div>
+          <p className="mc-p">No mês do seu aniversário você tem {v.birthday.pct}% de desconto em uma compra.</p>
+          <button type="button" className="mc-code" onClick={() => copy(v.birthday!.code)}>{v.birthday.code}{copied === v.birthday.code ? " (copiado)" : ""}</button>
+          <a className="sb-btn" href={shop(v.birthday.code)} style={{ textDecoration: "none" }}>Usar na loja</a>
+        </div>
+      )}
+
+      {v.links.length > 0 && (
+        <div className="mc-card">
+          <div className="mc-t">Suas coleções exclusivas</div>
+          {v.links.map((l) => <a key={l.tier} className="mc-line" href={l.url} style={{ textDecoration: "none", color: "inherit" }}><span>Coleção {l.tier} meses</span><b className="pos">Abrir</b></a>)}
+        </div>
+      )}
 
       <div className="mc-card">
         <div className="mc-t">Seus pontos</div>
@@ -112,6 +152,43 @@ export function MemberArea({ token }: { token: string }) {
           </>
         )}
       </div>
+
+      {v.meets.length > 0 && (
+        <div className="mc-card">
+          <div className="mc-t">Eventos com pontos</div>
+          {v.meets.map((e) => (
+            <div key={e.id} className="mc-ev">
+              <div><b>{e.title}</b><small>{dt(e.date)}{e.place ? ` · ${e.place}` : ""} · {e.left} vaga{e.left === 1 ? "" : "s"}</small></div>
+              {e.mine ? <span className="mc-chip mc-ok">Você vai</span> : <button type="button" className="mc-sbtn" disabled={busy || !v.ok || !e.left || v.points < e.points} onClick={() => entrar(e.id, e.title, e.points)}>{e.points} pts</button>}
+            </div>
+          ))}
+          <p className="mc-dim" style={{ marginTop: 8 }}>Troque seus pontos pela entrada. Seu nome entra na lista do evento.</p>
+        </div>
+      )}
+
+      {v.refLink && (
+        <div className="mc-card">
+          <div className="mc-t">Indique o club e ganhe</div>
+          <p className="mc-p">Você ganha {v.affiliatePct}% da mensalidade de cada pessoa que assinar pelo seu link, todo mês enquanto ela continuar no club. Pago por Pix.</p>
+          <button type="button" className="mc-code mc-small" onClick={() => copy(v.refLink!)}>{v.refLink.replace(/^https?:\/\//, "")}{copied === v.refLink ? " (copiado)" : ""}</button>
+          <div className="mc-two"><div><span>Indicados ativos</span><b>{v.refActive}</b></div><div><span>Você ganha por mês</span><b>{money(v.refMonthly)}</b></div></div>
+          <a className="sb-btn" style={{ textDecoration: "none" }} href={`https://wa.me/?text=${encodeURIComponent(`Assina o ${v.club} comigo: desconto, pontos, eventos e a camiseta exclusiva do club. ${v.refLink}`)}`}>Compartilhar no WhatsApp</a>
+        </div>
+      )}
+
+      {v.raffle.prizes.length > 0 && (
+        <div className="mc-card">
+          <div className="mc-t">Sorteio de {v.monthLabel}</div>
+          <p className="mc-p">{v.raffle.won ? `Você ganhou: ${v.raffle.won}! A gente vai falar com você no WhatsApp.` : v.raffle.drawn ? "O sorteio deste mês já saiu. No próximo mês você concorre de novo." : `Membro em dia já concorre: ${v.raffle.prizes.join(", ").toLowerCase()}.`}</p>
+        </div>
+      )}
+
+      {v.storeInstagram && (
+        <div className="mc-card">
+          <div className="mc-t">Close Friends</div>
+          <p className="mc-p">{v.closeFriends ? `Você está no Close Friends do @${v.storeInstagram}: bastidores e estratégias da marca. ✓` : v.instagram ? `Vamos adicionar @${v.instagram} no Close Friends do @${v.storeInstagram} em breve.` : `Mande seu @ do Instagram no WhatsApp do club para entrar no Close Friends do @${v.storeInstagram}.`}</p>
+        </div>
+      )}
 
       {v.rewards.length > 0 && (
         <div className="mc-card">

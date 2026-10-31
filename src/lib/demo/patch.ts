@@ -29,7 +29,8 @@ async function evolution(url: URL, init?: RequestInit) {
 
 async function appmax(url: URL, init?: RequestInit) {
   const p = url.pathname;
-  const body = init?.body ? JSON.parse(String(init.body)) : {};
+  let body: unknown = {};
+  try { body = init?.body ? JSON.parse(String(init.body)) : {}; } catch { body = {}; }
   if (p.includes("/oauth2/token")) return json({ access_token: "demo", expires_in: 3600 });
   if (p.endsWith("/v1/customers")) return json({ data: { customer: { id: appmaxSeq++ } } });
   if (p.endsWith("/v1/orders")) { const id = appmaxSeq++; appmaxOrders.set(id, Date.now()); return json({ data: { order: { id } } }); }

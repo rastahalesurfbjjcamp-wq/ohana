@@ -67,7 +67,7 @@ export const DEFAULTS = {
   },
   club: {
     enabled: true,
-    name: "Clube Rasta Hale",
+    name: "Rasta Hale Club",
     fee: 29.9,
     discountPct: 10,
     pointsPerReal: 1,
@@ -81,6 +81,19 @@ export const DEFAULTS = {
     segmentId: "",
     msgWelcome: false, // mensagens no WhatsApp para os membros (começam desligadas)
     msgPoints: false,
+    msgBirthday: false,
+    msgTier: false,
+    usesPerMonth: 4, // compras com o desconto do clube por mês (0 = sem limite)
+    birthdayPct: 40, // cupom no mês do aniversário
+    affiliatePct: 20, // % da mensalidade paga a quem indicou, todo mês enquanto o indicado assinar
+    kitTitle: "Kit de boas-vindas do club (camiseta + patch da bandeira)",
+    t3Gift: "Boné do club (3 meses de club)",
+    t6Points: 2, // pontos por real a partir de 6 meses
+    t12Gift: "Peça exclusiva (12 meses de club)",
+    t3Link: "", t6Link: "", t12Link: "", // coleções exclusivas por nível (fora do menu da loja)
+    earlyLink: "", // coleção do acesso antecipado
+    rafflePrizes: "Rashguard da coleção nova|1\nVídeo análise da sua luta por um atleta do time|2\nAula particular com atleta do time|1",
+    instagram: "",
   },
   referral: {
     enabled: true,
@@ -161,7 +174,7 @@ export type Settings = {
     repurchaseText: string;
     storeUrl: string;
   };
-  club: { enabled: boolean; name: string; fee: number; discountPct: number; pointsPerReal: number; valuePer100: number; monthlyPoints: number; eventPoints: number; minRedeem: number; graceDays: number; earlyHours: number; autoDiscountId: string; segmentId: string; msgWelcome: boolean; msgPoints: boolean };
+  club: { enabled: boolean; name: string; fee: number; discountPct: number; pointsPerReal: number; valuePer100: number; monthlyPoints: number; eventPoints: number; minRedeem: number; graceDays: number; earlyHours: number; autoDiscountId: string; segmentId: string; msgWelcome: boolean; msgPoints: boolean; msgBirthday: boolean; msgTier: boolean; usesPerMonth: number; birthdayPct: number; affiliatePct: number; kitTitle: string; t3Gift: string; t6Points: number; t12Gift: string; t3Link: string; t6Link: string; t12Link: string; earlyLink: string; rafflePrizes: string; instagram: string };
   referral: { enabled: boolean; percent: number; discountType: string; fixedAmount: number; minSubtotal: number; commission: number; releaseDays: number; shareText: string };
   assistant: { enabled: boolean; instructions: string; useOrders: boolean; useStock: boolean; useSizes: boolean; sizeTable: string; useExchange: boolean; exchangeText: string; handoff: boolean };
 };

@@ -213,7 +213,7 @@ export async function cancelSubscription(f: FormData) {
 export async function toggleClubMsg(f: FormData) {
   await admin();
   const k = str(f, "key");
-  if (k !== "msgWelcome" && k !== "msgPoints") return;
+  if (!["msgWelcome", "msgPoints", "msgBirthday", "msgTier"].includes(k)) return;
   await saveSetting("club", { [k]: f.get("on") === "1" });
   revalidatePath("/clube");
 }

@@ -18,7 +18,7 @@ import { runFunnels } from "../lib/funnels";
 import { assistantReply } from "../lib/assistant";
 import { refreshReferralUsage } from "../lib/referral";
 
-type Marks = { payday?: string; daily?: string; weekly?: string; sync?: number; scan?: number; repurchase?: string; referral?: number; club?: number; wa?: number; monthly?: string; autoDisc?: number };
+type Marks = { payday?: string; daily?: string; weekly?: string; sync?: number; scan?: number; repurchase?: string; referral?: number; club?: number; clubDay?: string; perks?: number; wa?: number; monthly?: string; autoDisc?: number };
 
 async function getMarks(): Promise<Marks> {
   const r = await db.setting.findUnique({ where: { key: "_marks" } });
@@ -122,9 +122,18 @@ async function tick() {
     for (const m of semCupom) await ensureMemberCode(m.id).catch(() => null);
   }
   // Clube de fidelidade: pontos das compras e cupom de quem atrasou, a cada 30 minutos
-  if (!marks.club || Date.now() - marks.club > 30 * 60_000) {
+  if (!marks.club || Date.now() - marks.club > 15 * 60_000) {
     await setMarks({ club: Date.now() });
     await scanClub().catch((e) => console.error("[clube]", e));
+  }
+  // Club: níveis por tempo e cupom de aniversário uma vez por dia; brindes (pedido R$ 0) a cada 10 minutos
+  if (s.club.enabled && hhmm >= "08:00" && marks.clubDay !== today) {
+    await setMarks({ clubDay: today });
+    await (await import("../lib/clubPlus")).clubDaily();
+  }
+  if (s.club.enabled && (!marks.perks || Date.now() - marks.perks > 10 * 60_000)) {
+    await setMarks({ perks: Date.now() });
+    await (await import("../lib/clubPlus")).processPerks().catch((e) => console.error("[club brindes]", e));
   }
   // Uso dos cupons do Indique e ganhe a cada 6 horas
   if (!marks.referral || Date.now() - marks.referral > 6 * 3600_000) {
@@ -248,7 +257,7 @@ async function main() {
         case "waitlist-notify":
           return waitlistNotify(job.data.ids);
         case "club-msg":
-          return clubMsg(job.data.memberId, job.data.kind, { pts: job.data.pts, order: job.data.order });
+          return clubMsg(job.data.memberId, job.data.kind, { pts: job.data.pts, order: job.data.order, tier: job.data.tier, code: job.data.code });
         case "club-launch":
           return clubLaunch(job.data.ids, job.data.text);
       }

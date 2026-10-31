@@ -123,3 +123,19 @@
 .sub .mc-new span{font-size:12px;color:#46524b}.sub .mc-new b{font-size:22px;letter-spacing:.04em}.sub .mc-new small{font-size:12px;color:#6b756f}
 .sub .mc-line{display:flex;justify-content:space-between;gap:10px;font-size:13.5px;padding:7px 0;border-top:1px solid #efede6}
 .sub .mc-line .pos{color:#1f7a3d}.sub .mc-line .neg{color:#a3261b}
+/* Rasta Hale Club v2: nível, descontos do mês, aniversário, eventos e indicação */
+.sub .mc-lvl{background:linear-gradient(135deg,#141714,#26302a);border:0;color:#fff}
+.sub .mc-lvl .mc-dim{color:#b5beb8}.sub .mc-lvl .mc-dim b{color:#fff}.sub .mc-lvl .mc-hi{color:#fff}
+.sub .mc-bar.mc-gold{background:rgba(255,255,255,.14)}.sub .mc-bar.mc-gold i{background:#f0b924}
+.sub .mc-dots{display:flex;gap:6px}.sub .mc-dots i{flex:1;height:32px;border-radius:9px;background:#e4f4e9;color:#1f7a3d;display:grid;place-items:center;font-style:normal;font-size:12.5px;font-weight:650}
+.sub .mc-dots i.u{background:#efede7;color:#b4b8b5;text-decoration:line-through}
+.sub .mc-bday{border-color:#f0d27a;background:#fffaf0}
+.sub .mc-chip.mc-y{background:#fff1c9;color:#8a6400}
+.sub .mc-code{font:700 17px ui-monospace,Menlo,monospace;letter-spacing:.06em;background:#f5f3ee;border:1px dashed #cfcac0;border-radius:10px;padding:11px;text-align:center;color:#141714;cursor:pointer;width:100%}
+.sub .mc-code.mc-small{font-size:13px;letter-spacing:0;word-break:break-all}
+.sub .mc-ev{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-top:1px solid #efede6}
+.sub .mc-ev:first-of-type{border-top:0}.sub .mc-ev b{font-weight:600;font-size:14px;display:block}.sub .mc-ev small{color:#8a908c;font-size:12px}
+.sub .mc-two{display:grid;grid-template-columns:1fr 1fr;gap:10px}.sub .mc-two>div{border:1px solid #e3e1d9;border-radius:12px;padding:10px 12px}
+.sub .mc-two span{display:block;font-size:12px;color:#8a908c}.sub .mc-two b{font-size:20px}
+.sub .sb-sizes{display:flex;gap:6px}.sub .sb-sizes button{flex:1;height:42px;border:1px solid var(--line);border-radius:10px;background:#fff;font-weight:600;font-size:13.5px;cursor:pointer;color:var(--ink)}
+.sub .sb-sizes button.sb-on{background:#141714;border-color:#141714;color:#fff}

@@ -8,7 +8,7 @@ const ptsTxt = (n: number) => `${n.toLocaleString("pt-BR")} ponto${n === 1 ? "" 
 
 export const LAUNCH_DEFAULT = "Oi, {nome}! Vem lançamento aí e, como membro do {clube}, você compra {horas} horas antes de todo mundo.\n\nVocê tem {pontos} pontos, que valem {valor} de desconto e somam com os seus {pct}% do clube.\n\nSeus pontos e resgates: {link}";
 
-export async function clubText(memberId: string, kind: string, extra: { pts?: number; order?: string; text?: string } = {}) {
+export async function clubText(memberId: string, kind: string, extra: { pts?: number; order?: string; text?: string; tier?: number; code?: string } = {}) {
   const [m, s] = await Promise.all([db.clubMember.findUnique({ where: { id: memberId } }), getSettings()]);
   if (!m || !m.phone) return null;
   const c = s.club;
@@ -20,8 +20,11 @@ export async function clubText(memberId: string, kind: string, extra: { pts?: nu
       `Oi, ${first}! Sua assinatura do ${c.name} está confirmada.`,
       "",
       "Como funciona:",
-      `• ${c.discountPct}% de desconto em toda compra. Entra sozinho no checkout quando você compra com a sua conta da loja${m.email ? ` (${m.email})` : ""}.${m.code ? ` Se não aparecer, use o seu cupom ${m.code}.` : ""}`,
+      `• ${c.discountPct}% de desconto ${c.usesPerMonth ? `em ${c.usesPerMonth} compras por mês (renova todo dia 1)` : "em toda compra"}. Entra sozinho no checkout quando você compra com a sua conta da loja${m.email ? ` (${m.email})` : ""}.${m.code ? ` Se não aparecer, use o seu cupom ${m.code}.` : ""}`,
+      `• Você vai receber em casa a camiseta exclusiva do club e o patch da bandeira.`,
       `• Lançamentos ${c.earlyHours} horas antes de todo mundo. A gente te avisa por aqui.`,
+      `• Com 3 meses de club você ganha um brinde, com 6 meses passa a ganhar ${c.t6Points} pontos por real e com 12 meses ganha uma peça exclusiva.`,
+      c.birthdayPct ? `• No mês do seu aniversário você ganha um cupom de ${c.birthdayPct}%.` : "",
       `• Cada R$ 1 em compras vira ${c.pointsPerReal === 1 ? "1 ponto" : `${String(c.pointsPerReal).replace(".", ",")} pontos`}. Cada 100 pontos valem ${money(c.valuePer100)} de desconto, que soma com os ${c.discountPct}%.`,
       m.points ? `• Você já começou com ${ptsTxt(m.points)}.` : "",
       "",
@@ -43,6 +46,15 @@ export async function clubText(memberId: string, kind: string, extra: { pts?: nu
     return m.points >= c.minRedeem
       ? `${first}, você tem ${ptsTxt(m.points)}, que valem ${money(value)}. Escolha o valor ou a peça e o cupom sai na hora: ${link}`
       : `${first}, você tem ${ptsTxt(m.points)}. A partir de ${c.minRedeem} pontos já dá para trocar por desconto. Acompanhe aqui: ${link}`;
+  }
+  if (kind === "aniversario") {
+    return [`Feliz aniversário, ${first}! 🎉`, "", `Como membro do ${c.name}, você ganhou ${c.birthdayPct}% de desconto em uma compra este mês.`, `Seu cupom: ${extra.code ?? ""}`, `Vale até o fim do mês: ${s.postsale.storeUrl.replace(/\/$/, "")}/discount/${extra.code ?? ""}`].join("\n");
+  }
+  if (kind === "nivel") {
+    const t = extra.tier ?? 0;
+    const lk = t === 12 ? c.t12Link : t === 6 ? c.t6Link : c.t3Link;
+    const gift = t === 3 ? c.t3Gift : t === 12 ? c.t12Gift : "";
+    return [`${first}, você completou ${t} meses de ${c.name}! Obrigado por estar com a gente.`, "", gift ? `Seu brinde (${gift.replace(/\s*\(.*\)$/, "")}) já está separado e vai para o seu endereço.` : "", t === 6 ? `A partir de agora cada R$ 1 em compras vale ${c.t6Points} pontos.` : "", lk ? `Você liberou a coleção exclusiva de ${t} meses: ${lk}` : "", "", `Seus pontos e benefícios: ${link}`].filter((x, i, a) => x !== "" || a[i - 1] !== "").join("\n");
   }
   if (kind === "lancamento") {
     return (extra.text || LAUNCH_DEFAULT)

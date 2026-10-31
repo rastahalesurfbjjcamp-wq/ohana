@@ -459,9 +459,22 @@ model ClubMember {
   failReason String?
   nextChargeAt DateTime?
   canceledAt DateTime?
+  birthDate  DateTime?
+  instagram  String?
+  shirtSize  String?
+  address    Json?     // { zip, street, number, extra, district, city, state }
+  refCode    String?   @unique // código do link de indicação
+  referredById String? // quem indicou
+  courtesy   Boolean   @default(false) // club de graça (ex.: top compradores)
+  closeFriends Boolean @default(false) // já está no Close Friends do Instagram
+  monthUses  Int       @default(0) // compras com desconto no mês
+  usesMonth  String?   // mês de monthUses (AAAA-MM)
+  tierGiven  Int       @default(0) // último nível já premiado (3, 6, 12)
   entries    ClubPoints[]
   rewards    ClubReward[]
   events     ClubEvent[]
+  perks      ClubPerk[]
+  tickets    ClubTicket[]
 
   @@index([phone])
   @@index([email])
@@ -491,6 +504,8 @@ model ClubReward {
   points     Int
   usedAt     DateTime?
   orderName  String?
+  kind       String     @default("pontos") // pontos | peca | aniversario
+  expiresAt  DateTime?
   createdAt  DateTime   @default(now())
   member     ClubMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
 }
@@ -511,6 +526,7 @@ model ClubCheckout {
   cardLast4  String?
   error      String?
   memberId   String?
+  extra      Json?     // nascimento, instagram, tamanho, endereço, indicação
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
@@ -539,4 +555,65 @@ model ClubPrize {
   image     String?
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
+}
+
+// Brindes do clube: kit de boas-vindas e brindes de nível, enviados como pedido de R$ 0 na Shopify
+model ClubPerk {
+  id        String     @id @default(cuid())
+  memberId  String
+  kind      String     // kit | nivel3 | nivel12
+  title     String
+  status    String     @default("pendente") // pendente | criado | sem_endereco | erro | enviado
+  orderId   String?
+  orderName String?
+  error     String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  member    ClubMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([memberId, kind])
+  @@index([status])
+}
+
+// Eventos do clube com entrada trocando pontos
+model ClubMeet {
+  id        String       @id @default(cuid())
+  title     String
+  date      DateTime
+  points    Int
+  slots     Int
+  place     String?
+  active    Boolean      @default(true)
+  createdAt DateTime     @default(now())
+  tickets   ClubTicket[]
+}
+model ClubTicket {
+  id        String     @id @default(cuid())
+  meetId    String
+  memberId  String
+  createdAt DateTime   @default(now())
+  meet      ClubMeet   @relation(fields: [meetId], references: [id], onDelete: Cascade)
+  member    ClubMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([meetId, memberId])
+}
+
+// Sorteio mensal entre os membros em dia
+model ClubRaffle {
+  id      String   @id @default(cuid())
+  month   String   @unique // AAAA-MM
+  winners Json     // [{ prize, memberId, name }]
+  drawnAt DateTime @default(now())
+}
+
+// Comissão de indicação do club paga ao membro
+model ClubAffPayout {
+  id       String   @id @default(cuid())
+  memberId String
+  month    String
+  count    Int
+  amount   Float
+  paidAt   DateTime @default(now())
+
+  @@unique([memberId, month])
 }

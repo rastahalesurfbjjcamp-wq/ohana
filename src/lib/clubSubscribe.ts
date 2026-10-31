@@ -7,13 +7,29 @@ import { enqueue, redis } from "./queue";
 import { memberToken } from "./clubMember";
 import { normalizePhone } from "./segments";
 
-export type StartInput = { name: string; cpf: string; phone: string; email: string; method: "pix" | "cartao"; ip?: string; card?: { number: string; cvv: string; month: string; year: string; holder: string } };
+export type Extra = { birth?: string; instagram?: string; size?: string; zip?: string; street?: string; number?: string; extra?: string; district?: string; city?: string; state?: string; ref?: string };
+export type StartInput = { name: string; cpf: string; phone: string; email: string; method: "pix" | "cartao"; ip?: string; card?: { number: string; cvv: string; month: string; year: string; holder: string }; extra?: Extra };
+
+// dd/mm/aaaa -> Date (meio-dia UTC, para não mudar de dia com o fuso)
+export function parseBirth(v?: string): Date | null {
+  const m = (v ?? "").match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!m) return null;
+  const d = new Date(Date.UTC(Number(m[3]), Number(m[2]) - 1, Number(m[1]), 12));
+  const age = (Date.now() - d.getTime()) / (365.25 * 864e5);
+  return d.getUTCDate() === Number(m[1]) && age >= 10 && age <= 100 ? d : null;
+}
 
 export function validate(i: StartInput): string | null {
   if (i.name.trim().split(/\s+/).length < 2) return "Coloque nome e sobrenome";
   if (!cpfValid(digits(i.cpf))) return "CPF inválido";
   if (!normalizePhone(i.phone)) return "WhatsApp inválido";
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(i.email.trim())) return "E-mail inválido";
+  const x = i.extra;
+  if (x) {
+    if (!parseBirth(x.birth)) return "Data de nascimento inválida";
+    if (!x.size) return "Escolha o tamanho da camiseta";
+    if ((x.zip ?? "").replace(/\D/g, "").length !== 8 || !x.street?.trim() || !x.number?.trim() || !x.city?.trim() || !x.state?.trim()) return "Confira o endereço para receber o kit";
+  }
   if (i.method === "cartao") {
     const c = i.card;
     if (!c || digits(c.number).length < 13 || digits(c.cvv).length < 3 || !c.month || !c.year || !c.holder.trim()) return "Confira os dados do cartão";
@@ -30,7 +46,7 @@ export async function startCheckout(i: StartInput) {
   if (already && already.status !== "cancelado" && already.paidUntil && already.paidUntil.getTime() > Date.now()) {
     return { error: "Esse CPF já é membro do clube e está em dia." };
   }
-  const ck = await db.clubCheckout.create({ data: { name: i.name.trim(), cpf, phone, email, method: i.method, cardLast4: i.card ? digits(i.card.number).slice(-4) : null } });
+  const ck = await db.clubCheckout.create({ data: { name: i.name.trim(), cpf, phone, email, method: i.method, cardLast4: i.card ? digits(i.card.number).slice(-4) : null, extra: i.extra ? (i.extra as object) : undefined } });
   try {
     const customerId = await createCustomer({ name: ck.name, email, phone, cpf, ip: i.ip });
     const orderId = await createOrder(customerId, { sku: "CLUBE-MENSAL", name: `${s.name} - mensalidade`, value: s.fee });
@@ -115,6 +131,17 @@ export async function activate(checkoutId: string) {
     await event(m.id, "falhou", `Pagamento recebido, mas a assinatura mensal não foi criada na Appmax: ${String(e).replace(/^Error: /, "").slice(0, 120)}`);
   }
   await db.clubCheckout.update({ where: { id: ck.id }, data: { memberId: m.id } });
+  // dados novos da assinatura: nascimento, Instagram, tamanho, endereço do kit e quem indicou
+  const x = (ck.extra ?? {}) as Extra;
+  const ref = x.ref ? await db.clubMember.findFirst({ where: { refCode: x.ref.toUpperCase() }, select: { id: true } }) : null;
+  await db.clubMember.update({ where: { id: m.id }, data: {
+    birthDate: parseBirth(x.birth) ?? undefined, instagram: x.instagram ? x.instagram.replace(/^@+/, "").trim().toLowerCase().slice(0, 40) || undefined : undefined, shirtSize: x.size || undefined,
+    address: x.zip ? { zip: x.zip.replace(/\D/g, ""), street: x.street, number: x.number, extra: x.extra, district: x.district, city: x.city, state: x.state } : undefined,
+    referredById: ref && ref.id !== m.id && !m.referredById ? ref.id : undefined,
+  } }).catch(() => null);
+  const { ensurePerk, ensureRefCode } = await import("./clubPlus");
+  await ensureRefCode(m.id).catch(() => null);
+  await ensurePerk(m.id, "kit", s.kitTitle).catch(() => null);
   if (!m.code) await ensureMemberCode(m.id).catch(() => null);
   if (s.msgWelcome) await enqueue("club-msg", { memberId: m.id, kind: "boasvindas" }, { jobId: `cw-${m.id}-${ck.id}`, delayMs: 60_000 }).catch(() => null);
   await event(m.id, "assinou", `Assinou o clube pelo ${ck.method === "pix" ? "Pix" : `cartão final ${ck.cardLast4 ?? ""}`}`, s.fee);

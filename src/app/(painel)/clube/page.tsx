@@ -17,13 +17,15 @@ import { LAUNCH_DEFAULT, clubText } from "@/lib/clubMsg";
 import { env } from "@/lib/env";
 import { hasAppmax } from "@/lib/appmax";
 import { products } from "@/lib/store";
+import { ClubPlus } from "./ClubPlus";
+import { saveClubPlus } from "../acoes8";
 
 export const dynamic = "force-dynamic";
 
 const REASON: Record<string, string> = { compra: "Compra", estorno: "Estorno", mensalidade: "Mensalidade", resgate: "Resgate", evento: "Evento", ajuste: "Ajuste", bonus: "Bônus" };
-const OK: Record<string, string> = { cancelado: "Assinatura cancelada. O cupom de membro foi desligado.", pago: "Mensalidade registrada. O cupom de membro está ligado.", entrada: "Entrada no evento registrada.", ajuste: "Pontos ajustados.", regras: "Regras salvas.", aviso: "Aviso de lançamento na fila. As mensagens saem aos poucos, com a proteção do número.", "1": "Salvo." };
+const OK: Record<string, string> = { cancelado: "Assinatura cancelada. O cupom de membro foi desligado.", pago: "Mensalidade registrada. O cupom de membro está ligado.", entrada: "Entrada no evento registrada.", ajuste: "Pontos ajustados.", regras: "Regras salvas.", aviso: "Aviso de lançamento na fila. As mensagens saem aos poucos, com a proteção do número.", evento: "Evento criado. Ele já aparece na página dos membros.", sorteio: "Sorteio feito. Os ganhadores estão no painel do sorteio.", cortesia: "Club de cortesia liberado. O kit entra na lista de envio.", cf: "Close Friends atualizado.", brindes: "Brindes enviados para a Shopify de novo.", afiliados: "Comissões marcadas como pagas.", "1": "Salvo." };
 
-export default async function Clube({ searchParams }: { searchParams: Promise<{ premios?: string; q?: string; novo?: string; erro?: string; ok?: string; cupom?: string; criado?: string; regras?: string; somados?: string; f?: string; editar?: string; msgs?: string; n?: string; pg?: string }> }) {
+export default async function Clube({ searchParams }: { searchParams: Promise<{ premios?: string; q?: string; novo?: string; erro?: string; ok?: string; cupom?: string; criado?: string; regras?: string; somados?: string; f?: string; editar?: string; msgs?: string; n?: string; pg?: string; evento?: string; endereco?: string }> }) {
   const sp = await searchParams;
   const { club: c, postsale } = await getSettings();
   const store = postsale.storeUrl;
@@ -70,7 +72,7 @@ export default async function Clube({ searchParams }: { searchParams: Promise<{ 
 
   return (
     <>
-      <Header title="Clube de fidelidade" lede={`${c.name}: mensalidade de ${brl(c.fee)}, ${c.discountPct}% de desconto em toda compra, acesso antecipado e pontos que viram desconto ou entrada nos eventos.`}>
+      <Header title={c.name} lede={`${brl(c.fee)} por mês. ${c.usesPerMonth ? `${c.discountPct}% em ${c.usesPerMonth} compras por mês` : `${c.discountPct}% em toda compra`}, pontos, níveis por tempo de club, eventos e brindes.`}>
         <form action={scanClubNow}><button className="btn" type="submit" title="Puxa as compras dos últimos 30 dias e soma os pontos"><RefreshCw size={15} /> Atualizar pontos</button></form>
         <Link className="btn" href={sp.premios ? "/clube" : "/clube?premios=1"}><Gift size={15} /> Recompensas</Link>
         <Link className="btn" href={sp.msgs ? "/clube" : "/clube?msgs=1"}><MessageCircle size={15} /> Mensagens</Link>
@@ -92,7 +94,7 @@ export default async function Clube({ searchParams }: { searchParams: Promise<{ 
             </div>
             <div className="rule-grid">
               <div className="rule"><span>Mensalidade</span><NumberInput name="fee" defaultValue={c.fee} prefix="R$" decimals={2} step={1} /><small>quanto o membro paga por mês</small></div>
-              <div className="rule"><span>Desconto do membro</span><NumberInput name="discountPct" defaultValue={c.discountPct} suffix="%" max={50} /><small>em toda compra na loja</small></div>
+              <div className="rule"><span>Desconto do membro</span><NumberInput name="discountPct" defaultValue={c.discountPct} suffix="%" max={50} /><small>{c.usesPerMonth ? `nas ${c.usesPerMonth} compras do mês` : "em toda compra na loja"}</small></div>
               <div className="rule"><span>Pontos por R$ 1 gasto</span><NumberInput name="pointsPerReal" defaultValue={c.pointsPerReal} decimals={1} step={0.5} /><small>R$ 200 em compras = {Math.round(200 * c.pointsPerReal)} pontos</small></div>
               <div className="rule"><span>Valor de 100 pontos</span><NumberInput name="valuePer100" defaultValue={c.valuePer100} prefix="R$" decimals={2} step={1} /><small>desconto que o membro ganha ao trocar</small></div>
               <div className="rule"><span>Pontos por mensalidade paga</span><NumberInput name="monthlyPoints" defaultValue={c.monthlyPoints} step={10} suffix="pts" /><small>bônus a cada mês em dia</small></div>
@@ -103,6 +105,32 @@ export default async function Clube({ searchParams }: { searchParams: Promise<{ 
             </div>
             <p className="dim" style={{ fontSize: 12.5 }}>Passou da tolerância, o cupom de membro é desligado sozinho e volta quando a mensalidade for registrada. Mudar o desconto vale para os próximos membros.</p>
             <div><button className="btn pri sm" type="submit">Salvar regras</button></div>
+          </form>
+          <form action={saveClubPlus} id="plus" className="stack" style={{ gap: 8, marginTop: 22, paddingTop: 18, borderTop: "1px solid var(--line2)" }}>
+            <b>Níveis, brindes e benefícios</b>
+            <div className="rule-grid">
+              <div className="rule"><span>Compras com desconto por mês</span><NumberInput name="usesPerMonth" defaultValue={c.usesPerMonth} suffix="compras" /><small>0 = em toda compra · renova dia 1</small></div>
+              <div className="rule"><span>Cupom de aniversário</span><NumberInput name="birthdayPct" defaultValue={c.birthdayPct} suffix="%" max={90} /><small>uma compra no mês do aniversário</small></div>
+              <div className="rule"><span>Comissão por indicação</span><NumberInput name="affiliatePct" defaultValue={c.affiliatePct} suffix="%" max={100} /><small>{brl((c.fee * c.affiliatePct) / 100)} por indicado, todo mês</small></div>
+              <div className="rule"><span>Pontos por R$ 1 com 6 meses</span><NumberInput name="t6Points" defaultValue={c.t6Points} decimals={1} step={0.5} /><small>cashback maior do nível 6 meses</small></div>
+            </div>
+            <div className="row" style={{ gap: 12 }}>
+              <div className="field" style={{ flex: 1, minWidth: 220 }}><label>Kit de boas-vindas</label><input className="in" name="kitTitle" defaultValue={c.kitTitle} /></div>
+              <div className="field" style={{ flex: 1, minWidth: 220 }}><label>Brinde de 3 meses</label><input className="in" name="t3Gift" defaultValue={c.t3Gift} /></div>
+              <div className="field" style={{ flex: 1, minWidth: 220 }}><label>Peça de 12 meses</label><input className="in" name="t12Gift" defaultValue={c.t12Gift} /></div>
+            </div>
+            <div className="row" style={{ gap: 12 }}>
+              <div className="field" style={{ flex: 1, minWidth: 200 }}><label>Link da coleção do acesso antecipado</label><input className="in" name="earlyLink" defaultValue={c.earlyLink} placeholder="https://rastahale.com.br/collections/..." /></div>
+              <div className="field" style={{ flex: 1, minWidth: 200 }}><label>Coleção exclusiva 3 meses</label><input className="in" name="t3Link" defaultValue={c.t3Link} placeholder="link fora do menu da loja" /></div>
+              <div className="field" style={{ flex: 1, minWidth: 200 }}><label>Coleção exclusiva 6 meses</label><input className="in" name="t6Link" defaultValue={c.t6Link} /></div>
+              <div className="field" style={{ flex: 1, minWidth: 200 }}><label>Coleção exclusiva 12 meses</label><input className="in" name="t12Link" defaultValue={c.t12Link} /></div>
+            </div>
+            <div className="row" style={{ gap: 12, alignItems: "flex-start" }}>
+              <div className="field" style={{ flex: 2, minWidth: 260 }}><label>Prêmios do sorteio do mês (um por linha: prêmio|ganhadores)</label><textarea className="in" name="rafflePrizes" rows={3} defaultValue={c.rafflePrizes} /></div>
+              <div className="field" style={{ flex: 1, minWidth: 200 }}><label>@ do Instagram do Close Friends</label><input className="in" name="instagram" defaultValue={c.instagram} placeholder="rastahale" /></div>
+            </div>
+            <p className="dim" style={{ fontSize: 12.5 }}>Os brindes viram pedido de R$ 0 na Shopify com o endereço do membro. As coleções exclusivas são links de coleções que ficam fora do menu da loja.</p>
+            <div><button className="btn pri sm" type="submit">Salvar níveis e benefícios</button></div>
           </form>
         </Panel>
       )}
@@ -131,10 +159,12 @@ export default async function Clube({ searchParams }: { searchParams: Promise<{ 
 
       <div className="grid g4">
         <div className="pnl kpi hl"><small><Crown size={14} /> Membros em dia</small><span className="num up">{active.length}</span><div className="sub">{all.length} no total</div></div>
-        <div className="pnl kpi"><small>Receita por mês</small><span className="num">{brl(active.reduce((a, m) => a + (m.fee || c.fee), 0), 0)}</span><div className="sub">mensalidades dos membros em dia</div></div>
+        <div className="pnl kpi"><small>Receita por mês</small><span className="num">{brl(active.reduce((a, m) => a + (m.courtesy ? 0 : m.fee || c.fee), 0), 0)}</span><div className="sub">mensalidades dos membros em dia</div></div>
         <div className={`pnl kpi ${late.length ? "warnk" : ""}`}><small>Em atraso</small><span className="num" style={late.length ? { color: "var(--sun)" } : undefined}>{late.length}</span><div className="sub">cupom desligado depois de {c.graceDays} dias</div></div>
         <div className="pnl kpi"><small>Pontos em aberto</small><span className="num">{pts.toLocaleString("pt-BR")}</span><div className="sub">valem {money(pts)} em desconto</div></div>
       </div>
+
+      <ClubPlus all={all} c={c} evento={sp.evento} endereco={sp.endereco} />
 
       {sp.premios && (
         <Panel title="Recompensas" sub="Peças que o membro troca por pontos. Ao trocar, sai um cupom de 100% só para aquela peça, de uso único." right={<Link className="menu-b" href="/clube" aria-label="Fechar"><X size={16} /></Link>}>
@@ -423,6 +453,14 @@ async function MsgPanel({ all, c, n }: { all: Mem[]; c: Awaited<ReturnType<typeo
                 <div className="row" style={{ justifyContent: "space-between" }}><b>Boas-vindas ao assinar</b><AutoToggle action={toggleClubMsg} k="msgWelcome" on={c.msgWelcome} label="Os novos membros" /></div>
                 <p className="dim" style={{ fontSize: 12.5 }}>Um minuto depois do pagamento: regras, como usar o desconto, cupom e link dos pontos.</p>
                 {pw && <pre className="msgprev">{pw}</pre>}
+              </div>
+              <div className="stack" style={{ gap: 8 }}>
+                <div className="row" style={{ justifyContent: "space-between" }}><b>Cupom de aniversário</b><AutoToggle action={toggleClubMsg} k="msgBirthday" on={c.msgBirthday} label="Os aniversariantes" /></div>
+                <p className="dim" style={{ fontSize: 12.5 }}>No dia 1 do mês do aniversário: o cupom de {c.birthdayPct}% com o link que já aplica.</p>
+              </div>
+              <div className="stack" style={{ gap: 8 }}>
+                <div className="row" style={{ justifyContent: "space-between" }}><b>Subiu de nível</b><AutoToggle action={toggleClubMsg} k="msgTier" on={c.msgTier} label="Quem completar 3, 6 ou 12 meses" /></div>
+                <p className="dim" style={{ fontSize: 12.5 }}>Avisa do brinde a caminho e manda o link da coleção exclusiva do nível.</p>
               </div>
               <div className="stack" style={{ gap: 8 }}>
                 <div className="row" style={{ justifyContent: "space-between" }}><b>Pontos de cada compra</b><AutoToggle action={toggleClubMsg} k="msgPoints" on={c.msgPoints} label="Os membros que comprarem" /></div>

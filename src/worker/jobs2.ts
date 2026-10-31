@@ -97,10 +97,12 @@ export async function waitlistNotify(ids: string[]) {
 }
 
 // Mensagem do clube para um membro (boas-vindas, pontos da compra, resposta ao RESGATAR)
-export async function clubMsg(memberId: string, kind: string, extra: { pts?: number; order?: string } = {}) {
+export async function clubMsg(memberId: string, kind: string, extra: { pts?: number; order?: string; tier?: number; code?: string } = {}) {
   const s = await getSettings();
   if (kind === "boasvindas" && !s.club.msgWelcome) return;
   if (kind === "pontos" && !s.club.msgPoints) return;
+  if (kind === "aniversario" && !s.club.msgBirthday) return;
+  if (kind === "nivel" && !s.club.msgTier) return;
   const m = await db.clubMember.findUnique({ where: { id: memberId } });
   if (!m?.phone || m.status === "cancelado") return;
   if (await db.optOut.findUnique({ where: { phone: m.phone } })) return;
@@ -110,7 +112,7 @@ export async function clubMsg(memberId: string, kind: string, extra: { pts?: num
   const wait = await reserveSlot();
   if (wait > 0) { await enqueue("club-msg", { memberId, kind, ...extra }, { delayMs: wait }); return; }
   await sendText(m.phone, text);
-  await db.clubEvent.create({ data: { memberId, kind: "voltou", text: kind === "boasvindas" ? "Recebeu a mensagem de boas-vindas" : kind === "pontos" ? `Recebeu o aviso de ${extra.pts ?? 0} pontos` : "Pediu para resgatar e recebeu o link" } }).catch(() => null);
+  await db.clubEvent.create({ data: { memberId, kind: "voltou", text: kind === "boasvindas" ? "Recebeu a mensagem de boas-vindas" : kind === "pontos" ? `Recebeu o aviso de ${extra.pts ?? 0} pontos` : kind === "aniversario" ? "Recebeu o cupom de aniversário" : kind === "nivel" ? `Recebeu o aviso do nível ${extra.tier ?? ""} meses` : "Pediu para resgatar e recebeu o link" } }).catch(() => null);
 }
 
 // Aviso de lançamento para os membros em dia (só quando o dono manda pelo painel)

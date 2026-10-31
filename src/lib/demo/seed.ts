@@ -5,7 +5,7 @@ import { ATHLETES, CLUB_CODE_FOR, CLUB_CUSTOMER, CLUB_SIZE, CUSTOMERS, PRODUCTS 
 
 export const DEMO_EMAIL = "visitante@mare-alta.demo";
 const day = () => new Date(Date.now() - 3 * 3600_000).toISOString().slice(0, 10);
-const SEED_V = 3; // muda quando os dados da demo mudam, para repopular no próximo deploy
+const SEED_V = 5; // muda quando os dados da demo mudam, para repopular no próximo deploy
 function rng(seed: number) { let s = seed >>> 0; return () => { s = (s + 0x6d2b79f5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 const ago = (d: number, h = 0) => new Date(Date.now() - d * 864e5 - h * 3600_000);
 
@@ -33,7 +33,7 @@ export async function ensureDemoSeed(force = false) {
 async function seed() {
   const r = rng(Number(day().replace(/-/g, "")));
   // limpa tudo
-  for (const m of ["pollVote", "poll", "broadcastRecipient", "broadcast", "chatMessage", "chatThread", "memberEvent", "membership", "contact", "group", "lead", "recoveryCase", "task", "scheduledMessage", "cost", "payout", "referral", "clubPoints", "clubReward", "clubEvent", "clubCheckout", "clubMember", "clubPrize", "launch", "funnelRun", "funnel", "waitlist", "optOut", "commandLog", "diagnosis", "setting", "user"] as const) {
+  for (const m of ["pollVote", "poll", "broadcastRecipient", "broadcast", "chatMessage", "chatThread", "memberEvent", "membership", "contact", "group", "lead", "recoveryCase", "task", "scheduledMessage", "cost", "payout", "referral", "clubTicket", "clubMeet", "clubPerk", "clubRaffle", "clubAffPayout", "clubPoints", "clubReward", "clubEvent", "clubCheckout", "clubMember", "clubPrize", "launch", "funnelRun", "funnel", "waitlist", "optOut", "commandLog", "diagnosis", "setting", "user"] as const) {
     await (db[m] as unknown as { deleteMany: () => Promise<unknown> }).deleteMany();
   }
   await db.user.create({ data: { name: "Visitante", email: DEMO_EMAIL, passwordHash: await bcrypt.hash(String(Math.random()), 8), role: "ADMIN" } });
@@ -41,7 +41,7 @@ async function seed() {
   await S("_partners_seeded", { done: true });
   await S("_whatsapp", { state: "open", at: new Date().toISOString() });
   await S("_int_status", { shopify: { ok: true, msg: "Conectado à loja Maré Alta", at: new Date().toISOString() }, meta: { ok: true, msg: "Conectado à conta Maré Alta · Vendas", at: new Date().toISOString() }, appmax: { ok: true, msg: "Conectado (produção)", at: new Date().toISOString() } });
-  await S("club", { name: "Clube Maré Alta", autoDiscountId: "gid://shopify/DiscountAutomaticNode/1", segmentId: "gid://shopify/Segment/1" });
+  await S("club", { name: "Maré Alta Club", autoDiscountId: "gid://shopify/DiscountAutomaticNode/1", segmentId: "gid://shopify/Segment/1", instagram: "marealta", earlyLink: "https://mare-alta.exemplo.com/collections/antecipado", t3Link: "https://mare-alta.exemplo.com/collections/club-3", t6Link: "https://mare-alta.exemplo.com/collections/club-6", t12Link: "https://mare-alta.exemplo.com/collections/club-12" });
   await S("ads", { accounts: [{ id: "1001", name: "Maré Alta · Vendas", on: true, kind: "auto" }, { id: "1002", name: "Maré Alta · Perfil", on: true, kind: "perfil" }], perfilCoupons: ["BEMVINDOIG"] });
   await S("postsale", { storeUrl: "https://mare-alta.exemplo.com" });
 
@@ -156,12 +156,17 @@ async function seed() {
   const meta: { joined: number; pts: number; late: boolean; i: number }[] = [];
   for (let i = 0; i < CLUB_SIZE; i++) {
     const c = CLUB_CUSTOMER(i);
-    const joined = Math.floor(Math.pow(r(), 0.7) * 300) + 1;
+    const joined = Math.floor(Math.pow(r(), 0.8) * 410) + 1;
     const late = i % 41 === 5, canceled = i % 23 === 9;
     const paidUntil = late ? ago(3) : ago(-(Math.floor(r() * 28) + 2));
     const pts = Math.floor(Math.pow(r(), 1.5) * 1100) + 50;
     meta.push({ joined, pts, late, i });
-    mem.push({ name: c.name, cpf: c.cpf, phone: c.phone, email: c.email, customerId: c.id, code: CLUB_CODE_FOR(i), discountId: `gid://shopify/DiscountCodeNode/66${i}`, codeActive: !canceled, status: canceled ? "cancelado" : "ativo", fee: 29.9, paidUntil, points: pts, joinedAt: ago(joined), provider: "appmax", subscriptionId: String(80000 + i), payMethod: i % 3 ? "cartao" : "pix", cardLast4: i % 3 ? String(4000 + i * 37).slice(-4) : null, lastChargeAt: ago(Math.max(0, joined % 30)), lastChargeStatus: late ? "falhou" : "pago", failReason: late ? "Saldo insuficiente" : null, nextChargeAt: paidUntil, canceledAt: canceled ? ago(5) : null });
+    const months = Math.floor(joined / 30.4);
+    const tg = months >= 12 ? 12 : months >= 6 ? 6 : months >= 3 ? 3 : 0;
+    const bmonth = i % 12 === 0 ? new Date().getMonth() : Math.floor(r() * 12);
+    const sizes = ["P", "M", "M", "G", "G", "GG"];
+    mem.push({ birthDate: new Date(Date.UTC(1975 + Math.floor(r() * 30), bmonth, 1 + Math.floor(r() * 27), 12)), instagram: r() < 0.8 ? `${c.name.split(" ")[0].normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()}.${["surf", "bjj", "rio", "onda", "jj"][i % 5]}${i % 97}` : null, closeFriends: !canceled && joined > 6 && r() < 0.9, shirtSize: sizes[i % sizes.length], address: { zip: "22790701", street: "Av. das Américas", number: String(100 + (i % 900)), district: "Barra da Tijuca", city: c.city, state: c.state }, refCode: `${c.name.split(" ")[0].normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/[^A-Z]/g, "")}${i}`, tierGiven: tg, monthUses: Math.floor(r() * 3), usesMonth: new Date(Date.now() - 3 * 3600_000).toISOString().slice(0, 7),
+      name: c.name, cpf: c.cpf, phone: c.phone, email: c.email, customerId: c.id, code: CLUB_CODE_FOR(i), discountId: `gid://shopify/DiscountCodeNode/66${i}`, codeActive: !canceled, status: canceled ? "cancelado" : "ativo", fee: 29.9, paidUntil, points: pts, joinedAt: ago(joined), provider: "appmax", subscriptionId: String(80000 + i), payMethod: i % 3 ? "cartao" : "pix", cardLast4: i % 3 ? String(4000 + i * 37).slice(-4) : null, lastChargeAt: ago(Math.max(0, joined % 30)), lastChargeStatus: late ? "falhou" : "pago", failReason: late ? "Saldo insuficiente" : null, nextChargeAt: paidUntil, canceledAt: canceled ? ago(5) : null });
   }
   await db.clubMember.createMany({ data: mem });
   const ids = new Map((await db.clubMember.findMany({ select: { id: true, code: true } })).map((m) => [m.code, m.id]));
@@ -174,6 +179,45 @@ async function seed() {
     if (i < 30) evs.push({ memberId, kind: late ? "falhou" : "assinou", text: late ? "Cobrança recusada: saldo insuficiente" : `Assinou o clube pelo ${i % 3 ? "cartão" : "Pix"}`, value: 29.9, createdAt: ago(Math.floor(i / 3), r() * 8) });
   }
   await db.clubPoints.createMany({ data: pts });
+  // indicação: alguns membros trouxeram outros
+  const allIds = meta.map(({ i }) => ids.get(CLUB_CODE_FOR(i))!);
+  const refIdx = [3, 8, 15, 21, 40, 57];
+  for (let k = 0; k < 160; k++) {
+    const by = allIds[refIdx[k % refIdx.length] + (k % 13 === 0 ? 7 : 0)];
+    const who = allIds[200 + k * 7];
+    if (by && who && by !== who) await db.clubMember.update({ where: { id: who }, data: { referredById: by } });
+  }
+  // brindes: kits dos que entraram agora e brindes de nível
+  const recent = meta.filter((x) => x.joined <= 4).slice(0, 9);
+  for (const [k, x] of recent.entries()) {
+    const memberId = ids.get(CLUB_CODE_FOR(x.i))!;
+    await db.clubPerk.create({ data: { memberId, kind: "kit", title: "Kit de boas-vindas do club (camiseta + patch da bandeira)", status: k === 2 ? "sem_endereco" : "criado", orderId: k === 2 ? null : `gid://shopify/Order/${31000 + k}`, orderName: k === 2 ? null : `#${31000 + k}` } });
+    if (k === 2) await db.clubMember.update({ where: { id: memberId }, data: { address: (await import("@prisma/client")).Prisma.DbNull } });
+  }
+  const t3 = meta.filter((x) => x.joined >= 92 && x.joined <= 95).slice(0, 3);
+  for (const [k, x] of t3.entries()) await db.clubPerk.create({ data: { memberId: ids.get(CLUB_CODE_FOR(x.i))!, kind: "nivel3", title: "Boné do club (3 meses de club)", status: "criado", orderId: `gid://shopify/Order/${31100 + k}`, orderName: `#${31100 + k}` } });
+  const t12 = meta.find((x) => x.joined >= 366);
+  if (t12) await db.clubPerk.create({ data: { memberId: ids.get(CLUB_CODE_FOR(t12.i))!, kind: "nivel12", title: "Peça exclusiva (12 meses de club)", status: "criado", orderId: "gid://shopify/Order/31200", orderName: "#31200" } });
+  // aniversariantes do mês com cupom
+  const bdays = await db.clubMember.findMany({ where: { status: "ativo" }, select: { id: true, name: true, birthDate: true } });
+  const thisMonth = bdays.filter((m) => m.birthDate && m.birthDate.getUTCMonth() === new Date().getMonth());
+  const eom = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0, 23, 59);
+  await db.clubReward.createMany({ data: thisMonth.map((m, k) => ({ memberId: m.id, code: `NIVER${m.name.split(" ")[0].normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/[^A-Z]/g, "").slice(0, 6)}${k}X`, value: 0, points: 0, kind: "aniversario", expiresAt: eom, usedAt: k % 4 === 0 ? ago(k % 9) : null, createdAt: ago(Math.min(5, new Date().getDate() - 1)) })), skipDuplicates: true });
+  // eventos com pontos
+  const meets = await Promise.all([
+    db.clubMeet.create({ data: { title: "Open mat Maré Alta", date: ago(-9, -10), points: 300, slots: 40, place: "Academia parceira, Barra" } }),
+    db.clubMeet.create({ data: { title: "Seminário de jiu-jitsu com Mestre Joca", date: ago(-23, -9), points: 800, slots: 60, place: "CT Maré Alta" } }),
+    db.clubMeet.create({ data: { title: "Noite de lutas", date: ago(-37, -19), points: 500, slots: 80 } }),
+  ]);
+  const tk: import("@prisma/client").Prisma.ClubTicketCreateManyInput[] = [];
+  meets.forEach((e, j) => { for (let k = 0; k < [27, 21, 14][j]; k++) tk.push({ meetId: e.id, memberId: allIds[(k * 11 + j * 5) % allIds.length] }); });
+  await db.clubTicket.createMany({ data: tk, skipDuplicates: true });
+  // sorteio do mês passado
+  const prev = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 15).toISOString().slice(0, 7);
+  const pw = [allIds[11], allIds[47], allIds[90], allIds[133]];
+  const names = await db.clubMember.findMany({ where: { id: { in: pw } }, select: { id: true, name: true } });
+  const nm = new Map(names.map((x) => [x.id, x.name]));
+  await db.clubRaffle.create({ data: { month: prev, winners: [["Rashguard da coleção nova", pw[0]], ["Vídeo análise da sua luta por um atleta do time", pw[1]], ["Vídeo análise da sua luta por um atleta do time", pw[2]], ["Aula particular com atleta do time", pw[3]]].map(([prize, id]) => ({ prize, memberId: id, name: nm.get(id) ?? "" })), drawnAt: ago(new Date().getDate() + 1) } });
   await db.clubEvent.createMany({ data: evs });
 
 }

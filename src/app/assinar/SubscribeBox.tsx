@@ -7,6 +7,8 @@ const only = (v: string) => v.replace(/\D/g, "");
 const maskCpf = (v: string) => only(v).slice(0, 11).replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d{1,2})$/, "$1-$2");
 const maskPhone = (v: string) => { const d = only(v).slice(0, 11); return d.length > 10 ? d.replace(/(\d{2})(\d{5})(\d{0,4})/, "($1) $2-$3") : d.replace(/(\d{2})(\d{4})(\d{0,4})/, "($1) $2-$3").replace(/[-(]\s*$|\(\)/g, ""); };
 const maskCard = (v: string) => only(v).slice(0, 19).replace(/(\d{4})(?=\d)/g, "$1 ");
+const maskDate = (v: string) => only(v).slice(0, 8).replace(/(\d{2})(\d)/, "$1/$2").replace(/(\d{2})\/(\d{2})(\d)/, "$1/$2/$3");
+const maskCep = (v: string) => only(v).slice(0, 8).replace(/(\d{5})(\d)/, "$1-$2");
 const maskExp = (v: string) => only(v).slice(0, 4).replace(/(\d{2})(\d)/, "$1/$2");
 const brandOf = (n: string) => { const d = only(n); if (/^4/.test(d)) return "VISA"; if (/^(5[1-5]|2[2-7])/.test(d)) return "MASTER"; if (/^(4011|4312|4389|4514|4576|5041|5066|5067|509|6277|6362|6363|650|6516|6550)/.test(d)) return "ELO"; if (/^3[47]/.test(d)) return "AMEX"; if (/^(606282|3841)/.test(d)) return "HIPER"; return ""; };
 const Lock = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><rect x="4" y="10" width="16" height="11" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>;
@@ -16,6 +18,20 @@ type Pix = { emv: string; qr: string | null; expires: string };
 export function SubscribeBox({ fee, ready, storeUrl, clubName }: { fee: number; ready: boolean; storeUrl: string; clubName: string }) {
   const [method, setMethod] = useState<"pix" | "cartao">("pix");
   const [f, setF] = useState({ name: "", cpf: "", phone: "", email: "", card: "", exp: "", cvv: "", holder: "" });
+  const [x, setX] = useState({ birth: "", instagram: "", size: "", zip: "", street: "", number: "", extra: "", district: "", city: "", state: "" });
+  const [ref, setRef] = useState("");
+  const [cepBusy, setCepBusy] = useState(false);
+  const setx = (k: keyof typeof x, v: string) => setX((o) => ({ ...o, [k]: v }));
+  useEffect(() => { const r = new URLSearchParams(location.search).get("ref"); if (r && /^[A-Za-z0-9]{2,20}$/.test(r)) setRef(r.toUpperCase()); }, []);
+  // CEP: preenche rua, bairro, cidade e UF
+  const lookupCep = async (v: string) => {
+    const d = only(v);
+    if (d.length !== 8) return;
+    setCepBusy(true);
+    const r = await fetch(`https://viacep.com.br/ws/${d}/json/`).then((y) => y.json()).catch(() => null);
+    setCepBusy(false);
+    if (r && !r.erro) setX((o) => ({ ...o, street: r.logradouro || o.street, district: r.bairro || o.district, city: r.localidade || o.city, state: r.uf || o.state }));
+  };
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const [pix, setPix] = useState<Pix | null>(null);
@@ -92,7 +108,7 @@ export function SubscribeBox({ fee, ready, storeUrl, clubName }: { fee: number; 
     try {
       const r = await fetch("/api/clube/assinar", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: f.name, cpf: f.cpf, phone: f.phone, email: f.email, method, card: method === "cartao" ? { number: f.card, cvv: f.cvv, month: mm ?? "", year: yy ?? "", holder: f.holder } : undefined }),
+        body: JSON.stringify({ name: f.name, cpf: f.cpf, phone: f.phone, email: f.email, method, extra: { ...x, ref }, card: method === "cartao" ? { number: f.card, cvv: f.cvv, month: mm ?? "", year: yy ?? "", holder: f.holder } : undefined }),
       }).then((x) => x.json());
       if (r.id) setCkId(r.id);
       if (r.error) setErr(r.error);
@@ -118,7 +134,7 @@ export function SubscribeBox({ fee, ready, storeUrl, clubName }: { fee: number; 
           <>
             <div className="sb-code">{done.code}</div>
             <p style={{ fontSize: 13 }}>É um cupom único e pessoal, ligado ao seu CPF e ao seu cadastro na loja. Na hora de comprar, use o mesmo e-mail{f.email ? ` (${f.email.trim()})` : ""} que você colocou aqui.</p>
-            <p style={{ fontSize: 13 }}>Daqui pra frente, comprando com a sua conta da loja, o desconto do clube entra sozinho no checkout. Cada compra soma pontos que você troca por desconto.</p>
+            <p style={{ fontSize: 13 }}>Daqui pra frente, comprando com a sua conta da loja, o desconto do club entra sozinho no checkout. Cada compra soma pontos que você troca por desconto. Sua camiseta do club e o patch já entraram na fila de envio.</p>
             <a className="sb-btn" style={{ marginTop: 14, textDecoration: "none" }} href={`${storeUrl.replace(/\/$/, "")}/discount/${done.code}`}>Ir para a loja com o cupom aplicado</a>
             {area && <a href={area} style={{ display: "block", marginTop: 12, fontSize: 13, color: "#1f7a3d", fontWeight: 600 }}>Ver meus pontos e resgates</a>}
           </>
@@ -147,6 +163,27 @@ export function SubscribeBox({ fee, ready, storeUrl, clubName }: { fee: number; 
           <div className="sb-f"><label htmlFor="ph">WhatsApp</label><input id="ph" className="sb-in" inputMode="tel" autoComplete="tel" value={f.phone} onChange={(e) => set("phone", maskPhone(e.target.value))} placeholder="(21) 99999-9999" required /></div>
         </div>
         <div className="sb-f"><label htmlFor="em">E-mail (o mesmo da sua conta na loja)</label><input id="em" className="sb-in" type="email" autoComplete="email" value={f.email} onChange={(e) => set("email", e.target.value)} required /></div>
+        <div className="sb-two">
+          <div className="sb-f"><label htmlFor="bd">Data de nascimento</label><input id="bd" className="sb-in" inputMode="numeric" autoComplete="bday" value={x.birth} onChange={(e) => setx("birth", maskDate(e.target.value))} placeholder="dd/mm/aaaa" required /></div>
+          <div className="sb-f"><label htmlFor="ig">Seu @ do Instagram</label><input id="ig" className="sb-in" value={x.instagram} onChange={(e) => setx("instagram", e.target.value.replace(/\s/g, ""))} placeholder="@seuusuario" /></div>
+        </div>
+
+        <div className="sb-st" style={{ marginTop: 8 }}>Seu kit de boas-vindas</div>
+        <div className="sb-f"><label>Tamanho da camiseta do club</label><div className="sb-sizes">{["P", "M", "G", "GG", "XG"].map((z) => <button type="button" key={z} className={x.size === z ? "sb-on" : ""} onClick={() => setx("size", z)}>{z}</button>)}</div></div>
+        <div className="sb-two">
+          <div className="sb-f"><label htmlFor="cep">CEP</label><input id="cep" className="sb-in" inputMode="numeric" autoComplete="postal-code" value={x.zip} onChange={(e) => { const v = maskCep(e.target.value); setx("zip", v); lookupCep(v); }} placeholder="00000-000" required /></div>
+          <div className="sb-f"><label htmlFor="num">Número</label><input id="num" className="sb-in" value={x.number} onChange={(e) => setx("number", e.target.value)} required /></div>
+        </div>
+        <div className="sb-f"><label htmlFor="rua">Rua{cepBusy ? " (buscando...)" : ""}</label><input id="rua" className="sb-in" autoComplete="address-line1" value={x.street} onChange={(e) => setx("street", e.target.value)} required /></div>
+        <div className="sb-two">
+          <div className="sb-f"><label htmlFor="cpl">Complemento</label><input id="cpl" className="sb-in" autoComplete="address-line2" value={x.extra} onChange={(e) => setx("extra", e.target.value)} /></div>
+          <div className="sb-f"><label htmlFor="bai">Bairro</label><input id="bai" className="sb-in" value={x.district} onChange={(e) => setx("district", e.target.value)} /></div>
+        </div>
+        <div className="sb-two">
+          <div className="sb-f"><label htmlFor="cid">Cidade</label><input id="cid" className="sb-in" autoComplete="address-level2" value={x.city} onChange={(e) => setx("city", e.target.value)} required /></div>
+          <div className="sb-f"><label htmlFor="uf">Estado (UF)</label><input id="uf" className="sb-in" autoComplete="address-level1" value={x.state} onChange={(e) => setx("state", e.target.value.toUpperCase().slice(0, 2))} placeholder="RJ" required /></div>
+        </div>
+        {ref && <div className="sb-note"><span>Você veio pela indicação de um membro do club.</span></div>}
 
         <div className="sb-st" style={{ marginTop: 8 }}>Pagamento</div>
         <div className="sb-tabs" role="tablist">
