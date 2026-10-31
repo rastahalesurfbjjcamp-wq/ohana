@@ -1,7 +1,7 @@
 // Números da loja e texto dos relatórios enviados no WhatsApp.
 import { db } from "./db";
 import { salesBetween, conversionForDay, type SalesLine } from "./shopify";
-import { metaSpend } from "./meta";
+import { byGroup, campStats, metaSpend } from "./meta";
 import { shortTip } from "./ai";
 import { getSettings } from "./settings";
 import { addDays, brl, dayRange, isoDayLocal, pct, weekdayName } from "./time";
@@ -54,10 +54,12 @@ export async function computeMetrics(fromIso: string, toIso: string, opts: { mon
     else cogs += c * l.quantity;
   }
   let ads: number | null = null;
+  // lucro: só o gasto das campanhas com objetivo de venda (lead e perfil ficam de fora)
   try {
-    ads = await metaSpend(fromIso, toIso);
+    const camps = await campStats(fromIso, toIso);
+    ads = camps ? byGroup(camps).vendas.spend : await metaSpend(fromIso, toIso);
   } catch {
-    ads = null;
+    ads = await metaSpend(fromIso, toIso).catch(() => null);
   }
   const taxesFees = sales.net * (s.costs.taxRate + s.costs.paymentFeeRate);
   const packaging = items * s.costs.packagingPerItem;

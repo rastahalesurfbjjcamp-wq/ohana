@@ -19,7 +19,7 @@ export async function partnerStats(fromIso: string, toIso: string) {
   const s = await getSettings();
   const partners = await db.referral.findMany({ where: { kind: { in: ["atleta", "influenciador"] } }, orderBy: { createdAt: "asc" } });
   const byCode = new Map(partners.map((p) => [p.code.toUpperCase(), p]));
-  const orders = beyondOrdersWindow(dayRange(fromIso).start) ? [] : (await ordersBetween(dayRange(fromIso).start, dayRange(toIso).end)).filter((o) => !o.cancelled && o.financial !== "REFUNDED" && o.financial !== "VOIDED");
+  const orders = beyondOrdersWindow(dayRange(fromIso).start) ? [] : (await ordersBetween(dayRange(fromIso).start, dayRange(toIso).end)).filter((o) => !o.cancelled && ["PAID", "PARTIALLY_PAID", "PARTIALLY_REFUNDED"].includes(o.financial));
   const resolve = await costResolver();
   const rate = s.costs.taxRate + s.costs.paymentFeeRate;
   const pct = s.referral.commission / 100;

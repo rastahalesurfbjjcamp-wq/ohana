@@ -136,12 +136,14 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
   };
 
   /* Diagnóstico do período */
-  const valid = orders.filter((o) => !o.cancelled && o.financial !== "REFUNDED" && o.financial !== "VOIDED");
+  const isPaid = (o: Order) => o.financial === "PAID" || o.financial === "PARTIALLY_REFUNDED" || o.financial === "PARTIALLY_PAID";
+  const open = orders.filter((o) => !o.cancelled && o.financial !== "REFUNDED" && o.financial !== "VOIDED");
+  // vendas = só pedidos aprovados (pago). Pix e boleto gerados ficam em "Aguardando pagamento"
+  const valid = open.filter(isPaid);
   const lost = orders.filter((o) => o.cancelled || o.financial === "REFUNDED" || o.financial === "VOIDED");
   const kindOf = (o: Order) => { const g = (o.gateway ?? "").toLowerCase(); return g.includes("pix") ? "pix" : g.includes("boleto") ? "boleto" : "cartao"; };
-  const isPaid = (o: Order) => o.financial === "PAID" || o.financial === "PARTIALLY_REFUNDED" || o.financial === "PARTIALLY_PAID";
   const pay = (["pix", "cartao", "boleto"] as const).map((k) => {
-    const list = valid.filter((o) => kindOf(o) === k);
+    const list = open.filter((o) => kindOf(o) === k);
     const paidL = list.filter(isPaid);
     const pend = list.filter((o) => !isPaid(o));
     return { k, label: k === "pix" ? "Pix" : k === "cartao" ? "Cartão" : "Boleto", n: paidL.length, v: paidL.reduce((a, o) => a + o.total, 0), pn: pend.length, pv: pend.reduce((a, o) => a + o.total, 0) };
@@ -265,7 +267,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
           {!old && (
           <div className="lrow">
             <span className="tile sm t-s"><Hourglass size={15} /></span>
-            <div><div className="t">Aguardando pagamento</div><div className="s">Pix e boletos gerados</div></div>
+            <div><div className="t">Aguardando pagamento</div><div className="s">Pix gerado e ainda não pago (fora do faturamento)</div></div>
             <div className="end mid-num" style={{ fontSize: 20, color: "var(--sun)" }}>{brl(pendTotal, 0)}</div>
           </div>
           )}

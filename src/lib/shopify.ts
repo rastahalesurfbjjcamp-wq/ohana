@@ -39,6 +39,7 @@ type OrdersPage = {
     pageInfo: { hasNextPage: boolean; endCursor: string | null };
     nodes: {
       cancelledAt: string | null;
+      displayFinancialStatus?: string | null;
       currentSubtotalPriceSet: { shopMoney: { amount: string } };
       totalPriceSet: { shopMoney: { amount: string } };
       lineItems: {
@@ -88,6 +89,8 @@ async function salesFromReport(start: Date, end: Date): Promise<SalesSummary> {
 }
 
 // Vendas entre duas datas (UTC)
+const PAID_STATUS = new Set(["PAID", "PARTIALLY_PAID", "PARTIALLY_REFUNDED"]);
+
 async function salesBetweenRaw(start: Date, end: Date): Promise<SalesSummary> {
   if (beyondOrdersWindow(start)) return salesFromReport(start, end);
   const q = `created_at:>='${start.toISOString()}' created_at:<'${end.toISOString()}' -status:cancelled`;
@@ -97,12 +100,13 @@ async function salesBetweenRaw(start: Date, end: Date): Promise<SalesSummary> {
   do {
     const data: OrdersPage = await gql<OrdersPage>(
       `query($q:String!,$after:String){ orders(first:100, after:$after, query:$q){ pageInfo{hasNextPage endCursor}
-        nodes{ cancelledAt currentSubtotalPriceSet{shopMoney{amount}} totalPriceSet{shopMoney{amount}}
+        nodes{ cancelledAt displayFinancialStatus currentSubtotalPriceSet{shopMoney{amount}} totalPriceSet{shopMoney{amount}}
           lineItems(first:50){ nodes{ quantity title discountedTotalSet{shopMoney{amount}} variant{ inventoryItem{ unitCost{amount} } } } } } } }`,
       { q, after },
     );
     for (const o of data.orders.nodes) {
-      if (o.cancelledAt) continue;
+      // faturamento só com venda aprovada: Pix ou boleto gerado e não pago fica de fora
+      if (o.cancelledAt || !PAID_STATUS.has(o.displayFinancialStatus ?? "")) continue;
       out.orders++;
       out.gross += Number(o.totalPriceSet.shopMoney.amount);
       out.net += Number(o.currentSubtotalPriceSet.shopMoney.amount);

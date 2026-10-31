@@ -28,7 +28,7 @@ async function dailyRevenue(from: string, to: string) {
   const orders = await ordersBetween(dayRange(from).start, dayRange(to).end);
   const byDay = new Map<string, number>();
   for (const o of orders) {
-    if (o.cancelled) continue;
+    if (o.cancelled || !["PAID", "PARTIALLY_PAID", "PARTIALLY_REFUNDED"].includes(o.financial)) continue;
     const d = isoDayLocal(new Date(o.createdAt));
     byDay.set(d, (byDay.get(d) ?? 0) + o.subtotal);
   }
