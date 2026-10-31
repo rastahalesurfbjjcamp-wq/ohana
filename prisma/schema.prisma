@@ -619,3 +619,26 @@ model ClubAffPayout {
 
   @@unique([memberId, month])
 }
+
+// Mensagens para mandar na mão, pelo botão no pedido ou no carrinho (estilo Reportana)
+model QuickMessage {
+  id        String   @id @default(cuid())
+  name      String
+  kind      String   // carrinho | pedido
+  show      String   @default("todos") // pedido: todos | pendente | pago | enviado
+  parts     Json     // [{ text, mediaUrl?, mediaType?, productImage? }]
+  position  Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+model QuickSend {
+  id        String   @id @default(cuid())
+  messageId String
+  refId     String   // id do carrinho ou do pedido
+  phone     String
+  by        String?
+  error     String?
+  createdAt DateTime @default(now())
+
+  @@index([refId])
+}

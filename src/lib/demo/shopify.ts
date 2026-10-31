@@ -9,7 +9,7 @@ function rawOrder(o: DOrder) {
   const ship = o.shippedAt ? [{ createdAt: o.shippedAt, displayStatus: o.deliveredAt ? "DELIVERED" : "IN_TRANSIT", deliveredAt: o.deliveredAt, trackingInfo: [{ number: o.tracking, company: "Correios", url: `https://rastreamento.correios.com.br/app/index.php?objetos=${o.tracking}` }], events: { nodes: [{ status: o.deliveredAt ? "DELIVERED" : "IN_TRANSIT", message: o.deliveredAt ? "Objeto entregue ao destinatário" : "Objeto em trânsito", happenedAt: o.deliveredAt ?? o.shippedAt }] } }] : [];
   return {
     id: o.id, name: o.name, createdAt: o.createdAt, cancelledAt: o.cancelled ? o.createdAt : null,
-    displayFinancialStatus: o.financial, displayFulfillmentStatus: o.fulfillment,
+    displayFinancialStatus: o.financial, displayFulfillmentStatus: o.fulfillment, statusPageUrl: `https://mare-alta.exemplo.com/orders/${o.n}`,
     currentSubtotalPriceSet: money(o.subtotal), currentTotalPriceSet: money(o.total), totalPriceSet: money(o.total),
     customer: { id: o.customer.id, displayName: o.customer.name },
     shippingAddress: { provinceCode: o.customer.state, city: o.customer.city, phone: `+${o.customer.phone}` },

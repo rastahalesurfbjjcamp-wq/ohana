@@ -61,6 +61,7 @@ export interface Order {
   codes: string[];
   customerId: string | null;
   cpf: string | null;
+  statusUrl: string | null;
 }
 
 type RawOrder = {
@@ -82,6 +83,7 @@ type RawOrder = {
   fulfillments: { displayStatus: string | null; trackingInfo: { number: string; company: string | null; url: string | null }[] }[];
   paymentGatewayNames: string[] | null;
   discountCodes: string[] | null;
+  statusPageUrl?: string | null;
   email: string | null;
   phone: string | null;
   lineItems: {
@@ -103,7 +105,7 @@ const ORDER_FIELDS = `id name createdAt cancelledAt displayFinancialStatus displ
   localizedFields(first:3){ nodes{ key value } }
   customerJourneySummary{ firstVisit{ source utmParameters{source medium campaign content term} } lastVisit{ source utmParameters{source medium campaign content term} } }
   fulfillments(first:3){ displayStatus trackingInfo{number company url} }
-  paymentGatewayNames email phone discountCodes
+  paymentGatewayNames email phone discountCodes statusPageUrl
   lineItems(first:50){ nodes{ title variantTitle quantity sku discountedTotalSet{shopMoney{amount}} variant{ inventoryItem{ unitCost{amount} } } image{ url(transform:{maxWidth:96, maxHeight:96}) } } }`;
 
 function mapOrder(o: RawOrder): Order {
@@ -131,6 +133,7 @@ function mapOrder(o: RawOrder): Order {
     codes: (o.discountCodes ?? []).map((c) => c.toUpperCase()),
     customerId: o.customer?.id ?? null,
     cpf: (o.localizedFields?.nodes.find((f) => f.key === "TAX_CREDENTIAL_BR")?.value ?? "").replace(/\D/g, "") || null,
+    statusUrl: o.statusPageUrl ?? null,
     email: o.email ?? null,
     phone: o.phone ?? o.shippingAddress?.phone ?? null,
     images: o.lineItems.nodes.map((l) => l.image?.url).filter((x): x is string => !!x),

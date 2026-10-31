@@ -4,11 +4,12 @@ import { getSettings } from "@/lib/settings";
 import { TEMPLATES } from "@/lib/templates";
 import { Header } from "@/components/ui";
 import { applyTemplate } from "../acoes4";
+import { QuickEditor } from "./QuickEditor";
 
 export const dynamic = "force-dynamic";
 const CATS = ["Recuperação", "Pós-venda", "Comunidade", "Atendimento"] as const;
 
-export default async function Modelos({ searchParams }: { searchParams: Promise<{ c?: string; q?: string; usado?: string }> }) {
+export default async function Modelos({ searchParams }: { searchParams: Promise<{ c?: string; q?: string; usado?: string; manual?: string; n?: string; ok?: string; erro?: string }> }) {
   const sp = await searchParams;
   const s = await getSettings();
   const on: Record<string, boolean> = { carrinho: s.recovery.cartEnabled, pix: s.recovery.pixEnabled, rastreio: s.recovery.trackingEnabled, avaliacao: s.postsale.reviewEnabled, recompra: s.postsale.repurchaseEnabled, boasvindas: s.leads.welcomeEnabled, volta: s.winback.enabled, ausencia: s.assistant.enabled };
@@ -19,6 +20,9 @@ export default async function Modelos({ searchParams }: { searchParams: Promise<
       <Header title="Modelos prontos" lede="Escolha, ajuste o texto e ative. Os modelos que já estão ligados aparecem marcados.">
         <form className="srch" action="/modelos"><Search size={15} className="dim" /><input name="q" defaultValue={sp.q} placeholder="Buscar modelo" /></form>
       </Header>
+      {sp.ok === "manual" && <div className="ok">Mensagem salva. Os botões já aparecem nos pedidos e carrinhos.</div>}
+      {sp.erro && <div className="err">Coloque pelo menos um texto ou imagem.</div>}
+      <QuickEditor edit={sp.manual} n={sp.n} />
       {sp.usado && <div className="ok">Texto do modelo aplicado. Ajuste os detalhes e ligue na tela da automação.</div>}
       <div className="chips" style={{ alignSelf: "flex-start" }}>
         <Link href="/modelos" className={!sp.c ? "on" : ""}>Todos<b>{TEMPLATES.length}</b></Link>

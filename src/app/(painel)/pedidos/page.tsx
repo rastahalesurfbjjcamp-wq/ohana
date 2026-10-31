@@ -7,6 +7,8 @@ import { normalizePhone } from "@/lib/segments";
 import { gql, ordersBetween, type Order } from "@/lib/store";
 import { addDays, brl, dayRange, isoDayLocal } from "@/lib/time";
 import { ErrorNote, Header } from "@/components/ui";
+import { QuickButtons } from "@/components/QuickButtons";
+import { quickMessages, sentFor } from "@/lib/quick";
 
 export const dynamic = "force-dynamic";
 
@@ -48,11 +50,11 @@ export default async function Pedidos({ searchParams }: { searchParams: Promise<
     // pedidos e carrinhos ao mesmo tempo; carrinhos guardados por 1 minuto
     const ordersP = ordersBetween(dayRange(addDays(today, -(dias - 1))).start, dayRange(today).end);
     const d = await swr(`checkouts:${since.slice(0, 10)}`, 60_000, () => gql<{ abandonedCheckouts: { nodes: Checkout[] } }>(
-      `query($q:String){ abandonedCheckouts(first:100, reverse:true, sortKey:CREATED_AT, query:$q){ nodes{ id createdAt completedAt abandonedCheckoutUrl totalPriceSet{shopMoney{amount}} customer{ displayName defaultPhoneNumber{phoneNumber} } shippingAddress{ phone firstName } lineItems(first:5){ nodes{ title quantity image{ url(transform:{maxWidth:96, maxHeight:96}) } } } } } }`,
+      `query($q:String){ abandonedCheckouts(first:100, reverse:true, sortKey:CREATED_AT, query:$q){ nodes{ id createdAt completedAt abandonedCheckoutUrl totalPriceSet{shopMoney{amount}} customer{ displayName defaultPhoneNumber{phoneNumber} } shippingAddress{ phone firstName } lineItems(first:5){ nodes{ title quantity image{ url(transform:{maxWidth:640, maxHeight:640}) } } } } } }`,
       { q: `created_at:>='${since}'` },
     )).catch(() => null);
     orders = await ordersP;
-    carts = (d?.abandonedCheckouts?.nodes ?? []).filter((c) => !c.completedAt);
+    carts = d?.abandonedCheckouts?.nodes ?? [];
   } catch (e) {
     error = e;
   }
@@ -61,7 +63,15 @@ export default async function Pedidos({ searchParams }: { searchParams: Promise<
   const searched = q ? orders.filter((o) => `${o.name} ${o.customer} ${o.email ?? ""}`.toLowerCase().includes(q) || (digits.length >= 4 && (o.phone ?? "").replace(/\D/g, "").includes(digits))) : orders;
   const f = FILTERS[sp.f ?? ""] ? sp.f! : "todos";
   const list = searched.filter(FILTERS[f][1]);
-  const cases = await db.recoveryCase.findMany({ where: { orderName: { in: list.filter((o) => o.financial === "PENDING").map((o) => o.name) } } });
+  const [cases, qmsgs, sent] = await Promise.all([
+    db.recoveryCase.findMany({ where: { orderName: { in: list.filter((o) => o.financial === "PENDING").map((o) => o.name) } } }),
+    quickMessages().then((x) => x.filter((m) => m.active)).catch(() => []),
+    sentFor(aba === "pedidos" ? list.slice(0, 250).map((o) => o.id) : carts.map((c) => c.id)).catch(() => new Map()),
+  ]);
+  const stage = (o: Order) => (o.cancelled ? "cancelado" : o.financial === "PENDING" ? "pendente" : o.tracking ? "enviado" : "pago");
+  const orderMsgs = (o: Order) => qmsgs.filter((m) => m.kind === "pedido" && (m.show === "todos" || m.show === stage(o))).map((m) => ({ id: m.id, name: m.name }));
+  const cartMsgs = qmsgs.filter((m) => m.kind === "carrinho").map((m) => ({ id: m.id, name: m.name }));
+  const sentOf = (id: string) => ((sent.get(id) ?? []) as { messageId: string; at: Date; by: string | null; error: string | null }[]).map((x) => ({ ...x, at: x.at.toISOString() }));
   const fmt = new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
   const href = (k: string, v?: string) => {
     const p = new URLSearchParams();
@@ -109,7 +119,7 @@ export default async function Pedidos({ searchParams }: { searchParams: Promise<
           list.length ? (
             <div style={{ overflowX: "auto" }}>
               <table className="tb">
-                <thead><tr><th>Pedido</th><th>Cliente</th><th>Produtos</th><th>Pagamento</th><th>Rastreio</th><th className="r">Valor</th><th>Data</th><th style={{ width: 50 }} /></tr></thead>
+                <thead><tr><th>Pedido</th><th>Cliente</th><th>Mensagens</th><th>Produtos</th><th>Pagamento</th><th>Rastreio</th><th className="r">Valor</th><th>Data</th><th style={{ width: 50 }} /></tr></thead>
                 <tbody>
                   {list.slice(0, 250).map((o) => {
                     const [m, MIcon] = method(o.gateway);
@@ -124,6 +134,7 @@ export default async function Pedidos({ searchParams }: { searchParams: Promise<
                           <b style={{ fontWeight: 600 }}>{o.customer}</b>
                           <div className="dim" style={{ fontSize: 12 }}>{[o.phone ? formatPhone(o.phone) : null, o.email].filter(Boolean).join(" · ") || [o.city, o.state].filter(Boolean).join(" / ")}</div>
                         </td>
+                        <td>{!o.cancelled && <QuickButtons msgs={orderMsgs(o)} refId={o.id} phone={phone} sent={sentOf(o.id)} ctx={{ nome: o.customer, produtos: o.lines.map((l) => `${l.quantity > 1 ? `${l.quantity}x ` : ""}${l.title}${l.variant ? ` (${l.variant})` : ""}`).join(", "), valor: brl(o.total), link: o.statusUrl ?? "", pedido: o.name, rastreio: o.tracking?.url ?? o.tracking?.number ?? "", imagem: o.images[0] }} />}</td>
                         <td><Thumbs imgs={o.images} n={o.lines.reduce((a, l) => a + l.quantity, 0)} /></td>
                         <td style={{ whiteSpace: "nowrap" }}><span className="row" style={{ gap: 6, flexWrap: "nowrap" }}><MIcon size={14} className="mut" /> {m} <span className={`chip ${pay[1]}`}>{pay[0]}</span></span></td>
                         <td style={{ whiteSpace: "nowrap" }}>
@@ -150,17 +161,17 @@ export default async function Pedidos({ searchParams }: { searchParams: Promise<
         ) : carts.length ? (
           <div style={{ overflowX: "auto" }}>
             <table className="tb">
-              <thead><tr><th>Cliente</th><th>Produtos</th><th className="r">Valor</th><th>Data</th><th>Recuperação</th><th style={{ width: 90 }} /></tr></thead>
+              <thead><tr><th>Cliente</th><th>Mensagens</th><th>Produtos</th><th className="r">Valor</th><th>Data</th><th style={{ width: 90 }} /></tr></thead>
               <tbody>
                 {carts.map((c) => {
                   const phone = normalizePhone(c.customer?.defaultPhoneNumber?.phoneNumber ?? c.shippingAddress?.phone);
                   return (
                     <tr key={c.id}>
-                      <td><b style={{ fontWeight: 600 }}>{c.shippingAddress?.firstName ?? c.customer?.displayName ?? "Sem nome"}</b><div className="dim" style={{ fontSize: 12 }}>{phone ? formatPhone(phone) : "sem telefone"}</div></td>
+                      <td><b style={{ fontWeight: 600 }}>{c.customer?.displayName ?? c.shippingAddress?.firstName ?? "Sem nome"}</b><div className="dim" style={{ fontSize: 12 }}>{phone ? formatPhone(phone) : "sem telefone"}</div></td>
+                      <td><QuickButtons msgs={cartMsgs} refId={c.id} phone={phone} sent={sentOf(c.id)} ctx={{ nome: c.customer?.displayName ?? c.shippingAddress?.firstName ?? "", produtos: c.lineItems.nodes.map((l) => `${l.quantity > 1 ? `${l.quantity}x ` : ""}${l.title}`).join(", "), valor: brl(Number(c.totalPriceSet.shopMoney.amount)), link: c.abandonedCheckoutUrl, imagem: c.lineItems.nodes.find((l) => l.image)?.image?.url }} /></td>
                       <td><Thumbs imgs={c.lineItems.nodes.map((l) => l.image?.url).filter((x): x is string => !!x)} n={c.lineItems.nodes.reduce((a, l) => a + l.quantity, 0)} /></td>
-                      <td className="r"><b>{brl(Number(c.totalPriceSet.shopMoney.amount))}</b></td>
+                      <td className="r"><b>{brl(Number(c.totalPriceSet.shopMoney.amount))}</b><div>{c.completedAt ? <span className="chip c-l">Recuperado</span> : <span className="chip c-n">Abandonado</span>}</div></td>
                       <td className="mut">{fmt.format(new Date(c.createdAt))}</td>
-                      <td>{phone ? <span className="chip c-s">pode recuperar</span> : <span className="chip c-n">sem WhatsApp</span>}</td>
                       <td className="r">
                         <div className="row" style={{ gap: 6, justifyContent: "flex-end", flexWrap: "nowrap" }}>
                           <a className="menu-b" href={c.abandonedCheckoutUrl} target="_blank" rel="noreferrer" title="Abrir carrinho"><ShoppingCart size={15} /></a>

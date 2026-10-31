@@ -1124,3 +1124,15 @@ a.itile:hover { border-color: #34403b; transform: translateY(-1px); }
 @media (max-width: 1100px) { .lv { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 560px) { .lv { grid-template-columns: 1fr; } }
 .seq-part { display: flex; flex-direction: column; padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: #0e1211; }
+
+/* Mensagens manuais (bolinha verde quando enviada) */
+.qb { display: inline-flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+.qb-i { width: 26px; height: 26px; border-radius: 8px; border: 1px solid #26302c; background: #121816; color: #6b7570; display: grid; place-items: center; cursor: pointer; transition: all .15s; padding: 0; }
+.qb-i:hover { color: #4ad781; border-color: #2f5a40; }
+.qb-i.on { background: #25d366; border-color: #25d366; color: #05210f; }
+.qb-i.busy { opacity: .5; animation: pulse 1s infinite; }
+.qb-i.hist { color: #8b948f; }
+.qb-h { position: relative; }
+.qb-pop { position: absolute; z-index: 20; top: 30px; right: 0; min-width: 260px; background: #141917; border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--ink2); box-shadow: 0 12px 30px rgba(0,0,0,.4); white-space: nowrap; }
+.qb-pop .err-t { color: #f87171; }
+@keyframes pulse { 50% { opacity: .25; } }
