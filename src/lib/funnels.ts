@@ -32,6 +32,8 @@ async function condOk(cond: string | null | undefined, phone: string, since: Dat
 }
 
 export async function funnelEvent(trigger: string, phone: string, name?: string | null) {
+  // automações com o mesmo gatilho (uma vez por dia por pessoa)
+  await import("./automations").then((a) => a.automationEvent(trigger, `${trigger}-${phone}-${new Date().toISOString().slice(0, 10)}`, phone, { nome: name ?? "" })).catch(() => null);
   const funnels = await db.funnel.findMany({ where: { trigger, active: true } });
   for (const f of funnels) {
     const steps = f.steps as Step[];

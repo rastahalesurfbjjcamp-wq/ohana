@@ -642,3 +642,67 @@ model QuickSend {
 
   @@index([refId])
 }
+
+// Automações por gatilho, com blocos (enviar, aguardar, condição, etiqueta, lista, sair)
+model Automation {
+  id        String          @id @default(cuid())
+  name      String
+  trigger   String          // carrinho_abandonado | pedido_criado | pedido_pix | pedido_boleto | pedido_pago | pedido_entregue | rastreio_criado | primeira_compra | lead_novo | entrou_grupo | saiu_grupo | assinou_club | lista
+  config    Json            @default("{}") // { delayMin, listId }
+  flow      Json            @default("{}") // { start, nodes: { id: Node } }
+  active    Boolean         @default(false)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  runs      AutomationRun[]
+}
+model AutomationRun {
+  id           String     @id @default(cuid())
+  automationId String
+  refId        String     // pedido, carrinho, lead ou contato da lista
+  phone        String
+  name         String?
+  ctx          Json       @default("{}")
+  nodeId       String?
+  nextAt       DateTime?
+  status       String     @default("ativo") // ativo | fim | erro | parado
+  sent         Int        @default(0)
+  clicks       Int        @default(0)
+  lastSentAt   DateTime?
+  repliedAt    DateTime?
+  convertedAt  DateTime?
+  value        Float?
+  error        String?
+  log          Json       @default("[]")
+  createdAt    DateTime   @default(now())
+  automation   Automation @relation(fields: [automationId], references: [id], onDelete: Cascade)
+
+  @@unique([automationId, refId])
+  @@index([status, nextAt])
+  @@index([phone])
+}
+model ContactTag {
+  id        String   @id @default(cuid())
+  phone     String
+  tag       String
+  createdAt DateTime @default(now())
+
+  @@unique([phone, tag])
+}
+model ContactList {
+  id        String       @id @default(cuid())
+  name      String
+  createdAt DateTime     @default(now())
+  members   ListMember[]
+}
+model ListMember {
+  id        String      @id @default(cuid())
+  listId    String
+  phone     String
+  name      String?
+  email     String?
+  fields    Json        @default("{}") // colunas extras da planilha (ex.: link)
+  createdAt DateTime    @default(now())
+  list      ContactList @relation(fields: [listId], references: [id], onDelete: Cascade)
+
+  @@unique([listId, phone])
+}

@@ -4,7 +4,7 @@ import { getSettings } from "./settings";
 import { createCustomer, createOrder, createSubscription, FAILED, orderStatus, PAID, payCard, payPix } from "./appmax";
 import { cpfValid, digits, ensureMemberCode, findShopifyCustomer, registerPayment, setMemberAccess } from "./club";
 import { enqueue, redis } from "./queue";
-import { memberToken } from "./clubMember";
+import { memberLink, memberToken } from "./clubMember";
 import { normalizePhone } from "./segments";
 
 export type Extra = { birth?: string; instagram?: string; size?: string; zip?: string; street?: string; number?: string; extra?: string; district?: string; city?: string; state?: string; ref?: string };
@@ -144,6 +144,7 @@ export async function activate(checkoutId: string) {
   await ensurePerk(m.id, "kit", s.kitTitle).catch(() => null);
   if (!m.code) await ensureMemberCode(m.id).catch(() => null);
   if (s.msgWelcome) await enqueue("club-msg", { memberId: m.id, kind: "boasvindas" }, { jobId: `cw-${m.id}-${ck.id}`, delayMs: 60_000 }).catch(() => null);
+  await import("./automations").then((a) => a.automationEvent("assinou_club", `club-${m!.id}`, m!.phone, { nome: m!.name, link: memberLink(m!.id) })).catch(() => null);
   await event(m.id, "assinou", `Assinou o clube pelo ${ck.method === "pix" ? "Pix" : `cartão final ${ck.cardLast4 ?? ""}`}`, s.fee);
   return db.clubMember.findUnique({ where: { id: m.id } });
 }

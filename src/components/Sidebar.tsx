@@ -31,7 +31,9 @@ export function Sidebar({ name, store, connected, leaves, logout }: { name: stri
         { href: "/agendamentos", icon: CalendarClock, label: "Agendamentos" },
         { href: "/votacoes", icon: Vote, label: "Votações" },
         { href: "/lancamento", icon: Rocket, label: "Lançamento" },
-        { href: "/funis", icon: Workflow, label: "Funis" },
+        { href: "/automacoes", icon: Workflow, label: "Automações" },
+        { href: "/listas", icon: Contact, label: "Listas" },
+        { href: "/funis", icon: Route, label: "Funis" },
       ],
     },
     {

@@ -18,7 +18,7 @@ import { runFunnels } from "../lib/funnels";
 import { assistantReply } from "../lib/assistant";
 import { refreshReferralUsage } from "../lib/referral";
 
-type Marks = { payday?: string; daily?: string; weekly?: string; sync?: number; scan?: number; repurchase?: string; referral?: number; club?: number; clubDay?: string; perks?: number; wa?: number; monthly?: string; autoDisc?: number };
+type Marks = { payday?: string; daily?: string; weekly?: string; sync?: number; scan?: number; repurchase?: string; referral?: number; club?: number; clubDay?: string; perks?: number; autoScan?: number; wa?: number; monthly?: string; autoDisc?: number };
 
 async function getMarks(): Promise<Marks> {
   const r = await db.setting.findUnique({ where: { key: "_marks" } });
@@ -57,6 +57,13 @@ async function tick() {
   }
 
   await dueBroadcasts();
+  // Automações: passos que chegaram na hora (a cada minuto) e gatilhos de pedido/carrinho (a cada 5 minutos)
+  {
+    const A = await import("../lib/automations");
+    await A.runDue().catch((e) => console.error("[automações]", e));
+    const mk = await getMarks();
+    if (!mk.autoScan || Date.now() - mk.autoScan > 5 * 60_000) { await setMarks({ autoScan: Date.now() }); await A.scanAutomationEvents().catch((e) => console.error("[automações gatilhos]", e)); }
+  }
   await sendDueRecovery().catch((e) => console.error("[recuperação]", e));
   await runFunnels().catch((e) => console.error("[funis]", e));
 
