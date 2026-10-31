@@ -267,7 +267,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
           {!old && (
           <div className="lrow">
             <span className="tile sm t-s"><Hourglass size={15} /></span>
-            <div><div className="t">Aguardando pagamento</div><div className="s">Pix gerado e ainda não pago (fora do faturamento)</div></div>
+            <div><div className="t">Aguardando pagamento</div><div className="s">Ainda não aprovado, fica fora do faturamento</div></div>
             <div className="end mid-num" style={{ fontSize: 20, color: "var(--sun)" }}>{brl(pendTotal, 0)}</div>
           </div>
           )}
