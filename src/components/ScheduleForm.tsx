@@ -1,7 +1,7 @@
 "use client";
 // Formulário de nova mensagem agendada para os grupos.
 import { useState } from "react";
-import { CalendarClock, Send } from "lucide-react";
+import { CalendarClock, Plus, Send, X } from "lucide-react";
 import { useFormStatus } from "react-dom";
 import { DateTimeField, FileField, GroupPicker, ToggleCard, type GroupOpt } from "./fields";
 
@@ -21,13 +21,24 @@ function Buttons({ count }: { count: number }) {
 
 export function ScheduleForm({ action, groups, defaultDate }: { action: (f: FormData) => Promise<void>; groups: GroupOpt[]; defaultDate?: string }) {
   const [count, setCount] = useState(groups.filter((g) => g.checked).length);
+  const [parts, setParts] = useState(1);
   return (
     <form action={action} className="stack" style={{ gap: 12 }}>
-      <div className="field">
-        <label>Mensagem</label>
-        <textarea className="in" name="text" required placeholder="Ex.: Lançamento hoje às 19h, só para quem está no grupo." style={{ minHeight: 110 }} />
-      </div>
-      <FileField name="media" hint="O texto vira a legenda (opcional)" />
+      <input type="hidden" name="parts" value={parts} />
+      {Array.from({ length: parts }, (_, i) => (
+        <div key={i} className={parts > 1 ? "seq-part" : "stack"} style={{ gap: 10 }}>
+          <div className="field">
+            <label className="row" style={{ justifyContent: "space-between" }}>
+              <span>{parts > 1 ? `Mensagem ${i + 1}` : "Mensagem"}</span>
+              {i > 0 && i === parts - 1 && <button type="button" className="menu-b" aria-label="Tirar esta mensagem" onClick={() => setParts(parts - 1)}><X size={14} /></button>}
+            </label>
+            <textarea className="in" name={i === 0 ? "text" : `text_${i}`} placeholder={i === 0 ? "Ex.: Lançamento hoje às 19h, só para quem está no grupo." : "Texto, link ou legenda da foto"} style={{ minHeight: i === 0 ? 110 : 80 }} />
+          </div>
+          <FileField name={i === 0 ? "media" : `media_${i}`} hint="Foto, vídeo ou PDF. O texto vira a legenda (opcional)" />
+        </div>
+      ))}
+      {parts < 10 && <button type="button" className="btn sm" style={{ alignSelf: "flex-start" }} onClick={() => setParts(parts + 1)}><Plus size={14} /> Adicionar outra mensagem na sequência</button>}
+      {parts > 1 && <small className="dim" style={{ marginTop: -4 }}>As {parts} mensagens saem juntas, nessa ordem, poucos segundos uma da outra. Só a primeira marca todos.</small>}
       <ToggleCard name="mentionAll" tone="s" defaultChecked title="Marcar todos os membros" sub="Cada pessoa recebe a notificação, mesmo com o grupo silenciado" />
       <GroupPicker name="groups" groups={groups} onCount={setCount} />
       <DateTimeField name="sendAt" defaultValue={defaultDate} />

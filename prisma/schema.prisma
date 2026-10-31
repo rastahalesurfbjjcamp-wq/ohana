@@ -109,6 +109,7 @@ model ScheduledMessage {
   text        String
   mediaUrl    String?
   mediaType   String?        // image | video | audio | document
+  parts       Json?          // mensagens seguintes da sequência: [{ text, mediaUrl, mediaType }]
   mentionAll  Boolean        @default(true)
   groupJids   String[]
   sendAt      DateTime

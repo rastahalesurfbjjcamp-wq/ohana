@@ -66,34 +66,42 @@ export async function saveGroupSelection(formData: FormData) {
 /* Agendamentos */
 export async function createSchedule(formData: FormData) {
   const s = await auth();
-  const text = str(formData, "text");
   const groupJids = formData.getAll("groups").map(String).filter(Boolean);
   const when = str(formData, "sendAt");
   const now = formData.get("now") === "1";
-  if (!text || !groupJids.length || (!when && !now)) redirect("/agendamentos?erro=campos");
-  let mediaUrl: string | undefined;
-  let mediaType: string | undefined;
-  const file = formData.get("media");
-  if (file instanceof File && file.size > 0) {
-    const up = await saveUpload(file);
-    mediaUrl = up.url;
-    mediaType = up.type;
+  // sequência: várias mensagens seguidas (texto, foto, vídeo, link), na ordem
+  const n = Math.min(10, Math.max(1, num(formData, "parts") || 1));
+  const items: { text: string; mediaUrl?: string; mediaType?: string }[] = [];
+  for (let i = 0; i < n; i++) {
+    const text = str(formData, i === 0 ? "text" : `text_${i}`);
+    const file = formData.get(i === 0 ? "media" : `media_${i}`);
+    let mediaUrl: string | undefined;
+    let mediaType: string | undefined;
+    if (file instanceof File && file.size > 0) {
+      const up = await saveUpload(file);
+      mediaUrl = up.url;
+      mediaType = up.type;
+    }
+    if (text || mediaUrl) items.push({ text, mediaUrl, mediaType });
   }
+  if (!items.length || !groupJids.length || (!when && !now)) redirect("/agendamentos?erro=campos");
+  const [first, ...rest] = items;
   const repeat = str(formData, "repeat"); // só vem quando a chave Repetir está ligada
   await db.scheduledMessage.create({
     data: {
-      text,
+      text: first.text,
       groupJids,
       sendAt: now ? new Date() : localToDate(when),
       mentionAll: on(formData, "mentionAll"),
       repeat: repeat === "daily" || repeat === "weekly" ? repeat : null,
-      mediaUrl,
-      mediaType,
+      mediaUrl: first.mediaUrl,
+      mediaType: first.mediaType,
+      parts: rest.length ? rest : undefined,
       createdBy: s.name,
     },
   });
   revalidatePath("/agendamentos");
-  redirect("/agendamentos?ok=1");
+  redirect(`/agendamentos?ok=${items.length}`);
 }
 
 export async function cancelSchedule(formData: FormData) {

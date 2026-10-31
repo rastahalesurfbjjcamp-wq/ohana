@@ -65,8 +65,8 @@ export default async function Agendamentos({ searchParams }: { searchParams: Pro
 
   const Event = ({ m, compact }: { m: (typeof list)[number]; compact?: boolean }) => (
     <Link href={href({ id: m.id })} className={`sev ${STATUS[m.status][2]}${sel?.id === m.id ? " on" : ""}`} title={m.text}>
-      <b>{hhmm.format(m.sendAt)}{m.repeat ? " ↻" : ""}</b>
-      <span className={compact ? "one" : ""}>{m.text.split("\n")[0].slice(0, compact ? 40 : 90)}</span>
+      <b>{hhmm.format(m.sendAt)}{m.repeat ? " ↻" : ""}{Array.isArray(m.parts) && m.parts.length ? ` · ${m.parts.length + 1} msgs` : ""}</b>
+      <span className={compact ? "one" : ""}>{(m.text || "📎 arquivo").split("\n")[0].slice(0, compact ? 40 : 90)}</span>
     </Link>
   );
 
@@ -75,8 +75,8 @@ export default async function Agendamentos({ searchParams }: { searchParams: Pro
       <Header title="Agendamentos" lede="Programe mensagens para os grupos e marque todos os membros de uma vez.">
         <div className="seg">{[["dia", "Dia"], ["semana", "Semana"], ["mes", "Mês"]].map(([k, l]) => <Link key={k} href={`/agendamentos?${k === "semana" ? "" : `v=${k}`}${anchor !== today ? `${k === "semana" ? "" : "&"}d=${anchor}` : ""}`} className={view === k ? "on" : ""}>{l}</Link>)}</div>
       </Header>
-      {sp.ok && <div className="ok">Mensagem agendada.</div>}
-      {sp.erro && <div className="err">Preencha o texto, a data e escolha pelo menos um grupo.</div>}
+      {sp.ok && <div className="ok">{Number(sp.ok) > 1 ? `Sequência de ${sp.ok} mensagens agendada.` : "Mensagem agendada."}</div>}
+      {sp.erro && <div className="err">Coloque pelo menos um texto ou arquivo, a data e escolha um grupo.</div>}
       <div className="cols c-2-1" style={{ alignItems: "start" }}>
         <section className="pnl" style={{ padding: 20 }}>
           <div className="row" style={{ justifyContent: "space-between", marginBottom: 14 }}>
@@ -129,7 +129,8 @@ export default async function Agendamentos({ searchParams }: { searchParams: Pro
                 <span className={`chip ${STATUS[sel.status][1]}`}>{STATUS[sel.status][0]}</span>
                 <span className="mut" style={{ fontSize: 13 }}>{new Intl.DateTimeFormat("pt-BR", { timeZone: tz, weekday: "long", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(sel.sendAt)}</span>
               </div>
-              <div className="bubble">{sel.text}</div>
+              {sel.text && <div className="bubble">{sel.text}</div>}
+              {Array.isArray(sel.parts) && (sel.parts as { text?: string; mediaUrl?: string }[]).map((p, i) => <div key={i} className="bubble">{p.mediaUrl ? "📎 " : ""}{p.text || "(só o arquivo)"}</div>)}
               <div className="row" style={{ gap: 12, fontSize: 12.5 }} >
                 {sel.mentionAll && <span className="mut"><AtSign size={13} /> marca todos</span>}
                 {sel.mediaUrl && <span className="mut"><ImageIcon size={13} /> com anexo</span>}

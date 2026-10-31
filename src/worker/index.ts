@@ -161,10 +161,13 @@ async function sendScheduled(id: string, job: Job) {
         await enqueue("send-scheduled", { id, done: [...done] }, { delayMs: wait, jobId: `send-${id}-${Date.now()}` });
         return;
       }
-      if (m.mediaUrl && m.mediaType) {
-        await sendMedia(jid, { url: m.mediaUrl, type: m.mediaType as "image" | "video" | "document", caption: m.text }, { mentionAll: m.mentionAll });
-      } else {
-        await sendText(jid, m.text, { mentionAll: m.mentionAll });
+      // sequência: a primeira marca todos, as seguintes vão logo depois, na ordem
+      const seq = [{ text: m.text, mediaUrl: m.mediaUrl, mediaType: m.mediaType }, ...(((m.parts ?? []) as { text: string; mediaUrl?: string | null; mediaType?: string | null }[]))];
+      for (const [i, part] of seq.entries()) {
+        if (i > 0) await new Promise((r) => setTimeout(r, 2500));
+        const mention = i === 0 && m.mentionAll;
+        if (part.mediaUrl && part.mediaType) await sendMedia(jid, { url: part.mediaUrl, type: part.mediaType as "image" | "video" | "document", caption: part.text }, { mentionAll: mention });
+        else if (part.text) await sendText(jid, part.text, { mentionAll: mention });
       }
       done.add(jid);
       await job.updateData({ ...job.data, done: [...done] });
