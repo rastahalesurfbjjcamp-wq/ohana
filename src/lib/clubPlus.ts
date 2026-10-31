@@ -42,12 +42,9 @@ export async function ensureRefCode(memberId: string) {
   const base = baseName(m.name.split(" ")[0]);
   for (let i = 0; i < 30; i++) {
     const code = i === 0 ? base : i < 20 ? `${base}${i + 1}` : `${base}${rand(3)}`;
-    try {
-      await db.clubMember.update({ where: { id: m.id }, data: { refCode: code } });
-      return code;
-    } catch {
-      // código já usado por outro membro
-    }
+    if (await db.clubMember.findFirst({ where: { refCode: code }, select: { id: true } })) continue;
+    await db.clubMember.update({ where: { id: m.id }, data: { refCode: code } });
+    return code;
   }
   return null;
 }

@@ -463,7 +463,7 @@ model ClubMember {
   instagram  String?
   shirtSize  String?
   address    Json?     // { zip, street, number, extra, district, city, state }
-  refCode    String?   @unique // código do link de indicação
+  refCode    String?   // código do link de indicação (único, conferido no código)
   referredById String? // quem indicou
   courtesy   Boolean   @default(false) // club de graça (ex.: top compradores)
   closeFriends Boolean @default(false) // já está no Close Friends do Instagram
@@ -478,6 +478,7 @@ model ClubMember {
 
   @@index([phone])
   @@index([email])
+  @@index([refCode])
 }
 
 model ClubPoints {
