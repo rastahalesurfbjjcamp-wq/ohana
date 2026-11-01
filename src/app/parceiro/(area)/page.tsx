@@ -44,7 +44,7 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
         <Kpi label="Saldo disponível" value={brlc(Math.max(0, b.availableCents))} sub={b.requestedCents ? `Saque de ${brlc(b.requestedCents)} em análise` : canWithdraw ? "Pronto para sacar" : `Saque a partir de ${brlc(prog.minWithdrawCents)}`} icon={<Wallet size={15} />} tone="k" />
         <Kpi label="A liberar" value={brlc(b.pendingCents)} sub={`Entra no saldo em ${fmtDay(nextRelease)}`} icon={<Coins size={15} />} tone="l" />
         {hasFixed
-          ? <Kpi label={`A receber de ${curName}`} value={brlc(monthTotal)} sub={`${fixed ? `Fixo ${brlc(fixed)} + ` : ""}comissão ${brlc(b.monthCents)}${topUp > 0 ? ` + ${brlc(topUp)} até o mínimo` : ""}`} icon={<TrendingUp size={15} />} tone="c" />
+          ? <Kpi label={`Fixo + comissão de ${curName}`} value={brlc(fixed + b.monthCents)} sub={`${fixed ? `Fixo ${brlc(fixed)} + ` : ""}comissão ${brlc(b.monthCents)}${min ? ` · mínimo garantido de ${brlc(min)}${topUp > 0 ? ", então recebe " + brlc(monthTotal) : ""}` : ""}`} icon={<TrendingUp size={15} />} tone="c" />
           : <Kpi label={`Comissão em ${curName}`} value={brlc(b.monthCents)} sub={reached ? `Meta batida: +${brlc(reached.bonusCents)}` : next ? `Faltam ${brlc(next.minCents - b.monthCents)} para o bônus` : "Siga divulgando"} icon={<TrendingUp size={15} />} tone="c" />}
         <Kpi label="Já recebido" value={brlc(b.paidCents)} sub={`Total ganho: ${brlc(b.lifetimeCents)}`} icon={<Gift size={15} />} tone="p" />
       </div>
