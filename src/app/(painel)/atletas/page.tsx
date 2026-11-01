@@ -51,7 +51,8 @@ export default async function Atletas({ searchParams }: { searchParams: Promise<
   const toPay = payRows.filter((r) => !payouts.some((p) => p.referralId === r.id)).reduce((a, r) => a + monthPay(r).total, 0);
   // cupom parado: atleta ativo sem venda há muitos dias (em junho os cupons ficaram sem venda e ninguém viu)
   const STALE = 10;
-  const stale = (recentStats?.rows ?? []).filter((r) => r.active).map((r) => ({ r, days: r.lastOrder ? Math.floor((Date.parse(`${today}T12:00:00-03:00`) - Date.parse(r.lastOrder)) / 864e5) : null })).filter((x) => x.days === null || x.days >= STALE);
+  const born = new Map((await db.referral.findMany({ select: { id: true, createdAt: true, portalAt: true } })).map((x) => [x.id, (x.portalAt ?? x.createdAt).getTime()]));
+  const stale = (recentStats?.rows ?? []).filter((r) => r.active && Date.now() - (born.get(r.id) ?? 0) >= STALE * 864e5).map((r) => ({ r, days: r.lastOrder ? Math.floor((Date.parse(`${today}T12:00:00-03:00`) - Date.parse(r.lastOrder)) / 864e5) : null })).filter((x) => x.days === null || x.days >= STALE);
   const report = (r: (typeof payRows)[number]) => {
     const m = monthPay(r);
     return [
