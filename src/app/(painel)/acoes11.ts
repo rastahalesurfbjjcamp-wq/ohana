@@ -8,6 +8,7 @@ import { mainPath, type Flow, type Node, type Part } from "@/lib/flowTypes";
 import { FLOW_TEMPLATES, buildFlow } from "@/lib/flowTemplates";
 import { orderCtx, partsOf, sendParts, type Ctx } from "@/lib/automations";
 import { ordersBetween } from "@/lib/store";
+import { importReportana } from "@/lib/reportanaImport";
 
 async function user() {
   const s = await getSession();
@@ -168,4 +169,12 @@ export async function addSuggestions(f: FormData) {
   for (const k of keys) await fromTemplate(k);
   revalidatePath("/automacoes");
   redirect(`/automacoes?adicionadas=${keys.length}`);
+}
+
+// Coloca na biblioteca as mensagens copiadas do Reportana (sem duplicar)
+export async function importReportanaMessages() {
+  await user();
+  const r = await importReportana();
+  revalidatePath("/mensagens");
+  redirect(`/mensagens?importadas=${r.added}`);
 }

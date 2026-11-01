@@ -67,6 +67,7 @@ export const KINDS: { k: string; label: string }[] = [
 
 export const CHECKS: { k: string; label: string; needs?: "list" | "text" | "number" }[] = [
   { k: "pagou", label: "Pagou / comprou" },
+  { k: "nao_pagou", label: "Não pagou / não comprou" },
   { k: "respondeu", label: "Respondeu" },
   { k: "clicou", label: "Clicou em algum link" },
   { k: "etiqueta", label: "Tem a etiqueta", needs: "text" },
@@ -112,7 +113,7 @@ export function portsOf(n: Node): Port[] {
     { k: "noReply", label: "Se não responder", tone: "c" },
     { k: "next", label: "Próxima etapa", tone: "n" },
   ];
-  if (n.type === "cond") return [{ k: "yes", label: "Atende à condição", tone: "l" }, { k: "no", label: "Não atende", tone: "c" }];
+  if (n.type === "cond") return [{ k: "yes", label: "Atende a condição", tone: "l" }, { k: "no", label: "Não atende a nenhuma condição", tone: "c" }];
   if (n.type === "multi") return [...n.branches.slice(0, 10).map((b, i) => ({ k: `m${i}`, label: `${LETTERS[i]}${b.label ? ` · ${b.label}` : ""}`, tone: "p" as const })), { k: "else", label: "Não atende nenhuma", tone: "c" }];
   if (n.type === "waitUntil") return [{ k: "met", label: n.event === "pagou" ? "Pagou" : n.event === "respondeu" ? "Respondeu" : "Clicou", tone: "l" }, { k: "timeout", label: "Passou o prazo", tone: "c" }];
   if (n.type === "random") return [{ k: "a", label: `Caminho A · ${n.pct}%`, tone: "k" }, { k: "b", label: `Caminho B · ${100 - n.pct}%`, tone: "s" }];

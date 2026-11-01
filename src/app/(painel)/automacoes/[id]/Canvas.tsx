@@ -33,6 +33,9 @@ const ICON: Record<string, ReactNode> = {
   waitDate: <CalendarDays size={15} />, waitUntil: <Hourglass size={15} />, multi: <Split size={15} />, chat: <Headset size={15} />, goto: <Workflow size={15} />, notify: <Bell size={15} />, webhook: <Webhook size={15} />,
 };
 const TONE_COLOR: Record<Port["tone"], string> = { n: "#7d8781", l: "#34c26a", c: "#ef4444", s: "#f7c928", k: "#60a5fa", p: "#a78bfa" };
+const EDGE_LABEL: Record<string, string> = { yes: "Sim", no: "Não", clicked: "Clicou", replied: "Respondeu", noReply: "Não respondeu", timeout: "Prazo", a: "A", b: "B", else: "Senão" };
+const edgeLabel = (k: string, label: string) => EDGE_LABEL[k] ?? (k.startsWith("m") ? label.split(" ")[0] : k === "met" ? label : "");
+const HIDE_KIND = new Set(["cond", "multi", "random", "exit"]);
 const CHAT_ACT: Record<string, string> = { transfer: "Transferir para", archive: "Arquivar conversa", note: "Nota interna", ai_on: "Ligar robô de IA", ai_off: "Desligar robô de IA" };
 const EVENT: Record<string, string> = { pagou: "pagar", respondeu: "responder", clicou: "clicar" };
 const UNIT: Record<string, string> = { min: "minuto(s)", h: "hora(s)", d: "dia(s)" };
@@ -76,16 +79,16 @@ function title(n: Node, c: Ctx) {
   if (n.type === "waitHour") return `Até as ${n.hour}${n.days?.length ? ` · ${n.days.map((d) => DAYS[d]).join(", ")}` : ""}`;
   if (n.type === "waitDate") return n.at ? new Date(`${n.at}:00-03:00`).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "Escolha a data";
   if (n.type === "waitUntil") return `Até ${EVENT[n.event]} · prazo ${n.amount} ${UNIT[n.unit]}`;
-  if (n.type === "cond") return ruleText(n.rules ?? [{ check: n.check }], n.mode, c);
-  if (n.type === "multi") return `${n.branches.length} caminhos`;
-  if (n.type === "random") return `Divide ${n.pct}% / ${100 - n.pct}%`;
+  if (n.type === "cond") return "Condição";
+  if (n.type === "multi") return "Condição múltipla";
+  if (n.type === "random") return "Randomizador";
   if (n.type === "tag") return `${n.action === "add" ? "Adicionar" : "Remover"} "${n.tag || "?"}"`;
   if (n.type === "list") return `${n.action === "add" ? "Entrar na" : "Sair da"} lista ${c.lists.get(n.listId) ?? "?"}`;
   if (n.type === "chat") return n.action === "transfer" ? `${CHAT_ACT.transfer} ${n.assignee || "a fila"}` : CHAT_ACT[n.action];
   if (n.type === "goto") return c.autos.get(n.automationId) ?? "Escolha a automação";
   if (n.type === "notify") return n.to ? `Para ${n.to.includes("@g.us") ? "grupo" : n.to}` : "Escolha quem recebe";
   if (n.type === "webhook") return n.url ? n.url.replace(/^https:\/\//, "").slice(0, 34) : "Cole a URL";
-  if (n.type === "exit") return "Sai da automação";
+  if (n.type === "exit") return "Sair";
   return "Nota";
 }
 function warning(n: Node, c: Ctx) {
@@ -352,13 +355,15 @@ export function Canvas(props: Props) {
   };
 
   /* ---------- desenho ---------- */
-  const edges: { key: string; from: string; port: string; d: string; color: string; mid: Pt }[] = [];
+  const edges: { key: string; from: string; port: string; d: string; color: string; mid: Pt; label: string; dashed: boolean }[] = [];
   const addEdge = (from: string, p: Port, to?: string) => {
     if (!to) return;
     const a = pos.ports[`${from}:${p.k}`], b = pos.ins[to];
     if (!a || !b) return;
-    const dx = Math.max(50, Math.abs(b.x - a.x) / 2);
-    edges.push({ key: `${from}:${p.k}`, from, port: p.k, color: TONE_COLOR[p.tone], d: `M${a.x},${a.y} C${a.x + dx},${a.y} ${b.x - dx},${b.y} ${b.x},${b.y}`, mid: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 } });
+    const bx = b.x - 3;
+    const dx = Math.max(50, Math.abs(bx - a.x) / 2);
+    const plain = p.k === "next" || p.k === "start";
+    edges.push({ key: `${from}:${p.k}`, from, port: p.k, color: plain ? "#6b6b6b" : TONE_COLOR[p.tone], d: `M${a.x},${a.y} C${a.x + dx},${a.y} ${bx - dx},${b.y} ${bx},${b.y}`, mid: { x: (a.x + bx) / 2, y: (a.y + b.y) / 2 }, label: plain ? "" : edgeLabel(p.k, p.label), dashed: true });
   };
   addEdge(START, { k: "start", label: "", tone: "n" }, flow.start);
   for (const [id, n] of Object.entries(flow.nodes)) for (const p of portsOf(n)) addEdge(id, p, (n as Record<string, unknown>)[p.k] as string | undefined);
@@ -410,7 +415,7 @@ export function Canvas(props: Props) {
             <NodePanel key={sel.id} id={sel.id} n={selNode} lists={props.lists} extra={{ templates, automations: props.automations.filter((a) => a.id !== props.id), users: props.users, groups: props.groups }} onTemplate={(t) => setTemplates((cur) => [...cur.filter((x) => x.id !== t.id), t])} stats={st(sel.id)} onChange={(fn) => editNode(sel.id, fn)} onClose={() => setSel(null)} onDelete={() => removeNode(sel.id)} onDuplicate={() => duplicate(sel.id)} />
           ) : (
             <div className="cv-panel">
-              <div className="cv-ph"><span className="tile sm t-n"><Zap size={15} /></span><b>Configurações</b></div>
+              <div className="cv-ph"><span className="cv-ico sm i-cfg"><Zap size={14} /></span><b>Configurações</b></div>
               <div className="cv-card">
                 <b>Gatilho</b><small>O que coloca a pessoa nesta automação</small>
                 <select className="in" value={meta.trigger} onChange={(e) => { setMeta({ ...meta, trigger: e.target.value }); setDirty(true); }}>
@@ -435,7 +440,7 @@ export function Canvas(props: Props) {
                     <div className="cv-pal">
                       {BLOCKS.filter((b) => b.group === g).map((b) => (
                         <button key={b.type} draggable onDragStart={(e) => e.dataTransfer.setData("text/block", b.type)} onClick={() => addBlock(b.type)}>
-                          <span className={`tile xs ${b.tone}`}>{ICON[b.type]}</span>{b.label}
+                          <span className={`cv-ico sm i-${b.type}`}>{ICON[b.type]}</span>{b.label}
                         </button>
                       ))}
                     </div>
@@ -463,6 +468,11 @@ export function Canvas(props: Props) {
         >
           <div ref={inner} className="cv-in" style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.z})` }}>
             <svg className="cv-svg" width="1" height="1">
+              <defs>
+                {[...new Set([...edges.map((e) => e.color), "#1a73e8", "#6b6b6b"])].map((c) => (
+                  <marker key={c} id={`ar-${c === "#1a73e8" ? "sel" : c.slice(1)}`} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9 z" fill={c} /></marker>
+                ))}
+              </defs>
               {edges.map((e) => {
                 const on = (sel?.kind === "edge" && sel.from === e.from && sel.port === e.port) || hoverEdge === e.key;
                 return (
@@ -470,20 +480,23 @@ export function Canvas(props: Props) {
                     <path d={e.d} stroke="transparent" strokeWidth={16} fill="none" style={{ pointerEvents: "stroke", cursor: "pointer" }}
                       onPointerDown={(ev) => { ev.stopPropagation(); setSel({ kind: "edge", from: e.from, port: e.port }); }}
                       onPointerEnter={() => setHoverEdge(e.key)} onPointerLeave={() => setHoverEdge(null)} />
-                    <path d={e.d} stroke={e.color} strokeWidth={on ? 3 : 2} strokeDasharray={e.port === "next" || e.port === "start" ? "6 5" : undefined} fill="none" opacity={on ? 1 : 0.75} />
+                    <path d={e.d} stroke={on ? "#1a73e8" : e.color} strokeWidth={on ? 2.4 : 1.6} strokeDasharray="5 4" fill="none" markerEnd={`url(#ar-${on ? "sel" : e.color.slice(1)})`} />
                   </g>
                 );
               })}
               {tempPath && <path d={tempPath} stroke="#60a5fa" strokeWidth={2} fill="none" strokeDasharray="4 4" />}
             </svg>
+            {edges.filter((e) => e.label && !(sel?.kind === "edge" && sel.from === e.from && sel.port === e.port)).map((e) => (
+              <span key={`l-${e.key}`} className="cv-elab" style={{ left: e.mid.x, top: e.mid.y, background: e.color }}>{e.label}</span>
+            ))}
             {edges.filter((e) => sel?.kind === "edge" && sel.from === e.from && sel.port === e.port).map((e) => (
               <button key={e.key} className="cv-edge-x" style={{ left: e.mid.x, top: e.mid.y }} onPointerDown={(ev) => ev.stopPropagation()} onClick={() => { connect(e.from, e.port, undefined); setSel(null); }} title="Remover ligação"><X size={12} /></button>
             ))}
 
             {/* Gatilho */}
             <div data-node={START} className={`cv-node trig${sel?.kind === "node" && sel.id === START ? " sel" : ""}`} style={{ left: flow.startPos?.x ?? 60, top: flow.startPos?.y ?? 200, width: 220 }} onPointerDown={(e) => startNode(e, START)}>
-              <div className="cv-h"><span className="tile xs t-k"><Zap size={13} /></span><div><small>Gatilho</small><b>{trig?.label ?? meta.trigger}</b></div></div>
-              <div className="cv-k"><div><b>{props.totals.entered}</b><span>entraram</span></div></div>
+              <div className="cv-h"><span className="cv-ico i-trig"><Zap size={15} /></span><div><b>{trig?.label ?? meta.trigger}</b></div></div>
+              <div className="cv-big"><b>{props.totals.entered.toLocaleString("pt-BR")}</b><span>Execuções</span></div>
               {portRow(START, { k: "start", label: "Próxima etapa", tone: "n" }, true)}
             </div>
 
@@ -499,21 +512,21 @@ export function Canvas(props: Props) {
                 );
               const s = st(id);
               return (
-                <div key={id} data-node={id} className={`cv-node${isSel ? " sel" : ""}${flow.start === id ? " first" : ""}`} style={{ left: n.x, top: n.y, width: n.type === "send" ? W : 230 }} onPointerDown={(e) => startNode(e, id)}>
+                <div key={id} data-node={id} className={`cv-node k-${n.type}${isSel ? " sel" : ""}${w ? " warnb" : ""}${flow.start === id ? " first" : ""}`} style={{ left: n.x, top: n.y, width: n.type === "send" ? W : n.type === "cond" || n.type === "multi" ? 250 : n.type === "wait" || n.type === "waitHour" || n.type === "waitDate" || n.type === "exit" || n.type === "tag" ? 180 : 220 }} onPointerDown={(e) => startNode(e, id)}>
                   {w && <span className="cv-warn" title={w}><AlertTriangle size={13} /></span>}
                   {isSel && (
                     <div className="cv-tools">
-                      <button title="Duplicar" onClick={() => duplicate(id)}><Copy size={13} /></button>
-                      <button title="Apagar" className="del" onClick={() => removeNode(id)}><Trash2 size={13} /></button>
+                      <button title="Editar" className="ed" onClick={() => document.querySelector(".cv-side")?.scrollTo({ top: 0, behavior: "smooth" })}><Pencil size={12} /></button>
+                      <button title="Duplicar" className="dup" onClick={() => duplicate(id)}><Copy size={12} /></button>
+                      <button title="Apagar" className="del" onClick={() => removeNode(id)}><Trash2 size={12} /></button>
                     </div>
                   )}
                   <span className="cv-dot-in" data-in={id} />
-                  <div className="cv-h"><span className={`tile xs ${m.tone}`}>{ICON[n.type]}</span><div><small>{m.label}</small><b>{title(n, cx)}</b></div></div>
+                  <div className="cv-h"><span className={`cv-ico i-${n.type}`}>{ICON[n.type]}</span><div>{!HIDE_KIND.has(n.type) && <small>{m.label}</small>}<b>{title(n, cx)}</b>{n.type === "send" && n.messageId && cx.tpl.get(n.messageId) && <span className="cv-okchip" title={cx.tpl.get(n.messageId)?.folder}><Library size={10} /> Da biblioteca</span>}</div></div>
                   {n.type === "send" && (
                     <>
-                      <div className="cv-k"><div><b>{s.sent}</b><span>envios</span></div><div><b>{s.sent ? Math.min(100, Math.round((s.clicks / s.sent) * 100)) : 0}%</b><span>clique</span></div><div><b>{s.replied}</b><span>respostas</span></div></div>
+                      <div className="cv-k"><div><b>{s.sent.toLocaleString("pt-BR")}</b><span>Envios</span></div><div><b>{s.sent ? Math.min(100, Math.round((s.clicks / s.sent) * 100)) : 0}%</b><span>Clique</span></div><div><b>{s.replied.toLocaleString("pt-BR")}</b><span>Respostas</span></div></div>
                       <div className="cv-mini">
-                        {n.messageId && <div className="cv-lib"><Library size={11} /> {cx.tpl.get(n.messageId)?.folder || "Biblioteca"}</div>}
                         {partsFor(n, cx).slice(0, 3).map((p, i) => (
                           <div key={i} className="cv-bb">
                             {(p.productImage || p.mediaUrl) && <div className="cv-img">{p.mediaType === "image" && p.mediaUrl ? <img src={(p.mediaUrl ?? "").replace(/^https?:\/\/[^/]+/, "")} alt="" /> : p.productImage ? <><ImageIcon size={14} /> foto do produto</> : <><Paperclip size={13} /> arquivo</>}</div>}
@@ -525,12 +538,13 @@ export function Canvas(props: Props) {
                     </>
                   )}
                   {n.type === "multi" && (
-                    <div className="cv-rules">{n.branches.map((b, i) => <div key={i}><em>{"ABCDEFGHIJ"[i]}</em>{ruleText(b.rules, b.mode, cx) || "sem regra"}</div>)}</div>
+                    <div className="cv-rbox">{n.branches.map((b, i) => <div key={i}>{i > 0 && <em>ou</em>}<p><span className="cv-letter">{"ABCDEFGHIJ"[i]}</span>{ruleText(b.rules, b.mode, cx) || "sem regra"}</p></div>)}</div>
                   )}
+                  {n.type === "random" && <div className="cv-rbox"><div><p><span className="cv-letter">A</span>{n.pct}% das pessoas</p></div><div><em>ou</em><p><span className="cv-letter">B</span>{100 - n.pct}% das pessoas</p></div></div>}
                   {n.type === "chat" && n.action === "note" && n.text && <div className="cv-rules">{n.text.slice(0, 90)}</div>}
                   {n.type === "notify" && n.text && <div className="cv-rules">{n.text.slice(0, 90)}</div>}
-                  {n.type === "cond" && (n.rules?.length ?? 0) > 1 && (
-                    <div className="cv-rules">{n.rules!.map((r, i) => <div key={i}>{i > 0 && <em>{n.mode === "any" ? "ou" : "e"}</em>}<b>{CHECKS.find((c) => c.k === r.check)?.label}</b>{r.value ? ` ${r.check === "lista" ? lists.get(r.value) ?? "" : r.value}` : ""}</div>)}</div>
+                  {n.type === "cond" && (
+                    <div className="cv-rbox">{(n.rules?.length ? n.rules : [{ check: n.check }]).map((r, i) => <div key={i}>{i > 0 && <em>{n.mode === "any" ? "ou" : "e"}</em>}<p><b>{CHECKS.find((c) => c.k === r.check)?.label ?? r.check}</b>{r.value ? <><i> {r.check === "valor_min" ? "maior ou igual" : r.check === "valor_max" ? "menor ou igual" : "igual"} </i><b>{r.check === "lista" ? lists.get(r.value) ?? "" : r.value}</b></> : null}</p></div>)}</div>
                   )}
                   {portsOf(n).map((p) => portRow(id, p))}
                 </div>
@@ -548,7 +562,7 @@ export function Canvas(props: Props) {
               )}
               {BLOCKS.filter((b) => b.type !== "note").map((b) => (
                 <button key={b.type} onClick={() => addBlock(b.type, { x: picker.at.x + 70, y: picker.at.y - 30 }, picker.from ? { id: picker.from, port: picker.from === START ? "start" : picker.port! } : undefined)}>
-                  <span className={`tile xs ${b.tone}`}>{ICON[b.type]}</span>{b.label}
+                  <span className={`cv-ico sm i-${b.type}`}>{ICON[b.type]}</span>{b.label}
                 </button>
               ))}
             </div>
@@ -606,7 +620,7 @@ function NodePanel({ id, n, lists, extra, onTemplate, stats, onChange, onClose, 
   void id;
   return (
     <div className="cv-panel">
-      <div className="cv-ph"><span className={`tile sm ${m.tone}`}>{ICON[n.type]}</span><b>{m.label}</b><button className="cv-ib sm" style={{ marginLeft: "auto" }} onClick={onClose} title="Fechar"><X size={15} /></button></div>
+      <div className="cv-ph"><span className={`cv-ico sm i-${n.type}`}>{ICON[n.type]}</span><b>{m.label}</b><button className="cv-ib sm" style={{ marginLeft: "auto" }} onClick={onClose} title="Fechar"><X size={15} /></button></div>
       {n.type !== "note" && (
         <div className="cv-card">
           <label className="cv-field">Nome do bloco (opcional)<input className="in" value={n.title ?? ""} placeholder="Ex.: Lembrete com cupom" onChange={(e) => onChange((x) => { x.title = e.target.value || undefined; })} /></label>

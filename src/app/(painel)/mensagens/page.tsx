@@ -6,7 +6,8 @@ import { ConfirmButton } from "@/components/ConfirmButton";
 import { WaText } from "@/components/MessageEditor";
 import { AutoSubmitFile } from "@/components/AutoSubmitFile";
 import { KINDS, type Flow, type Part } from "@/lib/flowTypes";
-import { deleteTemplate, duplicateTemplate, importTemplates, moveTemplate, renameFolder } from "../acoes11";
+import { deleteTemplate, duplicateTemplate, importReportanaMessages, importTemplates, moveTemplate, renameFolder } from "../acoes11";
+import { ensureReportana } from "@/lib/reportanaImport";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,7 @@ export default async function Mensagens({ searchParams }: { searchParams: Promis
   const pasta = sp.pasta ?? null;
   const q = (sp.q ?? "").trim().toLowerCase();
   const view = sp.v === "lista" ? "lista" : "grade";
+  await ensureReportana();
   const [all, autos] = await Promise.all([
     db.messageTemplate.findMany({ orderBy: [{ folder: "asc" }, { name: "asc" }] }),
     db.automation.findMany({ select: { id: true, name: true, flow: true } }),
@@ -39,6 +41,7 @@ export default async function Mensagens({ searchParams }: { searchParams: Promis
   return (
     <>
       <Header title="Mensagens" lede="Biblioteca de mensagens do WhatsApp. Cada uma pode ser usada em automações, campanhas, envio manual e atendimento.">
+        <form action={importReportanaMessages}><button className="btn" type="submit" title="Coloca de volta as mensagens copiadas do Reportana que não estiverem na biblioteca"><Download size={15} /> Mensagens do Reportana</button></form>
         <a className="btn" href="/api/mensagens/export"><Download size={15} /> Exportar</a>
         <form action={importTemplates} className="row" style={{ gap: 0 }}>
           <AutoSubmitFile name="file" accept="application/json"><Upload size={15} /> Importar</AutoSubmitFile>

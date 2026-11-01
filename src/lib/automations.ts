@@ -153,6 +153,7 @@ async function checkRule(run: RunInfo, r: Rule, ctx: Ctx) {
   const val = (r.value ?? "").trim().toLowerCase();
   switch (r.check) {
     case "pagou": return !!run.convertedAt;
+    case "nao_pagou": return !run.convertedAt;
     case "clicou": return run.clicks > 0;
     case "respondeu": return !!(await db.chatMessage.findFirst({ where: { phone: run.phone, fromMe: false, createdAt: { gte: run.lastSentAt ?? run.createdAt } } }));
     case "etiqueta": return !!(await db.contactTag.findUnique({ where: { phone_tag: { phone: run.phone, tag: val } } }));

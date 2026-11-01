@@ -1,6 +1,7 @@
 // Modelos prontos de automação. Ao usar um modelo, as mensagens vão para a biblioteca
 // (pasta com o nome da automação) e o fluxo já vem montado na tela, desligado.
 import type { Flow, Node, Part } from "./flowTypes";
+import { REPORTANA_FLOWS } from "./reportanaTemplates";
 
 type Msg = { key: string; name: string; kind: string; parts: Part[] };
 export type FlowTemplate = {
@@ -177,6 +178,7 @@ export const FLOW_TEMPLATES: FlowTemplate[] = [
   },
 ];
 
+FLOW_TEMPLATES.push(...REPORTANA_FLOWS);
 export const TEMPLATE_CATS = [...new Set(FLOW_TEMPLATES.map((t) => t.cat))];
 
 // Monta o fluxo final trocando "msg" pelo id da mensagem criada na biblioteca
