@@ -4,8 +4,6 @@ import { db } from "@/lib/db";
 import { getSettings } from "@/lib/settings";
 import { recentOrders, shipments, type Order, type Shipment } from "@/lib/store";
 import { ErrorNote, Header, Panel } from "@/components/ui";
-import { CopyButton } from "@/components/CopyButton";
-import { env } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
 
@@ -88,8 +86,6 @@ export default async function Entregas({ searchParams }: { searchParams: Promise
   return (
     <>
       <Header title="Logística" lede={`Rastreio dos envios dos últimos 30 dias. Em alerta: mais de ${s.recovery.delayedDays} dias sem entregar ou falha na entrega.`}>
-        <a className="btn" href="/rastreio" target="_blank" rel="noopener"><ExternalLink size={16} /> Página de rastreio</a>
-        <CopyButton text={`${env.appUrl()}/rastreio`} label="Copiar link" />
         <a className="btn" href="/api/export/pedidos?dias=30"><Download size={16} /> Exportar</a>
       </Header>
       {error ? <ErrorNote error={error} /> : null}
