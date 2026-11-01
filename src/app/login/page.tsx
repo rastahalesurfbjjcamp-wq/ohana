@@ -21,7 +21,11 @@ async function entrarDemo() {
 async function entrar(formData: FormData) {
   "use server";
   const s = await login(String(formData.get("email") ?? ""), String(formData.get("password") ?? ""));
-  if (!s) redirect("/login?erro=1");
+  if (!s) {
+    const { db } = await import("@/lib/db");
+    const u = await db.user.findUnique({ where: { email: String(formData.get("email") ?? "").trim().toLowerCase() }, select: { pendingAt: true } }).catch(() => null);
+    redirect(u?.pendingAt ? "/admin?erro=3" : "/admin?erro=1");
+  }
   redirect("/");
 }
 
@@ -58,7 +62,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           </div>
           <small>Comunidade e vendas</small>
         </div>
-        {erro && <div className="err">{erro === "2" ? "Seu acesso foi desativado. Fale com o administrador." : "E-mail ou senha incorretos."}</div>}
+        {erro && <div className="err">{erro === "2" ? "Seu acesso foi desativado. Fale com o administrador." : erro === "3" ? "Seu acesso ainda está esperando a aprovação do administrador." : "E-mail ou senha incorretos."}</div>}
         <div className="field">
           <label htmlFor="email">E-mail</label>
           <input className="in" id="email" name="email" type="email" autoComplete="username" required />
@@ -70,6 +74,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         <button className="btn pri" type="submit" style={{ justifyContent: "center", marginTop: 6 }}>
           Entrar
         </button>
+        <p className="dim" style={{ fontSize: 13, textAlign: "center" }}>É da equipe e ainda não tem acesso? <a href="/admin/cadastro" style={{ color: "var(--lagoon)" }}>Pedir acesso</a></p>
       </form>
     </div>
   );

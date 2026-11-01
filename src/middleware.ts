@@ -3,7 +3,7 @@ import { jwtVerify } from "jose";
 import { env } from "@/lib/env";
 import { canSee, firstAllowed } from "@/lib/access";
 
-const PUBLIC = ["/login", "/api/auth/login", "/api/webhooks", "/api/health", "/api/media", "/fonts", "/api/leads", "/convite", "/parceiro", "/api/parceiro", "/api/avise", "/r", "/g", "/votar", "/api/votar", "/assinar", "/api/clube", "/club", "/a", "/api/listas", "/demo", "/brand", "/clube-loja.js", "/icon.png", "/apple-icon.png", "/favicon.ico"];
+const PUBLIC = ["/login", "/cadastro-equipe", "/api/auth/login", "/api/webhooks", "/api/health", "/api/media", "/fonts", "/api/leads", "/convite", "/parceiro", "/api/parceiro", "/api/avise", "/r", "/g", "/votar", "/api/votar", "/assinar", "/api/clube", "/club", "/a", "/api/listas", "/demo", "/brand", "/clube-loja.js", "/icon.png", "/apple-icon.png", "/favicon.ico"];
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -13,6 +13,7 @@ export async function middleware(req: NextRequest) {
   }
   // entrada do painel: rastahale.tech/admin (o antigo /login leva para lá)
   if (pathname === "/admin") { const url = req.nextUrl.clone(); url.pathname = "/login"; return NextResponse.rewrite(url); }
+  if (pathname === "/admin/cadastro") { const url = req.nextUrl.clone(); url.pathname = "/cadastro-equipe"; return NextResponse.rewrite(url); }
   if (pathname === "/login") { const url = req.nextUrl.clone(); url.pathname = "/admin"; return NextResponse.redirect(url); }
   if (PUBLIC.some((p) => pathname === p || pathname.startsWith(p + "/"))) return NextResponse.next();
   const token = req.cookies.get("hub_session")?.value;

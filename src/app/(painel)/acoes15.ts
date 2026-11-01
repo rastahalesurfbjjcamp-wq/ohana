@@ -70,3 +70,11 @@ export async function removeMember(f: FormData) {
   revalidatePath("/equipe");
   redirect("/equipe");
 }
+
+export async function approveMember(f: FormData) {
+  demoBlock("/equipe?demo=bloqueado");
+  await admin();
+  await db.user.update({ where: { id: str(f, "id") }, data: { active: true, pendingAt: null } });
+  revalidatePath("/equipe");
+  redirect("/equipe?aprovado=1");
+}

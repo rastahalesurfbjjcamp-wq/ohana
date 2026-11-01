@@ -23,6 +23,7 @@ model User {
   inviteToken  String?
   inviteAt     DateTime?
   lastLoginAt  DateTime?
+  pendingAt    DateTime? // se cadastrou sozinho e espera o administrador aprovar
 }
 
 enum Role {

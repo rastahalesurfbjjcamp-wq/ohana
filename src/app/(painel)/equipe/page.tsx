@@ -7,7 +7,7 @@ import { AREAS, ADMIN_ONLY } from "@/lib/access";
 import { Header, Panel } from "@/components/ui";
 import { CopyButton } from "@/components/CopyButton";
 import { ConfirmButton } from "@/components/ConfirmButton";
-import { createMember, removeMember, resendInvite, toggleMember, updateMember } from "../acoes15";
+import { approveMember, createMember, removeMember, resendInvite, toggleMember, updateMember } from "../acoes15";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +33,7 @@ function Areas({ value, disabled }: { value: string[]; disabled?: boolean }) {
   );
 }
 
-export default async function Equipe({ searchParams }: { searchParams: Promise<{ convite?: string; erro?: string; salvo?: string; novo?: string; editar?: string }> }) {
+export default async function Equipe({ searchParams }: { searchParams: Promise<{ convite?: string; erro?: string; salvo?: string; novo?: string; editar?: string; aprovado?: string }> }) {
   const sp = await searchParams;
   const session = await getSession();
   if (session?.role !== "ADMIN") redirect("/");
@@ -54,11 +54,33 @@ export default async function Equipe({ searchParams }: { searchParams: Promise<{
         </div>
       )}
 
+      {sp.aprovado && <div className="ok">Acesso aprovado. A pessoa já pode entrar em {env.appUrl().replace(/^https?:\/\//, "").replace(/\/$/, "")}/admin.</div>}
+      {users.some((u) => u.pendingAt) && (
+        <Panel title="Pedidos de acesso" sub="Se cadastraram em /admin/cadastro e esperam sua aprovação. Entram com acesso a tudo, menos Equipe e Integrações." body={false}>
+          <table className="tb" data-nosort>
+            <tbody>
+              {users.filter((u) => u.pendingAt).map((u) => (
+                <tr key={u.id}>
+                  <td><b>{u.name}</b><br /><small className="dim">{u.email}{u.phone ? ` · ${u.phone}` : ""}</small></td>
+                  <td className="dim" style={{ fontSize: 12.5 }}>pedido em {u.pendingAt!.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</td>
+                  <td>
+                    <div className="row" style={{ gap: 6, justifyContent: "flex-end" }}>
+                      <form action={approveMember}><input type="hidden" name="id" value={u.id} /><button className="btn sm pri" type="submit">Aprovar</button></form>
+                      <form action={removeMember}><input type="hidden" name="id" value={u.id} /><ConfirmButton className="btn sm ghost danger" message={`Recusar o pedido de ${u.name}?`}>Recusar</ConfirmButton></form>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Panel>
+      )}
+
       <Panel title="Pessoas com acesso" sub={`${users.filter((u) => u.active).length} ativas`} body={false} right={<a className="btn sm pri" href="/equipe?novo=1"><Plus size={14} /> Adicionar pessoa</a>}>
         <table className="tb">
           <thead><tr><th>Pessoa</th><th>Acesso</th><th>Situação</th><th /></tr></thead>
           <tbody>
-            {users.map((u) => (
+            {users.filter((u) => !u.pendingAt).map((u) => (
               <tr key={u.id}>
                 <td><div className="row" style={{ gap: 10 }}><span className="av-s">{u.name.split(" ").map((x) => x[0]).slice(0, 2).join("").toUpperCase()}</span><span><b>{u.name}{u.id === session.userId ? " (você)" : ""}</b><br /><small className="dim">{u.email}</small></span></div></td>
                 <td>{u.role === "ADMIN" ? <span className="chip c-l"><ShieldCheck size={12} /> Administrador</span> : <span className="chip c-n"><UserRound size={12} /> Equipe · {u.areas.length ? `${u.areas.length} telas` : "tudo menos integrações"}</span>}</td>
