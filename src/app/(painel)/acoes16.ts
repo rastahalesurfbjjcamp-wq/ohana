@@ -84,7 +84,7 @@ export async function saveProgramForm(f: FormData) {
   await admin();
   const cur = await program();
   const tiers = f.getAll("tmin").map((v, i) => ({ minCents: cents(money(String(v))), bonusCents: cents(money(String(f.getAll("tbonus")[i] ?? ""))) })).filter((t) => t.minCents > 0 && t.bonusCents > 0);
-  const milestones = f.getAll("mmin").map((v, i) => ({ minCents: cents(money(String(v))), prize: String(f.getAll("mprize")[i] ?? "").trim().slice(0, 80) })).filter((m) => m.minCents > 0 && m.prize);
+  const milestones = f.getAll("mmin").map((v, i) => ({ minCents: cents(money(String(v))), prizeCents: cents(money(String(f.getAll("mprize")[i] ?? ""))) })).filter((m) => m.minCents > 0 && m.prizeCents > 0);
   const start = str(f, "startDate");
   const next: Program = {
     startDate: /^\d{4}-\d{2}-\d{2}$/.test(start) ? start : cur.startDate,

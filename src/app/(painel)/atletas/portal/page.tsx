@@ -36,12 +36,13 @@ export default async function PortalParceiros({ searchParams }: { searchParams: 
   const selEntries = sel ? await db.partnerEarning.findMany({ where: { referralId: sel.id }, orderBy: { createdAt: "desc" }, take: 80 }) : [];
   const selWds = sel ? await db.partnerWithdrawal.findMany({ where: { referralId: sel.id }, orderBy: { requestedAt: "desc" } }) : [];
   const tiers = [...prog.tiers, { minCents: 0, bonusCents: 0 }, { minCents: 0, bonusCents: 0 }].slice(0, Math.max(3, prog.tiers.length + 1));
-  const miles = [...prog.milestones, { minCents: 0, prize: "" }].slice(0, Math.max(2, prog.milestones.length + 1));
+  const miles = [...prog.milestones, { minCents: 0, prizeCents: 0 }].slice(0, Math.max(2, prog.milestones.length + 1));
 
   return (
     <>
-      <Header title="Portal dos parceiros" lede={`Comissão, saldo e saques de cada atleta e influenciador. Tudo em centavos, sem apagar nada: cancelamento vira estorno. O acordo padrão é ${s.referral.commission}%.`}>
+      <Header title="Portal dos parceiros" lede={`Comissão, saldo e saques de cada atleta e influenciador. A comissão conta a partir do cadastro de cada um no portal. O acordo padrão é ${s.referral.commission}%.`}>
         <Link className="btn" href="/atletas"><ArrowLeft size={15} /> Atletas</Link>
+        <CopyButton text={`${base}/parceiro/cadastro`} label="Copiar link de cadastro" className="btn" />
         <a className="btn" href="/parceiro/entrar" target="_blank" rel="noopener"><ExternalLink size={15} /> Ver o portal</a>
         <form action={syncNowLedger}><button className="btn" type="submit"><RefreshCcw size={15} /> Atualizar vendas</button></form>
       </Header>
@@ -106,7 +107,7 @@ export default async function PortalParceiros({ searchParams }: { searchParams: 
                       <button className="btn sm" type="submit">Salvar</button>
                     </form>
                   </td>
-                  <td style={{ fontSize: 12.5 }}>{p.passwordHash ? <span className="chip c-l">Ativo{p.lastLoginAt ? ` · ${fmtDay(p.lastLoginAt)}` : ""}</span> : p.inviteToken ? <span className="chip c-s">Convite enviado</span> : <span className="chip c-n">Sem acesso</span>}</td>
+                  <td style={{ fontSize: 12.5 }}>{p.passwordHash ? <span className="chip c-l" title="Comissão conta a partir do cadastro">Cadastrado{p.portalAt ? ` · ${fmtDay(p.portalAt)}` : ""}</span> : p.inviteToken ? <span className="chip c-s">Convite enviado</span> : <span className="chip c-n">Sem acesso</span>}</td>
                   <td style={{ textAlign: "right" }}>{brlc(b.monthCents)}</td>
                   <td style={{ textAlign: "right" }}>{brlc(b.pendingCents)}</td>
                   <td style={{ textAlign: "right" }}><b className={b.availableCents < 0 ? "dn" : ""}>{brlc(b.availableCents)}</b></td>
@@ -174,13 +175,14 @@ export default async function PortalParceiros({ searchParams }: { searchParams: 
               </div>
             ))}
           </div>
-          <div className="cv-field">Premiações por total ganho <small className="dim">Marco de quanto o parceiro já ganhou com a loja, com o prêmio que aparece para ele.</small></div>
+          <div className="cv-field">Premiação em dinheiro por total ganho <small className="dim">Quando o parceiro passa do valor ganho com a loja, entra o prêmio no saldo dele, uma vez só.</small></div>
           <div className="stack" style={{ gap: 6 }}>
             {miles.map((m, i) => (
               <div key={i} className="row" style={{ gap: 8 }}>
                 <span className="dim" style={{ fontSize: 13, width: 140 }}>Ao chegar em</span>
                 <input className="in" name="mmin" defaultValue={m.minCents ? reais(m.minCents) : ""} placeholder="10.000,00" style={{ width: 130 }} />
-                <input className="in" name="mprize" defaultValue={m.prize} placeholder="Prêmio, ex.: kit completo" style={{ flex: 1, maxWidth: 360 }} />
+                <span className="dim" style={{ fontSize: 13 }}>ganha</span>
+                <input className="in" name="mprize" defaultValue={m.prizeCents ? reais(m.prizeCents) : ""} placeholder="1.000,00" style={{ width: 130 }} />
               </div>
             ))}
           </div>

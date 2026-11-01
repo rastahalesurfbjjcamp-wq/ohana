@@ -366,6 +366,7 @@ model Referral {
   inviteAt      DateTime?
   lastLoginAt   DateTime?
   pixKey        String?
+  portalAt      DateTime? // quando criou a conta no portal; comissão só conta a partir daqui
 }
 
 // Lançamentos (drops)
