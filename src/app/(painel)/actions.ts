@@ -42,7 +42,9 @@ function localToDate(v: string) {
 /* Grupos */
 export async function syncGroupsAction() {
   await auth();
-  await syncGroups();
+  // tenta na hora; se o número tiver muitos grupos e demorar, termina em segundo plano
+  const done = await Promise.race([syncGroups().then(() => true), new Promise<boolean>((r) => setTimeout(() => r(false), 40_000))]).catch(() => false);
+  if (!done) await enqueue("sync-groups", {}, { jobId: `sync-manual-${Date.now()}` }).catch(() => null);
   revalidatePath("/grupos");
 }
 

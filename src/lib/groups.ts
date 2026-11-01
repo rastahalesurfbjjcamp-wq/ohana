@@ -18,7 +18,19 @@ async function upsertContact(phone: string, name?: string | null) {
 // Lê todos os grupos do número conectado e atualiza o banco.
 // Na primeira vez não gera eventos (só fotografa quem já está).
 export async function syncGroups() {
-  const groups: EvoGroup[] = await evolution.fetchAllGroups(true);
+  // Número com muitos grupos grandes: a lista completa com membros pode estourar o tempo.
+  // Nesse caso busca a lista sem membros e depois os membros de cada grupo, um por um.
+  let groups: EvoGroup[];
+  try {
+    groups = await evolution.fetchAllGroups(true);
+  } catch (e) {
+    console.error("[grupos] lista completa falhou, buscando um por um:", String(e).slice(0, 160));
+    groups = await evolution.fetchAllGroups(false);
+    for (const g of groups) {
+      if (g.isCommunity) continue; // a comunidade em si não tem membros próprios
+      g.participants = await evolution.groupParticipants(g.id).catch(() => undefined);
+    }
+  }
   const me = await evolution.ownerPhone();
   let created = 0;
   for (const g of groups) {
@@ -26,7 +38,7 @@ export async function syncGroups() {
     const mine = (g.participants ?? []).find((p) => me && participantPhone(p) === me);
     const iAmAdmin = !!mine && typeof mine === "object" && !!(mine as { admin?: string | null }).admin;
     const kind = g.isCommunity ? "comunidade" : g.isCommunityAnnounce ? "avisos" : "grupo";
-    const meta = { name: g.subject ?? g.id, description: g.desc, size: g.size ?? g.participants?.length ?? 0, iAmAdmin, kind, parentJid: g.linkedParent ?? null };
+    const meta = { name: g.subject ?? g.id, description: g.desc, size: g.size ?? g.participants?.length ?? existing?.size ?? 0, iAmAdmin: g.participants ? iAmAdmin : existing?.iAmAdmin ?? false, kind, parentJid: g.linkedParent ?? null };
     const group = await db.group.upsert({
       where: { jid: g.id },
       create: { jid: g.id, ...meta },

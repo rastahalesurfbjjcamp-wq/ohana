@@ -3,12 +3,13 @@ import { env } from "./env";
 
 type Json = Record<string, unknown>;
 
-async function call<T = unknown>(method: "GET" | "POST" | "DELETE" | "PUT", path: string, body?: Json): Promise<T> {
+async function call<T = unknown>(method: "GET" | "POST" | "DELETE" | "PUT", path: string, body?: Json, timeoutMs = 120_000): Promise<T> {
   const res = await fetch(`${env.evolutionUrl().replace(/\/$/, "")}${path}`, {
     method,
     headers: { "Content-Type": "application/json", apikey: env.evolutionKey() },
     body: body ? JSON.stringify(body) : undefined,
     cache: "no-store",
+    signal: AbortSignal.timeout(timeoutMs),
   });
   const text = await res.text();
   let data: unknown = text;
@@ -89,7 +90,13 @@ export const evolution = {
   },
 
   async fetchAllGroups(withParticipants = true): Promise<EvoGroup[]> {
-    return call("GET", `/group/fetchAllGroups/${inst()}?getParticipants=${withParticipants}`);
+    return call("GET", `/group/fetchAllGroups/${inst()}?getParticipants=${withParticipants}`, undefined, withParticipants ? 180_000 : 90_000);
+  },
+
+  // Membros de um grupo só (usado quando a lista completa com membros demora demais)
+  async groupParticipants(groupJid: string): Promise<EvoParticipant[]> {
+    const r = await call<{ participants?: EvoParticipant[] }>("GET", `/group/participants/${inst()}?groupJid=${encodeURIComponent(groupJid)}`, undefined, 60_000);
+    return r?.participants ?? [];
   },
 
   async inviteCode(groupJid: string): Promise<string | undefined> {
