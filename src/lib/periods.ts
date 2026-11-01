@@ -1,6 +1,6 @@
 import { addDays, isoDayLocal } from "./time";
 
-export type PeriodKey = "hoje" | "ontem" | "7d" | "30d" | "60d" | "90d" | "mes" | "mes-passado" | "custom";
+export type PeriodKey = "hoje" | "ontem" | "7d" | "30d" | "60d" | "90d" | "mes" | "mes-passado" | "6m" | "ano" | "custom";
 export const PERIODS: { key: PeriodKey; label: string }[] = [
   { key: "hoje", label: "Hoje" },
   { key: "ontem", label: "Ontem" },
@@ -10,6 +10,8 @@ export const PERIODS: { key: PeriodKey; label: string }[] = [
   { key: "mes", label: "Este mês" },
   { key: "mes-passado", label: "Mês passado" },
   { key: "90d", label: "90 dias" },
+  { key: "6m", label: "6 meses" },
+  { key: "ano", label: "Este ano" },
 ];
 
 export function resolvePeriod(p: string | undefined, fallback: PeriodKey = "30d", de?: string, ate?: string) {
@@ -31,6 +33,8 @@ export function resolvePeriod(p: string | undefined, fallback: PeriodKey = "30d"
     case "60d": from = addDays(today, -59); break;
     case "90d": from = addDays(today, -89); break;
     case "mes": from = `${today.slice(0, 7)}-01`; break;
+    case "6m": from = addDays(today, -182); break;
+    case "ano": from = `${today.slice(0, 4)}-01-01`; break;
     case "mes-passado": {
       const first = `${today.slice(0, 7)}-01`;
       to = addDays(first, -1);

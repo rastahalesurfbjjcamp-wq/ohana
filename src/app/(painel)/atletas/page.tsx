@@ -59,7 +59,7 @@ export default async function Atletas({ searchParams }: { searchParams: Promise<
     <>
       <Header title="Atletas e influenciadores" lede={`Quem divulga a loja com cupom próprio. O cliente ganha ${ruleTxt} e o atleta recebe ${s.referral.commission}% do que vendeu, pago todo dia 1.`}>
         <Link className="btn pri" href="/atletas/portal">Portal, saldos e saques</Link>
-        <DateRange current={period.key} from={period.from} to={period.to} label={period.label} presets={["hoje", "ontem", "7d", "30d", "mes", "mes-passado"]} />
+        <DateRange current={period.key} from={period.from} to={period.to} label={period.label} presets={["hoje", "ontem", "7d", "30d", "mes", "mes-passado", "90d", "6m", "ano"]} />
         <Link className="btn pri" href={sp.novo ? "/atletas" : "/atletas?novo=1"}><Plus size={16} /> Novo atleta</Link>
       </Header>
       {error ? <ErrorNote error={error} /> : null}

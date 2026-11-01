@@ -9,6 +9,7 @@ import { CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight } from "luc
 const PRESETS: [string, string][] = [
   ["hoje", "Hoje"], ["ontem", "Ontem"], ["7d", "Últimos 7 dias"], ["30d", "Últimos 30 dias"],
   ["60d", "Últimos 60 dias"], ["mes", "Este mês"], ["mes-passado", "Mês passado"], ["90d", "Últimos 90 dias"],
+  ["6m", "Últimos 6 meses"], ["ano", "Este ano"],
 ];
 const WD = ["D", "S", "T", "Q", "Q", "S", "S"];
 const MONTHS = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
@@ -22,6 +23,8 @@ const parseBr = (t: string) => {
   const d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
   return d.getDate() === Number(m[1]) ? iso(d) : null;
 };
+// digita só os números e as barras entram sozinhas (no celular o teclado numérico não tem barra)
+const mask = (t: string) => { const d = t.replace(/\D/g, "").slice(0, 8); return d.length > 4 ? `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}` : d.length > 2 ? `${d.slice(0, 2)}/${d.slice(2)}` : d; };
 const span = (a: string, b: string) => Math.round((Date.parse(b) - Date.parse(a)) / 864e5) + 1;
 
 export function DateRange({ current, from, to, label, presets }: { current: string; from: string; to: string; label: string; presets?: string[] }) {
@@ -82,6 +85,29 @@ export function DateRange({ current, from, to, label, presets }: { current: stri
   const showStart = !b && hover && hover < a ? hover : a;
   const list = presets ? PRESETS.filter(([k]) => presets.includes(k)) : PRESETS;
   const jump = (y: number, m: number) => setMonth(new Date(y, m, 1));
+  // datas digitadas: valem assim que a data fica completa (não precisa sair do campo)
+  const typedStart = (t: string) => {
+    const v = parseBr(t);
+    if (!v || v > today) return false;
+    setCustom(true); setA(v);
+    if (b && b < v) setB(v);
+    if (!b) setB(v);
+    jump(Number(v.slice(0, 4)), Number(v.slice(5, 7)) - 1);
+    return true;
+  };
+  const typedEnd = (t: string) => {
+    const v = parseBr(t);
+    if (!v || v > today) return false;
+    setCustom(true);
+    setRange(a, v);
+    return true;
+  };
+  const enterKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    const x = parseBr(ta) ?? a, y = parseBr(tb) ?? b;
+    if (x && y) { const [f, t] = y < x ? [y, x] : [x, y]; go({ p: "custom", de: f, ate: t > today ? today : t }); }
+  };
 
   return (
     <div className="dp" ref={ref}>
@@ -103,12 +129,12 @@ export function DateRange({ current, from, to, label, presets }: { current: stri
             <div className="dp-top">
               <label className="dp-field">
                 <span>De</span>
-                <input value={ta} onChange={(e) => setTa(e.target.value)} onBlur={() => { const v = parseBr(ta); if (v && v <= today) { setCustom(true); setRange(v, b ?? v); jump(Number(v.slice(0, 4)), Number(v.slice(5, 7)) - 1); } else setTa(full(a)); }} placeholder="dd/mm/aaaa" inputMode="numeric" />
+                <input value={ta} onChange={(e) => { const t = mask(e.target.value); setTa(t); typedStart(t); }} onBlur={() => { if (!typedStart(ta)) setTa(full(a)); }} onKeyDown={enterKey} placeholder="dd/mm/aaaa" inputMode="numeric" />
               </label>
               <span className="dim">até</span>
               <label className="dp-field">
                 <span>Até</span>
-                <input value={tb} onChange={(e) => setTb(e.target.value)} onBlur={() => { const v = parseBr(tb); if (v && v <= today) { setCustom(true); setRange(a, v); } else setTb(b ? full(b) : ""); }} placeholder="dd/mm/aaaa" inputMode="numeric" />
+                <input value={tb} onChange={(e) => { const t = mask(e.target.value); setTb(t); typedEnd(t); }} onBlur={() => { if (!typedEnd(tb)) setTb(b ? full(b) : ""); }} onKeyDown={enterKey} placeholder="dd/mm/aaaa" inputMode="numeric" />
               </label>
               <div className="dp-jump">
                 <select value={month.getMonth()} onChange={(e) => jump(month.getFullYear(), Number(e.target.value))} aria-label="Mês">

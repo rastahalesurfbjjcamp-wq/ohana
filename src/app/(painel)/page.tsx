@@ -226,7 +226,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
           </p>
         </div>
         <div className="row acts">
-          <DateRange current={period.key} from={period.from} to={period.to} label={period.label} presets={["hoje", "ontem", "7d", "30d", "60d", "mes", "mes-passado"]} />
+          <DateRange current={period.key} from={period.from} to={period.to} label={period.label} presets={["hoje", "ontem", "7d", "30d", "60d", "mes", "mes-passado", "6m", "ano"]} />
           <RefreshButton bar />
           <CardPicker cards={CARDS} on={cardOn} action={saveDashCards} />
           <Link className="btn" href="/agendamentos"><CalendarClock size={16} /> Agendar</Link>
