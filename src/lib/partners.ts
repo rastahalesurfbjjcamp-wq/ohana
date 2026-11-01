@@ -141,7 +141,7 @@ const errOf = (x: { userErrors: { message: string }[] } | undefined) => { const 
 
 // Cria o cupom do atleta no tipo escolhido
 export async function createPartnerCode(code: string, d: Disc, title = `Atleta ${code}`) {
-  const base = { title, code, startsAt: new Date().toISOString(), context: { all: "ALL" }, minimumRequirement: minReq(d.min), tags: ["atleta"] };
+  const base = { title, code, startsAt: new Date().toISOString(), context: { all: "ALL" }, minimumRequirement: minReq(d.min) };
   if (d.type === "shipping") {
     const r = await gql<{ discountCodeFreeShippingCreate: { codeDiscountNode: { id: string } | null; userErrors: { message: string }[] } }>(
       `mutation($i:DiscountCodeFreeShippingInput!){ discountCodeFreeShippingCreate(freeShippingCodeDiscount:$i){ codeDiscountNode{ id } userErrors{ message } } }`, { i: { ...base, destination: { all: true } } });
@@ -188,7 +188,15 @@ export async function syncPartnerDiscounts() {
     const list = await db.referral.findMany({ where: { kind: { in: ["atleta", "influenciador"] } } });
     for (const r of list) {
       const f = await findShopifyCode(r.code).catch(() => null);
-      if (!f) continue;
+      if (!f) {
+        // atleta que se cadastrou pelo portal e ficou sem cupom na Shopify: cria agora com a regra padrão
+        if (r.active && r.portalAt) {
+          const rule = await ruleDisc();
+          const id = await createPartnerCode(r.code, rule, `Atleta ${r.name ?? r.code}`).catch((e) => { console.error("[parceiro] cupom", r.code, String(e).slice(0, 200)); return null; });
+          if (id) await db.referral.update({ where: { id: r.id }, data: { discountId: id, ...discFields(rule) } });
+        }
+        continue;
+      }
       const cur = discOf(r);
       if (!sameDisc(cur, f.disc) || r.discountId !== f.id || !r.discountType) await db.referral.update({ where: { id: r.id }, data: { discountId: f.id, ...discFields(f.disc) } });
     }
