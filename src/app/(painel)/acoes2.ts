@@ -162,7 +162,7 @@ export async function createPoll(f: FormData) {
   }
   const poll = await db.poll.create({ data: { question, options, mode, groupJids, imageUrls: images, createdBy: s.name } });
   if (mode === "grupo") {
-    for (const jid of groupJids) {
+    for (const jid of await (await import("@/lib/send")).sendableJids(groupJids)) {
       await evolution.sendPoll(jid, question, options, 1);
       await new Promise((r) => setTimeout(r, 2500));
     }

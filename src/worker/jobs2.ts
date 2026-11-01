@@ -60,7 +60,7 @@ export async function sendPollLink(pollId: string) {
   const poll = await db.poll.findUnique({ where: { id: pollId } });
   if (!poll) return;
   const link = `${env.appUrl().replace(/\/$/, "")}/votar/${poll.id}`;
-  for (const jid of poll.groupJids) {
+  for (const jid of await (await import("../lib/send")).sendableJids(poll.groupJids)) {
     await sendText(jid, `*${poll.question}*\n\nVotação exclusiva da comunidade. Vote aqui: ${link}`, { mentionAll: true });
     await humanDelay();
   }

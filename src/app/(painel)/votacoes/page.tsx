@@ -48,7 +48,7 @@ export default async function Votacoes({ searchParams }: { searchParams: Promise
             <div className="field"><label>Fotos das opções, na mesma ordem (só página fechada)</label><input className="in file" type="file" name="images" accept="image/*" multiple /></div>
             <div className="field">
               <label>Grupos</label>
-              <GroupPicker name="groups" groups={groups.map((g) => ({ jid: g.jid, name: g.name, size: g.size, checked: true }))} />
+              <GroupPicker name="groups" groups={groups.filter((g) => g.kind !== "comunidade").map((g) => ({ jid: g.jid, name: g.kind === "avisos" ? `Avisos: ${g.name}` : g.name, size: g.size, checked: true }))} />
             </div>
             <div><button className="btn pri" type="submit">Criar e enviar</button></div>
           </form>

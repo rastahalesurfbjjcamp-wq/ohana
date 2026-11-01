@@ -163,7 +163,7 @@ export default async function Lancamento({ searchParams }: { searchParams: Promi
               <div className="field" style={{ width: 220 }}><label>Palavra do produto (vendas)</label><input className="in" name="productKey" placeholder="kotb" /></div>
             </div>
             <div className="field"><label>Frase do lançamento</label><input className="in" name="about" placeholder="Live shop com as peças exclusivas liberadas só para o Grupo VIP" /></div>
-            <div className="field"><label>Grupos</label><GroupPicker name="groups" groups={groups.map((g) => ({ jid: g.jid, name: g.name, size: g.size, checked: true }))} /></div>
+            <div className="field"><label>Grupos</label><GroupPicker name="groups" groups={groups.filter((g) => g.kind !== "comunidade").map((g) => ({ jid: g.jid, name: g.kind === "avisos" ? `Avisos: ${g.name}` : g.name, size: g.size, checked: true }))} /></div>
             <div className="g2f">
               {STEPS.map(([k, label, text]) => (
                 <div className="field" key={k}><label>{label}</label><textarea className="in" name={`msg_${k}`} defaultValue={text} style={{ minHeight: 70 }} /></div>

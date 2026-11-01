@@ -55,3 +55,14 @@ export async function sendMedia(
   await markSent(res);
   return res;
 }
+
+// A comunidade em si não recebe mensagem: quem recebe é o grupo de avisos dela.
+// Troca a comunidade pelo grupo de avisos e tira repetidos.
+export async function sendableJids(jids: string[]): Promise<string[]> {
+  const { db } = await import("./db");
+  const parents = await db.group.findMany({ where: { jid: { in: jids }, kind: "comunidade" }, select: { jid: true } });
+  if (!parents.length) return [...new Set(jids)];
+  const ann = await db.group.findMany({ where: { parentJid: { in: parents.map((p) => p.jid) }, kind: "avisos", archived: false }, select: { jid: true, parentJid: true } });
+  const map = new Map(ann.map((a) => [a.parentJid!, a.jid]));
+  return [...new Set(jids.map((j) => map.get(j) ?? j))];
+}

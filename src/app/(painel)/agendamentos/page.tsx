@@ -62,7 +62,7 @@ export default async function Agendamentos({ searchParams }: { searchParams: Pro
   const byDay = (d: string) => list.filter((m) => isoDayLocal(m.sendAt) === d);
   const fd = (d: string) => `${Number(d.slice(8))} de ${MONTHS[Number(d.slice(5, 7)) - 1]}`;
   const title = view === "dia" ? `${WD[new Date(`${anchor}T12:00:00`).getDay()]}, ${fd(anchor)}` : view === "semana" ? `${fd(days[0])} a ${fd(days[6])}` : `${MONTHS[Number(anchor.slice(5, 7)) - 1]} de ${anchor.slice(0, 4)}`;
-  const opts = groups.map((g) => ({ jid: g.jid, name: g.name, size: g.size, tag: g.isResults ? "resultados" : g.isCommunity ? "comunidade" : undefined, checked: g.isCommunity && !g.isResults }));
+  const opts = groups.filter((g) => g.kind !== "comunidade").map((g) => ({ jid: g.jid, name: g.kind === "avisos" ? `Avisos: ${g.name}` : g.name, size: g.size, tag: g.isResults ? "resultados" : g.isCommunity ? "comunidade" : undefined, checked: g.isCommunity && !g.isResults }));
 
   const Event = ({ m, compact }: { m: (typeof list)[number]; compact?: boolean }) => (
     <Link href={href({ id: m.id })} className={`sev ${STATUS[m.status][2]}${sel?.id === m.id ? " on" : ""}`} title={m.text}>

@@ -9,7 +9,7 @@ import { handleCommand } from "../lib/commands";
 import { transcribe } from "../lib/ai";
 import { evolution } from "../lib/evolution";
 import { getSettings } from "../lib/settings";
-import { humanDelay, reserveSlot, sendMedia, sendText, sentByBot } from "../lib/send";
+import { humanDelay, reserveSlot, sendMedia, sendText, sentByBot, sendableJids } from "../lib/send";
 import { ensureClubAutoDiscount, ensureMemberCode, scanClub } from "../lib/club";
 import { hhmmLocal, isoDayLocal, nowLocal } from "../lib/time";
 import { dueBroadcasts, leadWelcome, runBroadcast, sendPollLink, waitlistNotify, clubMsg, clubLaunch } from "./jobs2";
@@ -167,7 +167,7 @@ async function sendScheduled(id: string, job: Job) {
   if (!m || m.status !== "SENDING") return;
   const done = new Set<string>(((job.data as { done?: string[] }).done ?? []) as string[]);
   try {
-    for (const jid of m.groupJids) {
+    for (const jid of await sendableJids(m.groupJids)) {
       if (done.has(jid)) continue;
       const wait = await reserveSlot();
       if (wait > 0) {
