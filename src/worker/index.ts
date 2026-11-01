@@ -65,6 +65,7 @@ async function tick() {
     if (!mk.autoScan || Date.now() - mk.autoScan > 5 * 60_000) { await setMarks({ autoScan: Date.now() }); await A.scanAutomationEvents().catch((e) => console.error("[automações gatilhos]", e)); }
     // Campanhas agendadas e listas por regra (atualizam a cada 6 horas)
     await (await import("../lib/campaigns")).runCampaigns().catch((e) => console.error("[campanhas]", e));
+    await (await import("../lib/chatSchedule")).runChatSchedules().catch((e) => console.error("[agendadas atendimento]", e));
     if (!mk.lists || Date.now() - mk.lists > 6 * 3600_000) { await setMarks({ lists: Date.now() }); await (await import("../lib/audience")).refreshAllLists().catch((e) => console.error("[listas]", e)); }
   }
   await sendDueRecovery().catch((e) => console.error("[recuperação]", e));

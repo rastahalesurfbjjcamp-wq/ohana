@@ -402,6 +402,7 @@ export interface Shipment {
   orderedAt: string;
   phone: string | null;
   lastEvent: { status: string; message: string | null; at: string } | null;
+  events?: { status: string; message: string | null; at: string }[];
 }
 
 export async function shipments(days = 30): Promise<Shipment[]> {
@@ -425,7 +426,7 @@ export async function shipments(days = 30): Promise<Shipment[]> {
       };
       const d: P = await gql<P>(
         `query($q:String,$after:String){ orders(first:100, after:$after, sortKey:CREATED_AT, reverse:true, query:$q){ pageInfo{hasNextPage endCursor}
-          nodes{ name createdAt phone customer{displayName} shippingAddress{city provinceCode phone} fulfillments(first:3){ createdAt displayStatus deliveredAt trackingInfo{number company url} events(first:1, sortKey:HAPPENED_AT, reverse:true){ nodes{ status message happenedAt } } } } } }`,
+          nodes{ name createdAt phone customer{displayName} shippingAddress{city provinceCode phone} fulfillments(first:3){ createdAt displayStatus deliveredAt trackingInfo{number company url} events(first:12, sortKey:HAPPENED_AT, reverse:true){ nodes{ status message happenedAt } } } } } }`,
         { q: `fulfillment_status:shipped created_at:>='${since}'`, after },
       );
       for (const o of d.orders.nodes) {
@@ -446,6 +447,7 @@ export async function shipments(days = 30): Promise<Shipment[]> {
           orderedAt: o.createdAt,
           phone: o.phone ?? o.shippingAddress?.phone ?? null,
           lastEvent: f.events?.nodes?.[0] ? { status: f.events.nodes[0].status, message: f.events.nodes[0].message, at: f.events.nodes[0].happenedAt } : null,
+          events: (f.events?.nodes ?? []).map((e) => ({ status: e.status, message: e.message, at: e.happenedAt })),
         });
       }
       after = d.orders.pageInfo.hasNextPage ? d.orders.pageInfo.endCursor : null;

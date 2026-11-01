@@ -10,6 +10,10 @@ import { brl } from "@/lib/time";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { ChatComposer } from "@/components/ChatComposer";
 import { replyChat, saveQuickReplies, threadAction } from "../acoes3";
+import { chatList, chatNote, chatSchedule, chatScheduleCancel, chatTag } from "../acoes13";
+import { rfmOf } from "@/lib/audience";
+import { RFM_SEGMENTS } from "@/lib/audienceTypes";
+import { ordersBetween } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
@@ -60,7 +64,24 @@ export default async function Atendimento({ searchParams }: { searchParams: Prom
     db.setting.findUnique({ where: { key: "_quick_replies" } }),
     db.user.findMany({ select: { name: true } }),
   ]);
-  const quick = ((quickRow?.value as { items?: string[] } | undefined)?.items ?? []);
+  const libQuick = (await db.messageTemplate.findMany({ where: { kind: "resposta" }, orderBy: { name: "asc" } })).map((t) => ((t.parts ?? []) as { text?: string }[]).map((p) => p.text).filter(Boolean).join("\n\n")).filter(Boolean);
+  const quick = [...((quickRow?.value as { items?: string[] } | undefined)?.items ?? []), ...libQuick];
+  const [tags, allLists, myLists, scheds, myOrders] = phoneSel ? await Promise.all([
+    db.contactTag.findMany({ where: { phone: phoneSel }, orderBy: { createdAt: "asc" } }),
+    db.contactList.findMany({ where: { dynamic: false }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    db.listMember.findMany({ where: { phone: phoneSel }, include: { list: { select: { name: true } } } }),
+    db.chatSchedule.findMany({ where: { phone: phoneSel }, orderBy: { at: "desc" }, take: 6 }),
+    ordersBetween(new Date(Date.now() - 180 * 864e5), new Date()).then((os) => os.filter((o) => normalizePhone(o.phone) === phoneSel).slice(0, 5)).catch(() => [] as Order[]),
+  ]) : [[], [], [], [], [] as Order[]];
+  let rfm: (typeof RFM_SEGMENTS)[number] | undefined;
+  if (cust) {
+    const all = await customers().catch(() => []);
+    const sorted = all.map((c) => c.spent).sort((a, b) => a - b);
+    const mCut = [0.2, 0.4, 0.6, 0.8].map((q) => sorted[Math.floor(q * (sorted.length - 1))] ?? 0);
+    const k = rfmOf(cust, mCut).seg;
+    rfm = RFM_SEGMENTS.find((x) => x.k === k);
+  }
+  const nowLocal = new Date(Date.now() - 3 * 3600_000 + 3600_000).toISOString().slice(0, 16);
   const displayName = current?.name ?? cust?.name ?? lead?.name ?? (phoneSel ? formatPhone(phoneSel) : "");
   const fmtT = new Intl.DateTimeFormat("pt-BR", { timeZone: tz, hour: "2-digit", minute: "2-digit" });
   const fmtD = new Intl.DateTimeFormat("pt-BR", { timeZone: tz, weekday: "long", day: "2-digit", month: "long" });
@@ -138,7 +159,9 @@ export default async function Atendimento({ searchParams }: { searchParams: Prom
                   return (
                     <div key={m.id} style={{ display: "contents" }}>
                       {sep && <div className="ib-day">{sep}</div>}
-                      {m.by === "sistema" ? (
+                      {m.by === "nota" ? (
+                        <div className="ib-note nota">Nota interna · {m.text}</div>
+                      ) : m.by === "sistema" ? (
                         <div className="ib-note">{m.text.length > 140 ? `${m.text.slice(0, 140)}…` : m.text}</div>
                       ) : (
                         <div className={`bub ${m.fromMe ? "me" : "them"}${m.by === "ia" ? " ia" : ""}`}>
@@ -178,11 +201,12 @@ export default async function Atendimento({ searchParams }: { searchParams: Prom
                 {cust && (cust.orders >= 3 || cust.spent >= 1000) && <span className="chip c-s">VIP</span>}
                 {cust?.tags.slice(0, 3).map((t) => <span className="chip c-n" key={t}>{t}</span>)}
                 {!cust && lead && <span className="chip c-k">lead</span>}
+                {rfm && <span className="chip" style={{ background: `${rfm.color}26`, color: rfm.color }} title={`${rfm.desc}. Sugestão: ${rfm.action}`}>{rfm.label}</span>}
               </div>
               <div className="ib-sec">Resumo</div>
-              <div className="kv"><span className="mut">Total gasto</span><b>{cust ? brl(cust.spent) : "–"}</b></div>
+              <div className="kv"><span className="mut">Total gasto</span><b>{cust ? brl(cust.spent) : "-"}</b></div>
               <div className="kv"><span className="mut">Pedidos</span><b>{cust?.orders ?? 0}</b></div>
-              <div className="kv"><span className="mut">Cidade</span><b>{cust ? [cust.city, cust.state].filter(Boolean).join(" / ") || "–" : "–"}</b></div>
+              <div className="kv"><span className="mut">Cidade</span><b>{cust ? [cust.city, cust.state].filter(Boolean).join(" / ") || "-" : "-"}</b></div>
               {lead && <div className="kv"><span className="mut">Veio de</span><b>{lead.utmSource ?? lead.source}</b></div>}
               {order && (
                 <>
@@ -197,6 +221,49 @@ export default async function Atendimento({ searchParams }: { searchParams: Prom
                   </div>
                 </>
               )}
+              {myOrders.length > 1 && (
+                <>
+                  <div className="ib-sec">Pedidos</div>
+                  {myOrders.map((o) => <div key={o.id} className="kv"><span className="mut">{o.name} · {new Date(o.createdAt).toLocaleDateString("pt-BR", { timeZone: tz, day: "2-digit", month: "2-digit" })}</span><b>{brl(o.total, 0)} <small className={o.financial === "PAID" ? "up" : "dn"}>{o.financial === "PAID" ? "pago" : "não pago"}</small></b></div>)}
+                </>
+              )}
+              <div className="ib-sec">Etiquetas</div>
+              <div className="row" style={{ gap: 5, flexWrap: "wrap" }}>
+                {tags.map((t) => <form key={t.tag} action={chatTag}><input type="hidden" name="phone" value={phoneSel} /><input type="hidden" name="tag" value={t.tag} /><input type="hidden" name="act" value="remove" /><button className="chip c-k ib-tag" type="submit" title="Tirar etiqueta">{t.tag} ×</button></form>)}
+                <form action={chatTag} className="row" style={{ gap: 4 }}><input type="hidden" name="phone" value={phoneSel} /><input className="in" name="tag" placeholder="+ etiqueta" style={{ height: 28, width: 110, fontSize: 12 }} /></form>
+              </div>
+              <div className="ib-sec">Listas</div>
+              <div className="row" style={{ gap: 5, flexWrap: "wrap" }}>
+                {myLists.map((m) => <form key={m.listId} action={chatList}><input type="hidden" name="phone" value={phoneSel} /><input type="hidden" name="listId" value={m.listId} /><input type="hidden" name="act" value="remove" /><button className="chip c-n ib-tag" type="submit" title={allLists.some((l) => l.id === m.listId) ? "Tirar da lista" : "Lista por regra"} disabled={!allLists.some((l) => l.id === m.listId)}>{m.list.name}{allLists.some((l) => l.id === m.listId) ? " ×" : ""}</button></form>)}
+                {allLists.filter((l) => !myLists.some((m) => m.listId === l.id)).length > 0 && (
+                  <form action={chatList} className="row" style={{ gap: 4 }}><input type="hidden" name="phone" value={phoneSel} /><input type="hidden" name="name" value={displayName} />
+                    <select className="in" name="listId" style={{ height: 28, fontSize: 12, width: 130 }}>{allLists.filter((l) => !myLists.some((m) => m.listId === l.id)).map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</select>
+                    <button className="btn sm" type="submit" style={{ height: 28 }}>+</button>
+                  </form>
+                )}
+              </div>
+              <div className="ib-sec">Nota interna</div>
+              <form action={chatNote} className="stack" style={{ gap: 6 }}>
+                <input type="hidden" name="phone" value={phoneSel} />
+                <textarea className="in" name="text" rows={2} placeholder="Só a equipe vê. Ex.: quer trocar a G pela M" style={{ fontSize: 12.5, height: "auto", padding: 8 }} />
+                <div><button className="btn sm" type="submit">Salvar nota</button></div>
+              </form>
+              <div className="ib-sec">Mensagem agendada</div>
+              <form action={chatSchedule} className="stack" style={{ gap: 6 }}>
+                <input type="hidden" name="phone" value={phoneSel} />
+                <input className="in" type="datetime-local" name="at" defaultValue={nowLocal} style={{ height: 34, fontSize: 12.5 }} />
+                <textarea className="in" name="text" rows={3} placeholder="Ex.: Oi {nome}, conseguiu ver o tamanho?" style={{ fontSize: 12.5, height: "auto", padding: 8 }} />
+                <label className="check" style={{ fontSize: 12 }}><input type="checkbox" name="cReply" defaultChecked /> Cancelar se o cliente escrever</label>
+                <label className="check" style={{ fontSize: 12 }}><input type="checkbox" name="cAgent" /> Cancelar se alguém da equipe escrever</label>
+                <label className="check" style={{ fontSize: 12 }}><input type="checkbox" name="cArchive" defaultChecked /> Cancelar se a conversa for concluída</label>
+                <div><button className="btn sm" type="submit">Agendar envio</button></div>
+              </form>
+              {scheds.map((m) => (
+                <div key={m.id} className="kv" style={{ alignItems: "flex-start" }}>
+                  <span className="mut" style={{ fontSize: 12 }}>{m.at.toLocaleString("pt-BR", { timeZone: tz, day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })} · {m.text.slice(0, 40)}{m.text.length > 40 ? "…" : ""}</span>
+                  {m.status === "agendada" ? <form action={chatScheduleCancel}><input type="hidden" name="id" value={m.id} /><button className="chip c-k ib-tag" type="submit">agendada ×</button></form> : <span className={`chip ${m.status === "enviada" ? "c-l" : m.status === "erro" ? "c-c" : "c-n"}`} title={m.note ?? ""}>{m.status}</span>}
+                </div>
+              ))}
               {current && (
                 <>
                   <div className="ib-sec">Responsável</div>

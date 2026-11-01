@@ -61,7 +61,7 @@ export async function assistantReply(phone: string, audioId?: string | null) {
     }
   }
 
-  const history = await db.chatMessage.findMany({ where: { phone }, orderBy: { createdAt: "desc" }, take: 14 });
+  const history = await db.chatMessage.findMany({ where: { phone, by: { not: "nota" } }, orderBy: { createdAt: "desc" }, take: 14 });
   if (!history.length || history[0].fromMe) return; // já respondido
   // Se a equipe respondeu nos últimos 30 minutos, a IA não se mete
   const teamRecent = history.find((m) => m.by === "equipe" && Date.now() - m.createdAt.getTime() < 30 * 60_000);

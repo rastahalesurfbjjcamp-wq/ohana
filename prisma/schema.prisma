@@ -740,3 +740,33 @@ model AutoMsg {
   @@index([automationId, sentAt])
   @@index([runId])
 }
+
+// Controle interno de cada pedido ou carrinho (status próprio, responsável, bandeira, arquivado)
+model OrderMeta {
+  refId     String   @id // id do pedido ou carrinho na Shopify
+  kind      String   @default("pedido") // pedido | carrinho
+  status    String?
+  assignee  String?
+  flagged   Boolean  @default(false)
+  archived  Boolean  @default(false)
+  note      String?
+  updatedAt DateTime @updatedAt
+}
+
+// Mensagem agendada dentro de uma conversa do atendimento (cancela sozinha se o cliente ou a equipe escrever)
+model ChatSchedule {
+  id              String   @id @default(cuid())
+  phone           String
+  text            String
+  at              DateTime
+  cancelOnReply   Boolean  @default(true)
+  cancelOnAgent   Boolean  @default(false)
+  cancelOnArchive Boolean  @default(true)
+  status          String   @default("agendada") // agendada | enviada | cancelada | erro
+  by              String?
+  note            String?
+  createdAt       DateTime @default(now())
+
+  @@index([status, at])
+  @@index([phone])
+}

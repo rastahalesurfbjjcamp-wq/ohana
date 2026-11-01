@@ -61,10 +61,22 @@ export default async function Entregas({ searchParams }: { searchParams: Promise
   for (const x of delivered) { const k = (x.company ?? "Outra").replace("Olist Envios ", ""); byCompany.set(k, [...(byCompany.get(k) ?? []), days(x.shippedAt, x.deliveredAt)]); }
   const n1 = (v: number) => v.toFixed(1).replace(".", ",");
 
-  const view = (f === "transito" ? [...transit, ...out] : f === "alerta" ? alert : f === "entregues" ? delivered : list).sort((a, b) => Number(isLate(b) || isProblem(b)) - Number(isLate(a) || isProblem(a)) || Date.parse(b.shippedAt) - Date.parse(a.shippedAt));
+  const lastAt = (x: Shipment) => Date.parse(x.deliveredAt ?? x.lastEvent?.at ?? x.shippedAt);
+  const stale = (d: number) => (x: Shipment) => !x.deliveredAt && Date.now() - lastAt(x) > d * 864e5;
+  const todayStr = new Date(Date.now() - 3 * 3600_000).toISOString().slice(0, 10);
+  const SHORT: Record<string, [string, (x: Shipment) => boolean]> = {
+    hoje: ["Atualizado hoje", (x) => new Date(lastAt(x) - 3 * 3600_000).toISOString().slice(0, 10) === todayStr],
+    s7: ["Sem atualização +7 dias", stale(7)],
+    s14: ["Sem atualização +14 dias", stale(14)],
+    s30: ["Sem atualização +30 dias", stale(30)],
+    retirada: ["Aguardando retirada", (x) => status(x) === "READY_FOR_PICKUP"],
+    tentativa: ["Tentativa de entrega", (x) => status(x) === "ATTEMPTED_DELIVERY"],
+    saiu: ["Saiu para entrega", (x) => status(x) === "OUT_FOR_DELIVERY"],
+  };
+  const view = (SHORT[f] ? list.filter(SHORT[f][1]) : f === "transito" ? [...transit, ...out] : f === "alerta" ? alert : f === "entregues" ? delivered : list).sort((a, b) => Number(isLate(b) || isProblem(b)) - Number(isLate(a) || isProblem(a)) || Date.parse(b.shippedAt) - Date.parse(a.shippedAt));
   const kpis = [
     { k: "Aguardando postagem", v: waiting.length, sub: waiting.length ? `mais antigo há ${Math.round(oldestWaiting)} dia(s)` : "nada parado", icon: Hourglass },
-    { k: "Em trânsito", v: transit.length, sub: transit.length ? `média ${n1(avgTransit)} dias` : "–", icon: Truck },
+    { k: "Em trânsito", v: transit.length, sub: transit.length ? `média ${n1(avgTransit)} dias` : "-", icon: Truck },
     { k: "Saiu para entrega", v: out.length, sub: "hoje", icon: MapPin },
     { k: "Entregues", v: delivered.length, sub: delivered.length ? `30 dias · ${n1(avgDelivered)} dias em média` : "30 dias", icon: PackageCheck, hl: true },
     { k: "Em alerta", v: alert.length, sub: "atrasado ou falha na entrega", icon: AlertTriangle, warn: alert.length > 0 },
@@ -89,6 +101,9 @@ export default async function Entregas({ searchParams }: { searchParams: Promise
       <div className="cols c-2-1" style={{ alignItems: "start" }}>
         <Panel title="Encomendas" body={false}
           right={<div className="chips">{[["todas", "Todas"], ["transito", "Em trânsito"], ["alerta", "Em alerta"], ["entregues", "Entregues"]].map(([k, l]) => <Link key={k} href={`/entregas${k === "todas" ? "" : `?f=${k}`}`} className={f === k ? "on" : ""}>{l}</Link>)}</div>}>
+          <div className="chips" style={{ margin: "0 18px 12px", alignSelf: "flex-start", flexWrap: "wrap" }}>
+            {Object.entries(SHORT).map(([k, [l, fn]]) => <Link key={k} href={f === k ? "/entregas" : `/entregas?f=${k}`} className={f === k ? "on" : ""}>{l}<b>{list.filter(fn).length}</b></Link>)}
+          </div>
           {view.length ? (
             <div style={{ overflowX: "auto" }}>
               <table className="tb">
@@ -103,9 +118,15 @@ export default async function Entregas({ searchParams }: { searchParams: Promise
                       <tr key={x.order} className={late || isProblem(x) ? "warn" : ""}>
                         <td><b style={{ fontWeight: 650 }}>{x.order}</b></td>
                         <td><b style={{ fontWeight: 600 }}>{x.customer}</b><div className="dim" style={{ fontSize: 12 }}>{[x.city, x.state].filter(Boolean).join(", ")}</div></td>
-                        <td>{x.number ? (x.url ? <a className="trk" href={x.url} target="_blank" rel="noreferrer">{x.number} <ExternalLink size={11} /></a> : <span className="trk">{x.number}</span>) : "–"}</td>
+                        <td>{x.number ? (x.url ? <a className="trk" href={x.url} target="_blank" rel="noreferrer">{x.number} <ExternalLink size={11} /></a> : <span className="trk">{x.number}</span>) : "-"}</td>
                         <td><span className={`chip ${tone}`}>{lbl}</span></td>
-                        <td className="mut" style={{ fontSize: 12.5, maxWidth: 240 }}>{upd}</td>
+                        <td className="mut" style={{ fontSize: 12.5, maxWidth: 260 }}>
+                          {(x.events?.length ?? 0) > 1 ? (
+                            <details className="tl-d"><summary>{upd}</summary>
+                              <ol className="rp-tl" style={{ margin: "8px 0 0 4px" }}>{x.events!.map((e, i) => <li key={i}><span>{new Date(e.at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</span>{e.message || EVENT[e.status] || e.status}</li>)}</ol>
+                            </details>
+                          ) : upd}
+                        </td>
                         <td>
                           {late || isProblem(x) ? (x.url ? <a className="chip c-s" href={x.url} target="_blank" rel="noreferrer">Ver com transportadora</a> : <span className="chip c-s">Ver com transportadora</span>)
                             : notified.has(x.order) ? <span className="chip c-l"><Check size={11} /> WhatsApp</span> : <span className="dim" style={{ fontSize: 12 }}>{s.recovery.trackingEnabled ? "na fila" : "aviso desligado"}</span>}

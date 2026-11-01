@@ -162,7 +162,7 @@ export function MessageEditor({ initial, folders, onSaved, compact }: { initial:
   const chars = useMemo(() => t.parts.reduce((s, p) => s + (p.text?.length ?? 0), 0), [t.parts]);
 
   return (
-    <div className={`me${compact ? " compact" : ""}`}>
+    <div className={`mse${compact ? " compact" : ""}`}>
       <div className="me-main">
         <div className="me-meta">
           <label className="cv-field" style={{ flex: 2 }}>Nome da mensagem<input className="in" value={t.name} placeholder="Ex.: Carrinho 1: lembrete" onChange={(e) => upd((d) => { d.name = e.target.value; })} /></label>
