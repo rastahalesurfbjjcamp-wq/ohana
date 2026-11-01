@@ -12,7 +12,7 @@ export type Program = { startDate: string; releaseDay: number; minWithdrawCents:
 
 const KEY = "_partner_program";
 const PAID = new Set(["PAID", "PARTIALLY_PAID", "PARTIALLY_REFUNDED"]);
-const VOID = new Set(["REFUNDED", "VOIDED"]);
+const VOID = new Set(["REFUNDED", "VOIDED", "EXPIRED"]);
 
 export const cents = (v: number) => Math.round(v * 100);
 export const brlc = (c: number) => (c / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -75,7 +75,10 @@ export async function syncLedger(opts: { force?: boolean } = {}) {
   const start = new Date(`${prog.startDate}T03:00:00Z`);
   const from = new Date(Math.max(start.getTime(), Date.now() - 59 * 864e5));
   const orders = await ordersBetween(from, new Date());
-  const existing = new Map((await db.partnerEarning.findMany({ where: { kind: { in: ["venda", "estorno"] }, orderAt: { gte: new Date(from.getTime() - 864e5) } }, select: { key: true, amountCents: true, availableAt: true, month: true, referralId: true } })).map((e) => [e.key, e]));
+  const recent = await db.partnerEarning.findMany({ where: { kind: { in: ["venda", "estorno"] }, orderAt: { gte: new Date(from.getTime() - 864e5) } }, select: { key: true, amountCents: true, availableAt: true, month: true, referralId: true, orderId: true, pct: true } });
+  const existing = new Map(recent.map((e) => [e.key, e]));
+  const sumByOrder = new Map<string, number>();
+  for (const e of recent) if (e.orderId) sumByOrder.set(e.orderId, (sumByOrder.get(e.orderId) ?? 0) + e.amountCents);
   let added = 0;
   for (const o of orders) {
     const code = o.codes.map((c) => c.toUpperCase()).find((c) => byCode.has(c));
@@ -89,8 +92,15 @@ export async function syncLedger(opts: { force?: boolean } = {}) {
       const base = cents(o.subtotal);
       const amount = Math.round((base * pct) / 100);
       await db.partnerEarning.create({ data: { referralId: p.id, key: `venda:${o.id}`, kind: "venda", month, orderId: o.id, orderName: o.name, orderAt: at, baseCents: base, pct, amountCents: amount, availableAt: releaseOf(month, prog.releaseDay) } }).then(() => added++).catch(() => null);
-    } else if (sale && (o.cancelled || VOID.has(o.financial)) && !existing.has(`estorno:${o.id}`)) {
-      await db.partnerEarning.create({ data: { referralId: sale.referralId, key: `estorno:${o.id}`, kind: "estorno", month: sale.month, orderId: o.id, orderName: o.name, orderAt: at, amountCents: -sale.amountCents, availableAt: sale.availableAt, note: o.cancelled ? "Pedido cancelado" : "Pedido estornado" } }).then(() => added++).catch(() => null);
+    } else if (sale && (o.cancelled || VOID.has(o.financial))) {
+      // cancelado ou reembolsado inteiro: zera o que já tinha entrado desse pedido
+      const left = sumByOrder.get(o.id) ?? sale.amountCents;
+      if (left !== 0 && !existing.has(`estorno:${o.id}`)) await db.partnerEarning.create({ data: { referralId: sale.referralId, key: `estorno:${o.id}`, kind: "estorno", month: sale.month, orderId: o.id, orderName: o.name, orderAt: at, amountCents: -left, availableAt: sale.availableAt, note: o.cancelled ? "Pedido cancelado" : "Pedido reembolsado" } }).then(() => added++).catch(() => null);
+    } else if (sale && PAID.has(o.financial)) {
+      // reembolso parcial: a comissão passa a ser só sobre o valor que ficou
+      const should = Math.round((cents(o.subtotal) * (sale.pct ?? 0)) / 100);
+      const has = sumByOrder.get(o.id) ?? sale.amountCents;
+      if (should < has) await db.partnerEarning.create({ data: { referralId: sale.referralId, key: `parcial:${o.id}:${should}`, kind: "estorno", month: sale.month, orderId: o.id, orderName: o.name, orderAt: at, baseCents: cents(o.subtotal), pct: sale.pct, amountCents: should - has, availableAt: sale.availableAt, note: "Reembolso parcial" } }).then(() => added++).catch(() => null);
     }
   }
 
@@ -108,6 +118,23 @@ export async function syncLedger(opts: { force?: boolean } = {}) {
         const t = tiers.find((x) => total >= x.minCents);
         if (!t) continue;
         await db.partnerEarning.create({ data: { referralId: r.referralId, key: `bonus:${r.referralId}:${m}`, kind: "bonus", month: m, amountCents: t.bonusCents, availableAt: releaseOf(m, prog.releaseDay), note: `Bônus por passar de ${brlc(t.minCents)} em comissão` } }).then(() => added++).catch(() => null);
+      }
+    }
+  }
+
+  // Fixo mensal e mínimo garantido: no fechamento do mês o parceiro recebe o maior entre o mínimo e (fixo + comissão)
+  const withFixed = partners.filter((p) => (p.fixedMonthly ?? 0) > 0 || (p.minMonthly ?? 0) > 0);
+  if (withFixed.length) {
+    for (let m = prog.startDate.slice(0, 7); releaseOf(m, prog.releaseDay).getTime() <= Date.now(); m = addMonths(m, 1)) {
+      for (const p of withFixed) {
+        if (!countable({ orderAt: null, month: m }, p.portalAt)) continue;
+        const rows = await db.partnerEarning.findMany({ where: { referralId: p.id, month: m, kind: { in: ["venda", "estorno"] } }, select: { orderAt: true, month: true, amountCents: true } });
+        const comm = rows.filter((e) => countable(e, p.portalAt)).reduce((a, e) => a + e.amountCents, 0);
+        const fixed = cents(p.fixedMonthly ?? 0), min = cents(p.minMonthly ?? 0);
+        const amount = Math.max(fixed, min - comm);
+        if (amount <= 0) continue;
+        const note = amount > fixed ? `Fixo de ${brlc(fixed)} + complemento até o mínimo de ${brlc(min)}` : `Fixo mensal de ${brlc(fixed)}`;
+        await db.partnerEarning.create({ data: { referralId: p.id, key: `fixo:${p.id}:${m}`, kind: "ajuste", month: m, amountCents: amount, availableAt: releaseOf(m, prog.releaseDay), note } }).then(() => added++).catch(() => null);
       }
     }
   }

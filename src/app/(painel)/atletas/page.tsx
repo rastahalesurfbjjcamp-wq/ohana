@@ -5,7 +5,7 @@ import { DateRange } from "@/components/DateRange";
 import { CopyButton } from "@/components/CopyButton";
 import { NumberInput } from "@/components/NumberInput";
 import { Bars } from "@/components/charts";
-import { describeDisc, discOf, ensureTeam, partnerLink, partnerMessage, partnerStats, ruleDisc, sameDisc, syncPartnerDiscounts, unlinkedCodes, waLink } from "@/lib/partners";
+import { describeDisc, discOf, ensureTeam, monthPay, partnerLink, partnerMessage, partnerStats, ruleDisc, sameDisc, syncPartnerDiscounts, unlinkedCodes, waLink } from "@/lib/partners";
 import { DiscPicker } from "@/components/DiscPicker";
 import { daysBetween, resolvePeriod } from "@/lib/periods";
 import { getSettings } from "@/lib/settings";
@@ -31,13 +31,14 @@ export default async function Atletas({ searchParams }: { searchParams: Promise<
   const pmTo = addDays(`${addDays(pmFrom, 32).slice(0, 7)}-01`, -1);
   let stats: Awaited<ReturnType<typeof partnerStats>> | null = null;
   let payStats: Awaited<ReturnType<typeof partnerStats>> | null = null;
+  let recentStats: Awaited<ReturnType<typeof partnerStats>> | null = null;
   let error: unknown = null;
   await ensureTeam().catch(() => null);
   syncPartnerDiscounts().catch(() => null); // confere os cupons na Shopify por trás, sem segurar a tela
   const rule = await ruleDisc();
   const ruleTxt = describeDisc(rule);
   try {
-    [stats, payStats] = await Promise.all([partnerStats(period.from, period.to), partnerStats(pmFrom, pmTo < today ? pmTo : today)]);
+    [stats, payStats, recentStats] = await Promise.all([partnerStats(period.from, period.to), partnerStats(pmFrom, pmTo < today ? pmTo : today), partnerStats(addDays(today, -59), today)]);
   } catch (e) {
     error = e;
   }
@@ -46,8 +47,26 @@ export default async function Atletas({ searchParams }: { searchParams: Promise<
   const tot = (k: "revenue" | "profit" | "commission" | "orders") => rows.reduce((a, r) => a + r[k], 0);
   const days = daysBetween(period.from, period.to);
   const bars = days.map((d) => ({ label: `${d.slice(8)}/${d.slice(5, 7)}`, value: stats?.daily.get(d) ?? 0 }));
-  const payRows = (payStats?.rows ?? []).filter((r) => r.commission > 0);
-  const toPay = payRows.filter((r) => !payouts.some((p) => p.referralId === r.id)).reduce((a, r) => a + r.commission, 0);
+  const payRows = (payStats?.rows ?? []).filter((r) => r.commission > 0 || (r.active && (r.fixed > 0 || r.minimum > 0)));
+  const toPay = payRows.filter((r) => !payouts.some((p) => p.referralId === r.id)).reduce((a, r) => a + monthPay(r).total, 0);
+  // cupom parado: atleta ativo sem venda há muitos dias (em junho os cupons ficaram sem venda e ninguém viu)
+  const STALE = 10;
+  const stale = (recentStats?.rows ?? []).filter((r) => r.active).map((r) => ({ r, days: r.lastOrder ? Math.floor((Date.parse(`${today}T12:00:00-03:00`) - Date.parse(r.lastOrder)) / 864e5) : null })).filter((x) => x.days === null || x.days >= STALE);
+  const report = (r: (typeof payRows)[number]) => {
+    const m = monthPay(r);
+    return [
+      `Fala, ${r.name.split(" ")[0]}! Fechamento de ${monthName}:`,
+      "",
+      `Pedidos com o seu cupom ${r.code}: ${r.orders}`,
+      `Total vendido no cupom: ${brl(r.revenue)}`,
+      `Comissão (${r.pct.toLocaleString("pt-BR")}%): ${brl(r.commission)}`,
+      ...(r.fixed > 0 ? [`Fixo: ${brl(r.fixed)}`] : []),
+      ...(m.topUp > 0.004 ? [`Complemento do mínimo de ${brl(r.minimum)}: ${brl(m.topUp)}`] : []),
+      `Total a receber: ${brl(m.total)}`,
+      "",
+      `Pagamento no dia 1/${addDays(pmTo, 1).slice(5, 7)}.`,
+    ].join("\n");
+  };
   const paid = payouts.reduce((a, p) => a + p.amount, 0);
   const isPayDay = Number(today.slice(8)) <= 5 && payMonth === lastMonth && toPay > 0;
   const store = s.postsale.storeUrl;
@@ -68,6 +87,12 @@ export default async function Atletas({ searchParams }: { searchParams: Promise<
       {sp.ok === "desconto" && <div className="ok">Desconto do cupom atualizado na Shopify.</div>}
       {sp.trocado && <div className="ok">Cupom trocado para {sp.trocado}. As vendas já contam pelo cupom novo.</div>}
       {sp.erro && sp.erro !== "nome" && <div className="err">{sp.erro}</div>}
+      {stale.length > 0 && (
+        <div className="callout coral">
+          <AlertTriangle size={18} style={{ flexShrink: 0, marginTop: 1 }} />
+          <div>Cupom parado: {stale.map((x, i) => <span key={x.r.id}>{i ? ", " : ""}<b>{x.r.code}</b> ({x.days === null ? "sem venda nos últimos 60 dias" : `${x.days} dias sem venda`})</span>)}. Confira se o cupom está ativo na Shopify e fale com o atleta.</div>
+        </div>
+      )}
       {isPayDay && (
         <div className="callout sun">
           <CalendarCheck size={18} style={{ flexShrink: 0, marginTop: 1 }} />
@@ -230,30 +255,36 @@ export default async function Atletas({ searchParams }: { searchParams: Promise<
         </div>
         <div style={{ marginTop: 12 }}>
           {payRows.length ? (
-            <table className="tb">
-              <thead><tr><th>Atleta</th><th className="r">Vendeu no mês</th><th className="r">Comissão</th><th>Forma</th><th>Situação</th><th style={{ width: 170 }} /></tr></thead>
+            <div style={{ overflowX: "auto" }}><table className="tb">
+              <thead><tr><th>Atleta</th><th className="r">Pedidos</th><th className="r">Vendeu no mês</th><th className="r">Comissão</th><th className="r">Fixo e mínimo</th><th className="r">Total a receber</th><th>Situação</th><th style={{ width: 260 }} /></tr></thead>
               <tbody>
                 {payRows.map((r) => {
                   const p = payouts.find((x) => x.referralId === r.id);
                   return (
                     <tr key={r.id}>
                       <td><b style={{ fontWeight: 600 }}>{r.name}</b> <span className="trk" style={{ marginLeft: 6 }}>{r.code}</span></td>
+                      <td className="r">{r.orders}</td>
                       <td className="r">{brl(r.revenue)}</td>
-                      <td className="r"><b style={{ color: "var(--sun)" }}>{brl(r.commission)}</b></td>
-                      <td className="mut">{r.payout === "credito" ? "Crédito na loja" : "Pix"}</td>
+                      <td className="r">{brl(r.commission)} <small className="dim">{r.pct.toLocaleString("pt-BR")}%</small></td>
+                      <td className="r">{r.fixed > 0 || r.minimum > 0 ? <>{r.fixed > 0 ? brl(r.fixed) : "-"}{monthPay(r).topUp > 0.004 && <><br /><small className="dim">+{brl(monthPay(r).topUp)} até o mínimo de {brl(r.minimum)}</small></>}</> : <span className="dim">-</span>}</td>
+                      <td className="r"><b style={{ color: "var(--sun)" }}>{brl(monthPay(r).total)}</b></td>
                       <td>{p ? <span className="chip c-l">Pago em {fmt.format(p.paidAt).slice(0, 5)}</span> : payMonth === today.slice(0, 7) ? <span className="chip c-n">mês em andamento</span> : <span className="chip c-s">A pagar</span>}</td>
                       <td className="r">
+                        <div className="row" style={{ gap: 6, justifyContent: "flex-end", flexWrap: "nowrap" }}>
+                        <CopyButton text={report(r)} label="Relatório" className="btn sm ghost" />
+                        {!r.phone.startsWith("sem-") && <a className="btn sm ghost" href={waLink(r.phone, report(r))} target="_blank" rel="noopener" title="Mandar o relatório no WhatsApp"><MessageCircle size={13} /></a>}
                         {p ? (
                           <form action={undoPayout}><input type="hidden" name="id" value={r.id} /><input type="hidden" name="month" value={payMonth} /><button className="btn sm ghost" type="submit">Desfazer</button></form>
                         ) : payMonth !== today.slice(0, 7) && (
-                          <form action={markPayout}><input type="hidden" name="id" value={r.id} /><input type="hidden" name="month" value={payMonth} /><input type="hidden" name="amount" value={r.commission.toFixed(2)} /><input type="hidden" name="sales" value={r.revenue.toFixed(2)} /><input type="hidden" name="method" value={r.payout} /><button className="btn pri sm" type="submit">Marcar como pago</button></form>
+                          <form action={markPayout}><input type="hidden" name="id" value={r.id} /><input type="hidden" name="month" value={payMonth} /><input type="hidden" name="amount" value={monthPay(r).total.toFixed(2)} /><input type="hidden" name="sales" value={r.revenue.toFixed(2)} /><input type="hidden" name="method" value={r.payout} /><button className="btn pri sm" type="submit">Marcar como pago</button></form>
                         )}
+                        </div>
                       </td>
                     </tr>
                   );
                 })}
               </tbody>
-            </table>
+            </table></div>
           ) : <div className="empty">Nenhuma comissão em {monthName}.</div>}
           {payRows.length > 0 && <div className="row" style={{ justifyContent: "flex-end", gap: 18, padding: "14px 22px", fontSize: 14 }}><span className="mut">Pago: <b style={{ color: "#fff" }}>{brl(paid)}</b></span><span className="mut">Falta: <b style={{ color: "var(--sun)" }}>{brl(payMonth === today.slice(0, 7) ? 0 : toPay)}</b></span></div>}
         </div>

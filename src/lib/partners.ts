@@ -12,7 +12,11 @@ import { couponSales } from "./history";
 export type PartnerRow = {
   id: string; name: string; code: string; kind: string; instagram: string | null; phone: string; payout: string; discountPct: number | null; discountType: string | null; discountAmount: number | null; minSubtotal: number | null; active: boolean;
   orders: number; pieces: number; revenue: number; discount: number; profit: number; commission: number; lastOrder: string | null;
+  pct: number; fixed: number; minimum: number;
 };
+
+// Quanto o parceiro recebe no mês: o maior entre o mínimo garantido e (fixo + comissão)
+export const monthPay = (r: Pick<PartnerRow, "commission" | "fixed" | "minimum">) => { const base = r.fixed + r.commission; const total = Math.max(r.minimum, base); return { total, topUp: total - base }; };
 
 // Vendas de cada parceiro no período, pelo cupom usado no pedido
 
@@ -22,15 +26,14 @@ export async function partnerStats(fromIso: string, toIso: string) {
   const byCode = new Map(partners.map((p) => [p.code.toUpperCase(), p]));
   const resolve = await costResolver();
   const rate = s.costs.taxRate + s.costs.paymentFeeRate;
-  const pct = s.referral.commission / 100;
   const rows = new Map<string, PartnerRow>();
   for (const p of partners) {
-    rows.set(p.id, { id: p.id, name: p.name ?? p.code, code: p.code, kind: p.kind, instagram: p.instagram, phone: p.phone, payout: p.payout, discountPct: p.discountPct, discountType: p.discountType, discountAmount: p.discountAmount, minSubtotal: p.minSubtotal, active: p.active, orders: 0, pieces: 0, revenue: 0, discount: 0, profit: 0, commission: 0, lastOrder: null });
+    rows.set(p.id, { id: p.id, name: p.name ?? p.code, code: p.code, kind: p.kind, instagram: p.instagram, phone: p.phone, payout: p.payout, discountPct: p.discountPct, discountType: p.discountType, discountAmount: p.discountAmount, minSubtotal: p.minSubtotal, active: p.active, orders: 0, pieces: 0, revenue: 0, discount: 0, profit: 0, commission: 0, lastOrder: null, pct: p.commissionPct ?? s.referral.commission, fixed: p.fixedMonthly ?? 0, minimum: p.minMonthly ?? 0 });
   }
   const daily = new Map<string, number>();
   const list: { order: Order; partner: string }[] = [];
   const addAgg = (r: PartnerRow, a: Agg) => {
-    const commission = a.net * pct;
+    const commission = a.net * (r.pct / 100);
     r.orders += a.orders; r.pieces += a.items; r.revenue += a.net; r.commission += commission;
     r.profit += a.net - a.cogs - a.net * rate - a.items * s.costs.packagingPerItem - commission;
   };

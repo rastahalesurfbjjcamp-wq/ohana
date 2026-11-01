@@ -3,7 +3,7 @@ import { ArrowLeft, Check, ExternalLink, MessageCircle, RefreshCcw, Send, X } fr
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
 import { getSettings } from "@/lib/settings";
-import { balanceOf, brlc, monthLabel, program, syncLedger } from "@/lib/ledger";
+import { balanceOf, brlc, cents, monthLabel, program, syncLedger } from "@/lib/ledger";
 import { Header, Kpi, Panel } from "@/components/ui";
 import { CopyButton } from "@/components/CopyButton";
 import { ConfirmButton } from "@/components/ConfirmButton";
@@ -92,7 +92,7 @@ export default async function PortalParceiros({ searchParams }: { searchParams: 
       <Panel title="Parceiros" sub="Acordo, acesso ao portal e saldo de cada um" body={false}>
         <div style={{ overflowX: "auto" }}>
         <table className="tb pt-tb">
-          <thead><tr><th>Parceiro</th><th>Acordo e e-mail de acesso</th><th>Portal</th><th style={{ textAlign: "right" }}>Mês atual</th><th style={{ textAlign: "right" }}>A liberar</th><th style={{ textAlign: "right" }}>Disponível</th><th style={{ textAlign: "right" }}>Pago</th><th /></tr></thead>
+          <thead><tr><th>Parceiro</th><th>Acordo (comissão, fixo, mínimo) e e-mail</th><th>Portal</th><th style={{ textAlign: "right" }}>Mês atual</th><th style={{ textAlign: "right" }}>A liberar</th><th style={{ textAlign: "right" }}>Disponível</th><th style={{ textAlign: "right" }}>Pago</th><th /></tr></thead>
           <tbody>
             {partners.map((p) => {
               const b = bal.get(p.id)!;
@@ -103,6 +103,8 @@ export default async function PortalParceiros({ searchParams }: { searchParams: 
                     <form action={savePartnerAccess} className="row" style={{ gap: 6, flexWrap: "nowrap" }}>
                       <input type="hidden" name="id" value={p.id} />
                       <span className="row" style={{ gap: 4, flexWrap: "nowrap", whiteSpace: "nowrap" }}><input className="in" name="pct" defaultValue={p.commissionPct ?? ""} placeholder={String(s.referral.commission)} style={{ width: 62, height: 32 }} inputMode="decimal" />%</span>
+                      <span className="row" style={{ gap: 4, flexWrap: "nowrap", whiteSpace: "nowrap" }} title="Fixo mensal">Fixo<input className="in" name="fixed" defaultValue={p.fixedMonthly ? reais(cents(p.fixedMonthly)) : ""} placeholder="0" style={{ width: 82, height: 32 }} inputMode="decimal" /></span>
+                      <span className="row" style={{ gap: 4, flexWrap: "nowrap", whiteSpace: "nowrap" }} title="Mínimo garantido no mês: recebe o maior entre o mínimo e fixo + comissão">Mín.<input className="in" name="min" defaultValue={p.minMonthly ? reais(cents(p.minMonthly)) : ""} placeholder="0" style={{ width: 82, height: 32 }} inputMode="decimal" /></span>
                       <input className="in" name="email" defaultValue={p.email ?? ""} placeholder="email@do.parceiro" style={{ width: 170, height: 32 }} />
                       <button className="btn sm" type="submit">Salvar</button>
                     </form>

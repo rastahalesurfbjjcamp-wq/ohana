@@ -6,7 +6,7 @@ import { costResolver } from "./report";
 import { shopCreatedAt, shopifyql, unitCostsByTitle } from "./shopify";
 import { isoDayLocal } from "./time";
 
-const DONE = "_coupon_months";
+const DONE = "_coupon_months2"; // v2: soma todas as grafias do cupom
 const num = (v?: string) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
 const okCode = (c: string) => /^[\w-]{2,40}$/.test(c);
 
@@ -39,13 +39,15 @@ async function markDone(code: string, month: string) {
 export async function syncCouponMonth(code: string, month: string) {
   if (!okCode(code)) return;
   const from = `${month}-01`, to = monthEnd(month);
-  const days = await shopifyql(`FROM sales SHOW orders, gross_sales, net_sales, net_items_sold WHERE discount_code = '${code}' TIMESERIES day SINCE ${from} UNTIL ${to}`);
+  const { codeVariants, inList } = await import("./history");
+  const vs = inList(await codeVariants(code));
+  const days = await shopifyql(`FROM sales SHOW orders, gross_sales, net_sales, net_items_sold WHERE discount_code IN (${vs}) TIMESERIES day SINCE ${from} UNTIL ${to}`);
   const active = days.filter((r) => num(r.orders) || num(r.net_sales) || num(r.net_items_sold));
   const byDay = new Map<string, Agg>();
   for (const r of active) byDay.set(String(r.day).slice(0, 10), { orders: num(r.orders), gross: num(r.gross_sales), net: num(r.net_sales), items: num(r.net_items_sold), cogs: 0, missing: 0 });
   if (byDay.size) {
     const [resolve, costs] = await Promise.all([costResolver(), unitCostsByTitle().catch(() => new Map<string, number>())]);
-    const rows = await shopifyql(`FROM sales SHOW net_items_sold WHERE discount_code = '${code}' GROUP BY day, product_title SINCE ${from} UNTIL ${to} LIMIT 1000`);
+    const rows = await shopifyql(`FROM sales SHOW net_items_sold WHERE discount_code IN (${vs}) GROUP BY day, product_title SINCE ${from} UNTIL ${to} LIMIT 1000`);
     for (const r of rows) {
       const a = byDay.get(String(r.day).slice(0, 10));
       const q = num(r.net_items_sold);

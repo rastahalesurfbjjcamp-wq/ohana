@@ -367,6 +367,8 @@ model Referral {
   lastLoginAt   DateTime?
   pixKey        String?
   portalAt      DateTime? // quando criou a conta no portal; comissão só conta a partir daqui
+  fixedMonthly  Float?    // fixo mensal (R$)
+  minMonthly    Float?    // mínimo garantido no mês (R$): recebe o maior entre o mínimo e fixo + comissão
 }
 
 // Lançamentos (drops)

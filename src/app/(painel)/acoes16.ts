@@ -24,7 +24,8 @@ export async function savePartnerAccess(f: FormData) {
   const email = str(f, "email").toLowerCase();
   if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) back("?erro=email");
   if (email && (await db.referral.findFirst({ where: { email: { equals: email, mode: "insensitive" }, id: { not: id } } }))) back("?erro=emailuso");
-  await db.referral.update({ where: { id }, data: { commissionPct: pct === "" ? null : Math.max(0, Math.min(50, money(pct))), email: email || null } });
+  const fx = str(f, "fixed"), mn = str(f, "min");
+  await db.referral.update({ where: { id }, data: { commissionPct: pct === "" ? null : Math.max(0, Math.min(50, money(pct))), email: email || null, fixedMonthly: fx === "" ? null : Math.max(0, money(fx)) || null, minMonthly: mn === "" ? null : Math.max(0, money(mn)) || null } });
   back("?salvo=1");
 }
 

@@ -67,6 +67,20 @@ export const todayIso = () => isoDayLocal();
 
 // Vendas que vieram por cupons (ex.: cupom que o ManyChat entrega para quem chega pelo tráfego do perfil)
 export type CouponSales = { codes: string[]; orders: number; gross: number; net: number; cogs: number; missingCost: number; items: number };
+// O cupom não diferencia maiúsculas e minúsculas: MASTRANGELO e Mastrangelo são o mesmo.
+// Pedido com dois cupons (atleta + frete) também conta. Aqui acha todas as grafias que a Shopify registrou.
+export async function codeVariants(code: string): Promise<string[]> {
+  const all = await swr("hist:codes", 6 * 3600_000, async () => {
+    const since = await shopCreatedAt().catch(() => "2024-01-01");
+    const rows = await shopifyql(`FROM sales SHOW orders GROUP BY discount_code SINCE ${since} UNTIL today ORDER BY orders DESC LIMIT 1000`);
+    return rows.map((r) => String(r.discount_code ?? "")).filter(Boolean);
+  }).catch(() => [] as string[]);
+  const k = code.toLowerCase();
+  const out = new Set([code, ...all.filter((d) => d.split(/\s*,\s*/).some((x) => x.toLowerCase() === k))]);
+  return [...out].filter((c) => !c.includes("'"));
+}
+export const inList = (v: string[]) => v.map((c) => `'${c}'`).join(", ");
+
 export async function couponSales(codes: string[], from: string, to: string): Promise<CouponSales> {
   const clean = [...new Set(codes.map((c) => c.trim()).filter((c) => /^[\w-]{2,40}$/.test(c)))];
   return swr(`hist:cs:${clean.join(",")}:${from}:${to}`, 300_000, async () => {
@@ -74,10 +88,11 @@ export async function couponSales(codes: string[], from: string, to: string): Pr
     if (!clean.length) return out;
     const [resolve, costs] = await Promise.all([costResolver(), unitCostsByTitle().catch(() => new Map<string, number>())]);
     for (const code of clean) {
-      const tot = (await shopifyql(`FROM sales SHOW orders, gross_sales, net_sales WHERE discount_code = '${code}' SINCE ${from} UNTIL ${to}`))[0] ?? {};
+      const vs = inList(await codeVariants(code));
+      const tot = (await shopifyql(`FROM sales SHOW orders, gross_sales, net_sales WHERE discount_code IN (${vs}) SINCE ${from} UNTIL ${to}`))[0] ?? {};
       out.orders += num(tot.orders); out.gross += num(tot.gross_sales); out.net += num(tot.net_sales);
       if (!num(tot.orders)) continue;
-      const rows = await shopifyql(`FROM sales SHOW net_items_sold WHERE discount_code = '${code}' GROUP BY product_title SINCE ${from} UNTIL ${to} LIMIT 500`);
+      const rows = await shopifyql(`FROM sales SHOW net_items_sold WHERE discount_code IN (${vs}) GROUP BY product_title SINCE ${from} UNTIL ${to} LIMIT 500`);
       for (const r of rows) {
         const q = num(r.net_items_sold);
         if (q <= 0) continue;
