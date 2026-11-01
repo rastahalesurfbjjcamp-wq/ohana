@@ -4,7 +4,7 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:
 import { db } from "./db";
 import { env } from "./env";
 
-export type Provider = "shopify" | "meta" | "ai" | "transcribe" | "appmax" | "waba" | "tiktok" | "google";
+export type Provider = "shopify" | "meta" | "ai" | "transcribe" | "appmax" | "waba" | "tiktok" | "google" | "pushcut";
 
 export interface Creds {
   shopify: { domain?: string; token?: string; clientId?: string; clientSecret?: string };
@@ -14,6 +14,7 @@ export interface Creds {
   appmax: { clientId?: string; clientSecret?: string; mode?: string };
   waba: { phoneId?: string; wabaId?: string; token?: string; verify?: string };
   tiktok: { token?: string; advertiserId?: string };
+  pushcut: { url?: string };
   google: { developerToken?: string; clientId?: string; clientSecret?: string; refreshToken?: string; customerId?: string; loginCustomerId?: string; apiVersion?: string };
 }
 
@@ -27,6 +28,7 @@ const SECRET: Record<Provider, string[]> = {
   waba: ["token"],
   tiktok: ["token"],
   google: ["developerToken", "clientSecret", "refreshToken"],
+  pushcut: ["url"],
 };
 
 function key() {
@@ -85,6 +87,7 @@ export async function creds(): Promise<Creds> {
     // API oficial do WhatsApp: sem token próprio, usa o mesmo token do Meta (se ele tiver a permissão do WhatsApp)
     waba: { phoneId: s.waba?.phoneId, wabaId: s.waba?.wabaId, token: s.waba?.token || s.meta?.token || env.metaToken(), verify: createHash("sha256").update(`WABA:${process.env.INTEGRATIONS_SECRET ?? process.env.DATABASE_URL ?? ""}`).digest("hex").slice(0, 24) },
     tiktok: { token: s.tiktok?.token || process.env.TIKTOK_ACCESS_TOKEN, advertiserId: s.tiktok?.advertiserId || process.env.TIKTOK_ADVERTISER_ID },
+    pushcut: { url: s.pushcut?.url || process.env.PUSHCUT_CLUB_URL },
     google: { developerToken: s.google?.developerToken || process.env.GOOGLE_ADS_DEVELOPER_TOKEN, clientId: s.google?.clientId || process.env.GOOGLE_ADS_CLIENT_ID, clientSecret: s.google?.clientSecret || process.env.GOOGLE_ADS_CLIENT_SECRET, refreshToken: s.google?.refreshToken || process.env.GOOGLE_ADS_REFRESH_TOKEN, customerId: s.google?.customerId || process.env.GOOGLE_ADS_CUSTOMER_ID, loginCustomerId: s.google?.loginCustomerId || process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID, apiVersion: s.google?.apiVersion || process.env.GOOGLE_ADS_API_VERSION },
   };
   cache = { at: Date.now(), value };

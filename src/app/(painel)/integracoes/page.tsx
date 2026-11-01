@@ -122,6 +122,19 @@ export default async function Integracoes({ searchParams }: { searchParams: Prom
       ],
     },
     {
+      p: "pushcut",
+      title: "Pushcut (aviso no celular)",
+      what: "Avisa no seu celular toda vez que uma assinatura do clube for aprovada.",
+      fields: [
+        { name: "url", label: "Link de notificação", secret: true, placeholder: "https://api.pushcut.io/.../notifications/Assinatura", current: mask(c.pushcut.url) },
+      ],
+      steps: [
+        "No app Pushcut, crie a notificação (ex.: Assinatura) com o som e o visual que quiser.",
+        "Abra a notificação, toque em Webhook e copie o link.",
+        "Cole aqui e clique em Salvar e testar. Chega um aviso de teste no celular.",
+      ],
+    },
+    {
       p: "tiktok",
       title: "TikTok Ads",
       what: "Gasto e resultado das campanhas do TikTok no relatório e no lucro, junto com o Meta.",
@@ -301,9 +314,10 @@ export default async function Integracoes({ searchParams }: { searchParams: Prom
         <Tile p="shopify" letter={<Brand name="shopify" />} tone="brand" title="Shopify" sub="pedidos, carrinhos, clientes, estoque, cupons" />
         <div className="itile off"><span className="tile brand"><Wallet size={19} color="#a78bfa" /></span><div style={{ flex: 1 }}><b>Gateway de pagamento</b><small>Pix e cartão chegam pela Shopify</small></div><span className={`chip ${status.shopify?.ok ? "c-l" : "c-n"}`}>{status.shopify?.ok ? "Pela Shopify" : "Precisa da Shopify"}</span></div>
         <Tile p="appmax" letter={<CreditCard size={19} color="#f7c928" />} tone="brand" title="Appmax (clube)" sub="assinatura mensal por Pix e cartão" />
+        <Tile p="pushcut" letter={<Bell size={19} color="#f87171" />} tone="brand" title="Pushcut" sub="aviso no celular a cada assinatura do clube" />
         <div className="itile off"><span className="tile brand"><Truck size={19} color="#fbbf24" /></span><div style={{ flex: 1 }}><b>Correios e transportadoras</b><small>rastreio que a Olist manda para a Shopify</small></div><span className={`chip ${status.shopify?.ok ? "c-l" : "c-n"}`}>{status.shopify?.ok ? "Pela Shopify" : "Precisa da Shopify"}</span></div>
       </div>
-      {(open === "shopify" || open === "appmax") && <Detail />}
+      {(open === "shopify" || open === "appmax" || open === "pushcut") && <Detail />}
 
       <h3 className="isec">Anúncios</h3>
       <div className="igrid">

@@ -62,6 +62,11 @@ export async function testIntegration(p: Provider) {
       const r = await googleQuery<{ customer: { descriptiveName?: string } }>("SELECT customer.descriptive_name FROM customer LIMIT 1");
       await setStatus(p, true, `Conectado à conta ${r[0]?.customer?.descriptiveName ?? c.google.customerId}`);
     }
+    if (p === "pushcut") {
+      const { pushcut } = await import("@/lib/pushcut");
+      if (!(await pushcut("Teste do Hub", "As assinaturas novas do clube vão chegar assim"))) throw new Error("Cole o link de notificação do Pushcut (começa com https://api.pushcut.io/)");
+      await setStatus(p, true, "Notificação de teste enviada");
+    }
     if (p === "appmax") {
       const { appmax } = await import("@/lib/appmax");
       await appmax("GET", "/v1/subscriptions?per_page=1").catch((e) => { if (/APPMAX_NAO|credenciais/.test(String(e))) throw e; });
