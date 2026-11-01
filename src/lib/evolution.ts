@@ -128,6 +128,15 @@ export const evolution = {
     media: { url: string; type: "image" | "video" | "document"; caption?: string; fileName?: string; mimetype?: string },
     opts: { mentionAll?: boolean; delayMs?: number } = {},
   ) {
+    // arquivo enviado no Hub: vai em base64 (a Evolution recusa o link interno do servidor)
+    const own = media.url.match(/\/api\/media\/([a-f0-9-]{36}\.[a-z0-9]{2,5})$/);
+    if (own) {
+      const { readFile } = await import("node:fs/promises");
+      const path = await import("node:path");
+      const { uploadDir, mimeFor } = await import("./uploads");
+      const buf = await readFile(path.join(uploadDir(), own[1])).catch(() => null);
+      if (buf) media = { ...media, url: buf.toString("base64"), mimetype: media.mimetype ?? mimeFor(own[1]), fileName: media.fileName ?? own[1] };
+    }
     return call("POST", `/message/sendMedia/${inst()}`, {
       number: to,
       mediatype: media.type,
