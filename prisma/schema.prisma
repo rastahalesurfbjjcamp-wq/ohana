@@ -833,3 +833,20 @@ model PartnerWithdrawal {
 
   @@index([referralId, status])
 }
+
+// Vendas por cupom e dia, guardadas para não buscar de novo na Shopify (meses fechados não mudam)
+model CouponDay {
+  id        String   @id @default(cuid())
+  code      String
+  day       String   // AAAA-MM-DD
+  orders    Int      @default(0)
+  gross     Float    @default(0)
+  net       Float    @default(0)
+  items     Int      @default(0)
+  cogs      Float    @default(0)
+  missing   Int      @default(0) // peças sem custo cadastrado
+  createdAt DateTime @default(now())
+
+  @@unique([code, day])
+  @@index([day])
+}

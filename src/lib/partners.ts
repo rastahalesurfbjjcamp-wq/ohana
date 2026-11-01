@@ -3,7 +3,8 @@ import { db } from "./db";
 import { costResolver } from "./report";
 import { getSettings } from "./settings";
 import { gql, ordersBetween, type Order } from "./store";
-import { dayRange, isoDayLocal } from "./time";
+import { addDays, dayRange, isoDayLocal } from "./time";
+import { openFrom, storedCouponSales, type Agg } from "./couponHistory";
 import { swr } from "./cache";
 import { beyondOrdersWindow } from "./shopify";
 import { couponSales } from "./history";
@@ -19,7 +20,6 @@ export async function partnerStats(fromIso: string, toIso: string) {
   const s = await getSettings();
   const partners = await db.referral.findMany({ where: { kind: { in: ["atleta", "influenciador"] } }, orderBy: { createdAt: "asc" } });
   const byCode = new Map(partners.map((p) => [p.code.toUpperCase(), p]));
-  const orders = beyondOrdersWindow(dayRange(fromIso).start) ? [] : (await ordersBetween(dayRange(fromIso).start, dayRange(toIso).end)).filter((o) => !o.cancelled && ["PAID", "PARTIALLY_PAID", "PARTIALLY_REFUNDED"].includes(o.financial));
   const resolve = await costResolver();
   const rate = s.costs.taxRate + s.costs.paymentFeeRate;
   const pct = s.referral.commission / 100;
@@ -29,33 +29,54 @@ export async function partnerStats(fromIso: string, toIso: string) {
   }
   const daily = new Map<string, number>();
   const list: { order: Order; partner: string }[] = [];
-  // mais de 60 dias atrás: a Shopify não entrega os pedidos, então soma pelo relatório de vendas por cupom
-  if (beyondOrdersWindow(dayRange(fromIso).start)) {
+  const addAgg = (r: PartnerRow, a: Agg) => {
+    const commission = a.net * pct;
+    r.orders += a.orders; r.pieces += a.items; r.revenue += a.net; r.commission += commission;
+    r.profit += a.net - a.cogs - a.net * rate - a.items * s.costs.packagingPerItem - commission;
+  };
+  const live = async (code: string, from: string, to: string): Promise<Agg | null> => {
+    const cs = await couponSales([code], from, to).catch(() => null);
+    return cs && cs.orders ? { orders: cs.orders, gross: cs.gross, net: cs.net, items: cs.items, cogs: cs.cogs, missing: cs.missingCost } : null;
+  };
+
+  // 1) meses fechados: vem do que já está guardado no banco (não muda mais)
+  const open = openFrom();
+  const closedTo = toIso < open ? toIso : addDays(open, -1);
+  if (fromIso <= closedTo) {
+    const st = await storedCouponSales(partners.map((p) => p.code), fromIso, closedTo);
+    let falta = false;
     for (const p of partners) {
-      const cs = await couponSales([p.code], fromIso, toIso).catch(() => null);
-      if (!cs || !cs.orders) continue;
-      const r = rows.get(p.id)!;
-      const commission = cs.net * pct;
-      r.orders = cs.orders; r.pieces = cs.items; r.revenue = cs.net; r.commission = commission;
-      r.profit = cs.net - cs.cogs - cs.net * rate - cs.items * s.costs.packagingPerItem - commission;
+      if (st.complete.has(p.code)) { addAgg(rows.get(p.id)!, st.byCode.get(p.code)!); continue; }
+      falta = true;
+      const a = await live(p.code, fromIso, closedTo);
+      if (a) addAgg(rows.get(p.id)!, a);
     }
-    return { rows: [...rows.values()].sort((a, b) => b.revenue - a.revenue), daily, orders: list, commissionPct: s.referral.commission, discountPct: s.referral.percent };
+    // ainda não guardado: busca agora e salva para a próxima vez
+    if (falta && process.env.DEMO_MODE !== "1") void import("./couponHistory").then((m) => m.syncCouponHistory(12)).catch(() => null);
   }
-  for (const o of orders) {
-    const code = o.codes.find((c) => byCode.has(c));
-    if (!code) continue;
-    const p = byCode.get(code)!;
-    const r = rows.get(p.id)!;
-    const net = o.subtotal; // já com o desconto do cupom, sem frete
-    let cogs = 0, pieces = 0;
-    for (const l of o.lines) { pieces += l.quantity; cogs += (resolve(l.title, l.unitCost) ?? 0) * l.quantity; }
-    const commission = net * pct;
-    r.orders++; r.pieces += pieces; r.revenue += net; r.commission += commission;
-    r.profit += net - cogs - net * rate - pieces * s.costs.packagingPerItem - commission;
-    if (!r.lastOrder || o.createdAt > r.lastOrder) r.lastOrder = o.createdAt;
-    const d = isoDayLocal(new Date(o.createdAt));
-    daily.set(d, (daily.get(d) ?? 0) + net);
-    list.push({ order: o, partner: r.name });
+
+  // 2) mês passado e mês atual: ao vivo
+  const oFrom = fromIso > open ? fromIso : open;
+  if (oFrom <= toIso) {
+    if (beyondOrdersWindow(dayRange(oFrom).start)) {
+      for (const p of partners) { const a = await live(p.code, oFrom, toIso); if (a) addAgg(rows.get(p.id)!, a); }
+    } else {
+      const orders = (await ordersBetween(dayRange(oFrom).start, dayRange(toIso).end)).filter((o) => !o.cancelled && ["PAID", "PARTIALLY_PAID", "PARTIALLY_REFUNDED"].includes(o.financial));
+      for (const o of orders) {
+        const code = o.codes.find((c) => byCode.has(c));
+        if (!code) continue;
+        const p = byCode.get(code)!;
+        const r = rows.get(p.id)!;
+        const net = o.subtotal; // já com o desconto do cupom, sem frete
+        let cogs = 0, pieces = 0;
+        for (const l of o.lines) { pieces += l.quantity; cogs += (resolve(l.title, l.unitCost) ?? 0) * l.quantity; }
+        addAgg(r, { orders: 1, gross: net, net, items: pieces, cogs, missing: 0 });
+        if (!r.lastOrder || o.createdAt > r.lastOrder) r.lastOrder = o.createdAt;
+        const d = isoDayLocal(new Date(o.createdAt));
+        daily.set(d, (daily.get(d) ?? 0) + net);
+        list.push({ order: o, partner: r.name });
+      }
+    }
   }
   return { rows: [...rows.values()].sort((a, b) => b.revenue - a.revenue), daily, orders: list.sort((a, b) => b.order.createdAt.localeCompare(a.order.createdAt)), commissionPct: s.referral.commission, discountPct: s.referral.percent };
 }

@@ -71,6 +71,8 @@ async function tick() {
   await sendDueRecovery().catch((e) => console.error("[recuperação]", e));
   await runFunnels().catch((e) => console.error("[funis]", e));
   await import("../lib/ledger").then((m) => m.syncLedger()).catch((e) => console.error("[comissoes]", e));
+  // histórico dos cupons: guarda meses fechados aos poucos (não muda mais, então só busca uma vez)
+  if (process.env.DEMO_MODE !== "1") await import("../lib/couponHistory").then((m) => m.syncCouponHistory(4)).catch((e) => console.error("[cupons]", e));
 
   // demonstração: volta tudo ao original de madrugada
   if (process.env.DEMO_MODE === "1" && hhmmLocal() >= "03:00") await (await import("../lib/demo/seed")).ensureDemoSeed().catch((e) => console.error("[demo]", e));
