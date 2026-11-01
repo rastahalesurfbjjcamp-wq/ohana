@@ -1,7 +1,9 @@
 import { Brand } from "@/components/Brand";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Bell, Mic, QrCode, ShieldCheck, X } from "lucide-react";
+import { Bell, CreditCard, Mic, QrCode, ShieldCheck, Truck, Wallet, X } from "lucide-react";
+import { extraSpend } from "@/lib/adsExtra";
+import { brl, isoDayLocal, addDays } from "@/lib/time";
 import { getSettings } from "@/lib/settings";
 import { getSession } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -13,7 +15,7 @@ import { env } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
 
-type Field = { name: string; label: string; secret?: boolean; placeholder?: string; current?: string };
+type Field = { name: string; label: string; secret?: boolean; placeholder?: string; current?: string; optional?: boolean };
 type Card = { p: Provider; title: string; what: string; fields: Field[]; steps: string[] };
 
 const SHOPIFY_MSG: Record<string, [string, boolean]> = {
@@ -23,6 +25,27 @@ const SHOPIFY_MSG: Record<string, [string, boolean]> = {
   "assinatura-invalida": ["A Shopify respondeu com uma assinatura que não confere. Confira o Client secret.", false],
   falhou: ["A Shopify não liberou o acesso. Tente de novo.", false],
 };
+
+async function AdsExtra() {
+  const to = isoDayLocal();
+  const from = addDays(to, -29);
+  const x = await extraSpend(from, to).catch(() => null);
+  if (!x) return null;
+  const rows = [...x.tiktokCamps.map((c) => ({ ...c, src: "TikTok" })), ...x.googleCamps.map((c) => ({ ...c, src: "Google" }))].sort((a, b) => b.spend - a.spend).slice(0, 8);
+  return (
+    <section className="pnl" style={{ padding: 20, marginTop: 12 }}>
+      <div className="row" style={{ justifyContent: "space-between", marginBottom: 10 }}>
+        <b style={{ fontSize: 14.5 }}>TikTok e Google nos últimos 30 dias</b>
+        <span className="dim" style={{ fontSize: 12.5 }}>TikTok {brl(x.tiktok, 0)} · Google {brl(x.google, 0)} · já entra no lucro</span>
+      </div>
+      {rows.length ? (
+        <table className="tb"><thead><tr><th>Campanha</th><th>Canal</th><th style={{ textAlign: "right" }}>Gasto</th><th style={{ textAlign: "right" }}>Cliques</th><th style={{ textAlign: "right" }}>Conversões</th></tr></thead>
+          <tbody>{rows.map((r) => <tr key={r.src + r.id}><td>{r.name}</td><td className="dim">{r.src}</td><td style={{ textAlign: "right" }}>{brl(r.spend, 0)}</td><td style={{ textAlign: "right" }}>{r.clicks.toLocaleString("pt-BR")}</td><td style={{ textAlign: "right" }}>{Math.round(r.conversions).toLocaleString("pt-BR")}</td></tr>)}</tbody>
+        </table>
+      ) : <div className="dim" style={{ fontSize: 13 }}>Nenhuma campanha com gasto no período.</div>}
+    </section>
+  );
+}
 
 export default async function Integracoes({ searchParams }: { searchParams: Promise<{ shopify?: string; abrir?: string }> }) {
   const sp = await searchParams;
@@ -99,6 +122,41 @@ export default async function Integracoes({ searchParams }: { searchParams: Prom
       ],
     },
     {
+      p: "tiktok",
+      title: "TikTok Ads",
+      what: "Gasto e resultado das campanhas do TikTok no relatório e no lucro, junto com o Meta.",
+      fields: [
+        { name: "advertiserId", label: "ID da conta de anúncios (Advertiser ID)", placeholder: "só os números, aparece no topo do Gerenciador de Anúncios", current: c.tiktok.advertiserId },
+        { name: "token", label: "Access token", secret: true, placeholder: "token gerado no app do TikTok for Business", current: mask(c.tiktok.token) },
+      ],
+      steps: [
+        "Entre em business-api.tiktok.com com a mesma conta do Business Center da loja e clique em My Apps, Create App (nome: Hub).",
+        `Em Advertiser redirect URL coloque ${env.appUrl().replace(/\/$/, "")}/integracoes e marque as permissões de leitura: Ad Account Management, Reporting e Campaign Management (leitura). A aprovação costuma sair em 1 a 2 dias úteis.`,
+        "Com o app aprovado, abra o link de autorização do app, escolha a conta de anúncios da loja e confirme. Na página do app aparece o Access token de longa duração.",
+        "Cole aqui o token e o ID da conta de anúncios e clique em Salvar e testar.",
+      ],
+    },
+    {
+      p: "google",
+      title: "Google Ads",
+      what: "Gasto, cliques e conversões das campanhas do Google no relatório e no lucro.",
+      fields: [
+        { name: "customerId", label: "ID da conta do Google Ads", placeholder: "123-456-7890", current: c.google.customerId },
+        { name: "loginCustomerId", label: "ID da conta administradora (MCC), se usar", placeholder: "opcional", current: c.google.loginCustomerId, optional: true },
+        { name: "developerToken", label: "Developer token", secret: true, placeholder: "Centro de API da conta administradora", current: mask(c.google.developerToken) },
+        { name: "clientId", label: "OAuth Client ID", placeholder: "....apps.googleusercontent.com", current: c.google.clientId },
+        { name: "clientSecret", label: "OAuth Client secret", secret: true, placeholder: "do Google Cloud", current: mask(c.google.clientSecret) },
+        { name: "refreshToken", label: "Refresh token", secret: true, placeholder: "1//...", current: mask(c.google.refreshToken) },
+      ],
+      steps: [
+        "Crie uma conta administradora (MCC) grátis em ads.google.com/home/tools/manager-accounts e vincule a conta de anúncios da loja.",
+        "Na MCC, abra Ferramentas, Centro de API, aceite os termos e copie o Developer token. Para ler só a própria conta, o acesso básico já basta (o pedido sai em poucos dias; o de teste funciona na hora para contas de teste).",
+        "Em console.cloud.google.com, crie um projeto, ative a Google Ads API e crie uma credencial OAuth do tipo App para computador. Copie o Client ID e o Client secret.",
+        "Gere o Refresh token no OAuth Playground (developers.google.com/oauthplayground): na engrenagem marque Use your own OAuth credentials, cole o Client ID e o secret, escolha o escopo https://www.googleapis.com/auth/adwords, autorize com o Google da conta de anúncios e troque o código pelo token.",
+        "Cole tudo aqui e clique em Salvar e testar.",
+      ],
+    },
+    {
       p: "ai",
       title: "Inteligência artificial (Claude)",
       what: "Assistente no WhatsApp, diagnóstico, comandos no grupo de resultados e dica do dia.",
@@ -118,7 +176,7 @@ export default async function Integracoes({ searchParams }: { searchParams: Prom
   const stateOf = (p: Provider) => {
     const card = cards.find((x) => x.p === p)!;
     const st = status[p];
-    const configured = card.fields.every((f) => !!f.current);
+    const configured = card.fields.every((f) => f.optional || !!f.current);
     return st?.ok ? ["Conectado", "c-l"] : configured ? ["Não testado", "c-s"] : ["Conectar", "c-n"];
   };
   const Tile = ({ p, letter, tone, title, sub }: { p?: Provider; letter: ReactNode; tone: string; title: string; sub: string }) => {
@@ -136,7 +194,7 @@ export default async function Integracoes({ searchParams }: { searchParams: Prom
   const Detail = () => {
     if (!card) return null;
     const st = status[card.p];
-    const configured = card.fields.every((f) => !!(f.secret ? f.current : f.current));
+    const configured = card.fields.every((f) => f.optional || !!f.current);
     return (
       <section className="pnl" style={{ padding: 22 }}>
         <div className="row" style={{ justifyContent: "flex-end", marginBottom: -28 }}><Link className="menu-b" href="/integracoes" aria-label="Fechar"><X size={16} /></Link></div>
@@ -185,7 +243,7 @@ export default async function Integracoes({ searchParams }: { searchParams: Prom
                       <form action={disconnect}><input type="hidden" name="provider" value={card.p} /><button className="btn sm danger">Desconectar</button></form>
                     )}
                   </div>
-                  <details>
+                  <details open={!configured}>
                     <summary className="mut" style={{ cursor: "pointer", fontSize: 13 }}>Como conseguir</summary>
                     <ol className="stack explain" style={{ gap: 6, paddingLeft: 18, marginTop: 8 }}>
                       {card.steps.map((s) => <li key={s}>{s}</li>)}
@@ -241,24 +299,25 @@ export default async function Integracoes({ searchParams }: { searchParams: Prom
       <h3 className="isec">Loja e vendas</h3>
       <div className="igrid">
         <Tile p="shopify" letter={<Brand name="shopify" />} tone="brand" title="Shopify" sub="pedidos, carrinhos, clientes, estoque, cupons" />
-        <div className="itile off"><span className="tile t-p" style={{ fontWeight: 800 }}>A</span><div style={{ flex: 1 }}><b>Gateway de pagamento</b><small>Pix e cartão chegam pela Shopify</small></div><span className={`chip ${status.shopify?.ok ? "c-l" : "c-n"}`}>{status.shopify?.ok ? "Pela Shopify" : "Precisa da Shopify"}</span></div>
-        <Tile p="appmax" letter="A" tone="t-s" title="Appmax (clube)" sub="assinatura mensal por Pix e cartão" />
-        <div className="itile off"><span className="tile t-s" style={{ fontWeight: 800 }}>C</span><div style={{ flex: 1 }}><b>Correios e transportadoras</b><small>rastreio que a Olist manda para a Shopify</small></div><span className={`chip ${status.shopify?.ok ? "c-l" : "c-n"}`}>{status.shopify?.ok ? "Pela Shopify" : "Precisa da Shopify"}</span></div>
+        <div className="itile off"><span className="tile brand"><Wallet size={19} color="#a78bfa" /></span><div style={{ flex: 1 }}><b>Gateway de pagamento</b><small>Pix e cartão chegam pela Shopify</small></div><span className={`chip ${status.shopify?.ok ? "c-l" : "c-n"}`}>{status.shopify?.ok ? "Pela Shopify" : "Precisa da Shopify"}</span></div>
+        <Tile p="appmax" letter={<CreditCard size={19} color="#f7c928" />} tone="brand" title="Appmax (clube)" sub="assinatura mensal por Pix e cartão" />
+        <div className="itile off"><span className="tile brand"><Truck size={19} color="#fbbf24" /></span><div style={{ flex: 1 }}><b>Correios e transportadoras</b><small>rastreio que a Olist manda para a Shopify</small></div><span className={`chip ${status.shopify?.ok ? "c-l" : "c-n"}`}>{status.shopify?.ok ? "Pela Shopify" : "Precisa da Shopify"}</span></div>
       </div>
       {(open === "shopify" || open === "appmax") && <Detail />}
 
       <h3 className="isec">Anúncios</h3>
       <div className="igrid">
         <Tile p="meta" letter={<Brand name="meta" />} tone="brand" title="Meta Ads" sub={c.meta.adAccount ? `conta ${c.meta.adAccount} · gasto e campanhas` : "gasto, campanhas e leads"} />
-        <Tile letter={<Brand name="google" />} tone="brand" title="Google Ads" sub="gasto e campanhas" />
-        <Tile letter={<Brand name="tiktok" />} tone="brand" title="TikTok Ads" sub="gasto e campanhas" />
+        <Tile p="google" letter={<Brand name="google" />} tone="brand" title="Google Ads" sub={c.google.customerId ? `conta ${c.google.customerId} · gasto e campanhas` : "gasto, cliques e conversões"} />
+        <Tile p="tiktok" letter={<Brand name="tiktok" />} tone="brand" title="TikTok Ads" sub={c.tiktok.advertiserId ? `conta ${c.tiktok.advertiserId} · gasto e campanhas` : "gasto e campanhas"} />
       </div>
-      {open === "meta" && <Detail />}
+      {(open === "meta" || open === "google" || open === "tiktok") && <Detail />}
+      {(status.tiktok?.ok || status.google?.ok) && <AdsExtra />}
 
       <h3 className="isec">Inteligência</h3>
       <div className="igrid">
         <Tile p="ai" letter={<Brand name="claude" />} tone="brand" title="Claude (IA)" sub="assistente, diagnóstico, comandos e dica do dia" />
-        <Tile p="transcribe" letter={<Mic size={17} />} tone="t-s" title="Transcrição de áudio" sub="entende áudios no grupo e no atendimento" />
+        <Tile p="transcribe" letter={<Mic size={19} color="#f7c928" />} tone="brand" title="Transcrição de áudio" sub="entende áudios no grupo e no atendimento" />
       </div>
       {(open === "ai" || open === "transcribe") && <Detail />}
 

@@ -52,13 +52,23 @@ export async function testIntegration(p: Provider) {
       const i = await wabaInfo();
       await setStatus(p, true, `Conectado ao número ${i.display_phone_number ?? ""}${i.verified_name ? ` (${i.verified_name})` : ""}${i.quality_rating ? ` · qualidade ${i.quality_rating}` : ""}`);
     }
+    if (p === "tiktok") {
+      const { tiktokGet } = await import("@/lib/adsExtra");
+      const d = await tiktokGet<{ list: { name: string; currency?: string }[] }>("/advertiser/info/", { advertiser_ids: JSON.stringify([c.tiktok.advertiserId]) });
+      await setStatus(p, true, `Conectado à conta ${d.list?.[0]?.name ?? c.tiktok.advertiserId}`);
+    }
+    if (p === "google") {
+      const { googleQuery } = await import("@/lib/adsExtra");
+      const r = await googleQuery<{ customer: { descriptiveName?: string } }>("SELECT customer.descriptive_name FROM customer LIMIT 1");
+      await setStatus(p, true, `Conectado à conta ${r[0]?.customer?.descriptiveName ?? c.google.customerId}`);
+    }
     if (p === "appmax") {
       const { appmax } = await import("@/lib/appmax");
       await appmax("GET", "/v1/subscriptions?per_page=1").catch((e) => { if (/APPMAX_NAO|credenciais/.test(String(e))) throw e; });
       await setStatus(p, true, `Conectado (${c.appmax.mode === "sandbox" ? "sandbox" : "produção"})`);
     }
   } catch (e) {
-    const msg = String(e).replace(/^Error: /, "").replace("APPMAX_NAO_CONFIGURADA", "Falta o Client ID ou o Client secret").replace("SHOPIFY_NAO_CONFIGURADA", "Falta o domínio ou o token").replace("WABA_NAO_CONFIGURADA", "Falta o ID do número ou o token");
+    const msg = String(e).replace(/^Error: /, "").replace("APPMAX_NAO_CONFIGURADA", "Falta o Client ID ou o Client secret").replace("SHOPIFY_NAO_CONFIGURADA", "Falta o domínio ou o token").replace("WABA_NAO_CONFIGURADA", "Falta o ID do número ou o token").replace("TIKTOK_NAO_CONFIGURADO", "Falta o token ou o ID da conta de anúncios").replace("GOOGLE_NAO_CONFIGURADO", "Falta algum dos dados do Google Ads");
     await setStatus(p, false, msg.slice(0, 200));
   }
 }
@@ -74,6 +84,8 @@ export async function saveProvider(f: FormData) {
     if (!values.domain.includes(".")) values.domain = `${values.domain}.myshopify.com`;
   }
   if (p === "meta" && values.adAccount) values.adAccount = values.adAccount.replace(/\D/g, "");
+  if (p === "tiktok" && values.advertiserId) values.advertiserId = values.advertiserId.replace(/\D/g, "");
+  if (p === "google") for (const k of ["customerId", "loginCustomerId"]) if (values[k]) values[k] = values[k].replace(/\D/g, "");
   if (p === "appmax" && values.mode) values.mode = /sand/i.test(values.mode) ? "sandbox" : "producao";
   await saveIntegration(p, values);
   await testIntegration(p);
@@ -108,7 +120,7 @@ export async function wabaTest(f: FormData) {
     msg = "Mensagem de teste enviada";
     await setStatus("waba", true, msg);
   } catch (e) {
-    msg = String(e).replace(/^Error: /, "").replace("WABA_NAO_CONFIGURADA", "Falta o ID do número ou o token");
+    msg = String(e).replace(/^Error: /, "").replace("WABA_NAO_CONFIGURADA", "Falta o ID do número ou o token").replace("TIKTOK_NAO_CONFIGURADO", "Falta o token ou o ID da conta de anúncios").replace("GOOGLE_NAO_CONFIGURADO", "Falta algum dos dados do Google Ads");
     await setStatus("waba", false, msg.slice(0, 200));
   }
   revalidatePath("/integracoes");

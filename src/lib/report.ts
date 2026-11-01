@@ -61,6 +61,9 @@ export async function computeMetrics(fromIso: string, toIso: string, opts: { mon
   } catch {
     ads = await metaSpend(fromIso, toIso).catch(() => null);
   }
+  // TikTok e Google entram inteiros (são campanhas de venda)
+  const extra = await import("./adsExtra").then((m) => m.extraSpend(fromIso, toIso)).catch(() => null);
+  if (extra?.total) ads = (ads ?? 0) + extra.total;
   const taxesFees = sales.net * (s.costs.taxRate + s.costs.paymentFeeRate);
   const packaging = items * s.costs.packagingPerItem;
   const profitBeforeFixed = sales.net - cogs - taxesFees - packaging - (ads ?? 0);
