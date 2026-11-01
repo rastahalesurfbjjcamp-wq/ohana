@@ -74,6 +74,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         <button className="btn pri" type="submit" style={{ justifyContent: "center", marginTop: 6 }}>
           Entrar
         </button>
+        <p className="dim" style={{ fontSize: 13, textAlign: "center" }}><a href="/admin/senha" style={{ color: "var(--lagoon)" }}>Esqueci minha senha</a></p>
         <p className="dim" style={{ fontSize: 13, textAlign: "center" }}>É da equipe e ainda não tem acesso? <a href="/admin/cadastro" style={{ color: "var(--lagoon)" }}>Pedir acesso</a></p>
       </form>
     </div>
