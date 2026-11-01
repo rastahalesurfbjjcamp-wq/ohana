@@ -11,6 +11,9 @@ export async function middleware(req: NextRequest) {
   if (process.env.DEMO_MODE === "1" && (pathname === "/brand/lion.png" || pathname === "/brand/logo.png" || pathname === "/icon.png" || pathname === "/apple-icon.png" || pathname === "/favicon.ico")) {
     const url = req.nextUrl.clone(); url.pathname = pathname.startsWith("/brand/") ? "/demo/mark.png" : "/demo/icon.png"; return NextResponse.rewrite(url);
   }
+  // entrada do painel: rastahale.tech/admin (o antigo /login leva para lá)
+  if (pathname === "/admin") { const url = req.nextUrl.clone(); url.pathname = "/login"; return NextResponse.rewrite(url); }
+  if (pathname === "/login") { const url = req.nextUrl.clone(); url.pathname = "/admin"; return NextResponse.redirect(url); }
   if (PUBLIC.some((p) => pathname === p || pathname.startsWith(p + "/"))) return NextResponse.next();
   const token = req.cookies.get("hub_session")?.value;
   if (token) {
@@ -31,7 +34,8 @@ export async function middleware(req: NextRequest) {
   }
   if (pathname.startsWith("/api/")) return NextResponse.json({ error: "não autenticado" }, { status: 401 });
   const url = req.nextUrl.clone();
-  url.pathname = "/login";
+  url.pathname = "/admin";
+  url.search = "";
   return NextResponse.redirect(url);
 }
 

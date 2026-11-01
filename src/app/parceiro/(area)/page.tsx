@@ -22,6 +22,12 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
   const goal = next ?? tiers[tiers.length - 1];
   const miles = [...prog.milestones].filter((m) => m.minCents > 0).sort((a, b) => a.minCents - b.minCents);
   const mile = miles.find((m) => b.progressCents < m.minCents);
+  // acordo com fixo e/ou mínimo garantido: mostra o fixo + comissão (quem não tem, não vê nada disso)
+  const fixed = Math.round((p.fixedMonthly ?? 0) * 100), min = Math.round((p.minMonthly ?? 0) * 100);
+  const hasFixed = fixed > 0 || min > 0;
+  const monthTotal = Math.max(min, fixed + b.monthCents);
+  const topUp = monthTotal - (fixed + b.monthCents);
+  const deal = hasFixed ? `Seu acordo: ${fixed ? `fixo de ${brlc(fixed)} + ` : ""}${pct.toLocaleString("pt-BR")}% de comissão em cada venda${min ? `, com mínimo garantido de ${brlc(min)} por mês` : ""}.` : `Seu acordo: ${pct.toLocaleString("pt-BR")}% de comissão em cada venda.`;
   const canWithdraw = b.requestedCents === 0 && b.availableCents >= prog.minWithdrawCents;
   const months: string[] = [];
   for (let i = 5; i >= 0; i--) months.push(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 15)).toISOString().slice(0, 7));
@@ -29,7 +35,7 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
 
   return (
     <>
-      <Header title={`Fala, ${first}`} lede={`Seu acordo: ${pct.toLocaleString("pt-BR")}% de comissão em cada venda.`}>
+      <Header title={`Fala, ${first}`} lede={deal}>
         <Link className="btn pri" href="/parceiro/saques"><Wallet size={15} /> Pedir saque</Link>
       </Header>
       {sp.bemvindo && <div className="ok">Conta criada. Aqui você acompanha sua comissão e pede seus saques.</div>}
@@ -37,7 +43,9 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
       <div className="grid g4">
         <Kpi label="Saldo disponível" value={brlc(Math.max(0, b.availableCents))} sub={b.requestedCents ? `Saque de ${brlc(b.requestedCents)} em análise` : canWithdraw ? "Pronto para sacar" : `Saque a partir de ${brlc(prog.minWithdrawCents)}`} icon={<Wallet size={15} />} tone="k" />
         <Kpi label="A liberar" value={brlc(b.pendingCents)} sub={`Entra no saldo em ${fmtDay(nextRelease)}`} icon={<Coins size={15} />} tone="l" />
-        <Kpi label={`Comissão em ${curName}`} value={brlc(b.monthCents)} sub={reached ? `Meta batida: +${brlc(reached.bonusCents)}` : next ? `Faltam ${brlc(next.minCents - b.monthCents)} para o bônus` : "Siga divulgando"} icon={<TrendingUp size={15} />} tone="c" />
+        {hasFixed
+          ? <Kpi label={`A receber de ${curName}`} value={brlc(monthTotal)} sub={`${fixed ? `Fixo ${brlc(fixed)} + ` : ""}comissão ${brlc(b.monthCents)}${topUp > 0 ? ` + ${brlc(topUp)} até o mínimo` : ""}`} icon={<TrendingUp size={15} />} tone="c" />
+          : <Kpi label={`Comissão em ${curName}`} value={brlc(b.monthCents)} sub={reached ? `Meta batida: +${brlc(reached.bonusCents)}` : next ? `Faltam ${brlc(next.minCents - b.monthCents)} para o bônus` : "Siga divulgando"} icon={<TrendingUp size={15} />} tone="c" />}
         <Kpi label="Já recebido" value={brlc(b.paidCents)} sub={`Total ganho: ${brlc(b.lifetimeCents)}`} icon={<Gift size={15} />} tone="p" />
       </div>
 
