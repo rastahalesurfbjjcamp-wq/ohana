@@ -40,7 +40,7 @@ export async function humanDelay() {
   await new Promise((r) => setTimeout(r, ms));
 }
 
-export async function sendText(to: string, text: string, opts: { mentionAll?: boolean } = {}) {
+export async function sendText(to: string, text: string, opts: { mentionAll?: boolean; delayMs?: number } = {}) {
   const res = await evolution.sendText(to, text, opts);
   await markSent(res);
   return res;
@@ -49,7 +49,7 @@ export async function sendText(to: string, text: string, opts: { mentionAll?: bo
 export async function sendMedia(
   to: string,
   media: { url: string; type: "image" | "video" | "document"; caption?: string; fileName?: string; mimetype?: string },
-  opts: { mentionAll?: boolean } = {},
+  opts: { mentionAll?: boolean; delayMs?: number } = {},
 ) {
   const res = await evolution.sendMedia(to, media, opts);
   await markSent(res);

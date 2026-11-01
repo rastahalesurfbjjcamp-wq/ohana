@@ -5,7 +5,8 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { saveUpload } from "@/lib/uploads";
-import { addToList, automationEvent, newNodeId, parseCsv, TRIGGERS, type Flow, type Node, type Part } from "@/lib/automations";
+import { addToList, automationEvent, newNodeId, parseCsv, TRIGGERS, type Flow } from "@/lib/automations";
+import { PORT_KEYS, type Node } from "@/lib/flowTypes";
 
 async function user() {
   const s = await getSession();
@@ -15,113 +16,83 @@ async function user() {
 const str = (f: FormData, k: string) => String(f.get(k) ?? "").trim();
 const go = (id: string, q = "") => { revalidatePath("/automacoes"); revalidatePath(`/automacoes/${id}`); redirect(`/automacoes/${id}${q}`); };
 
-async function load(id: string) {
-  const a = await db.automation.findUnique({ where: { id } });
-  if (!a) redirect("/automacoes");
-  const fl = (a!.flow ?? {}) as Partial<Flow>;
-  return { a: a!, flow: { start: fl.start, nodes: fl.nodes ?? {} } as Flow };
-}
-async function saveFlow(id: string, flow: Flow) {
-  await db.automation.update({ where: { id }, data: { flow } });
-}
-
 export async function createAutomation(f: FormData) {
   await user();
   const trigger = str(f, "trigger");
   const t = TRIGGERS.find((x) => x.k === trigger);
   if (!t) redirect("/automacoes?novo=1");
   const send = newNodeId();
-  const a = await db.automation.create({ data: { name: str(f, "name") || t!.label, trigger, config: { delayMin: trigger === "carrinho_abandonado" ? 30 : 0 }, flow: { start: send, nodes: { [send]: { type: "send", parts: [{ text: "Olá {nome}, tudo bem?" }] } } } } });
-  go(a.id, `?node=${send}`);
+  const a = await db.automation.create({ data: { name: str(f, "name") || t!.label, trigger, config: { delayMin: trigger === "carrinho_abandonado" ? 30 : 0 }, flow: { start: send, startPos: { x: 60, y: 200 }, nodes: { [send]: { type: "send", parts: [{ text: "Olá {nome}, tudo bem?" }], typing: 5, timeout: 60, x: 380, y: 160 } } } } });
+  go(a.id);
 }
 
-const DEFAULT: Record<string, Node> = {
-  send: { type: "send", parts: [{ text: "" }] },
-  wait: { type: "wait", amount: 1, unit: "h" },
-  waitHour: { type: "waitHour", hour: "10:00" },
-  cond: { type: "cond", check: "pagou" },
-  tag: { type: "tag", action: "add", tag: "" },
-  list: { type: "list", action: "add", listId: "" },
-  exit: { type: "exit" },
-};
-const nextOf = (n: Node) => (n.type === "cond" ? n.yes ?? n.no : n.type === "exit" ? undefined : n.next);
+const TYPES = new Set(["send", "wait", "waitHour", "cond", "random", "tag", "list", "exit", "note"]);
+const num = (v: unknown, d: number, min: number, max: number) => { const n = Number(v); return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : d; };
+const s200 = (v: unknown, max = 4000) => (typeof v === "string" ? v.slice(0, max) : undefined);
 
-// Coloca um bloco novo no ponto clicado (entre o bloco de cima e o que já estava ali)
-export async function addNode(f: FormData) {
-  await user();
-  const id = str(f, "id"), parent = str(f, "parent"), port = str(f, "port"), type = str(f, "type");
-  const { flow } = await load(id);
-  const nid = newNodeId();
-  const node = structuredClone(DEFAULT[type] ?? DEFAULT.send) as Node;
-  let old: string | undefined;
-  if (parent === "start") { old = flow.start; flow.start = nid; }
-  else {
-    const p = flow.nodes[parent] as Record<string, unknown> | undefined;
-    if (!p) go(id);
-    old = p![port] as string | undefined;
-    p![port] = nid;
-  }
-  if (old) { if (node.type === "cond") node.yes = old; else if (node.type !== "exit") (node as { next?: string }).next = old; }
-  flow.nodes[nid] = node;
-  await saveFlow(id, flow);
-  go(id, `?node=${nid}`);
-}
-
-export async function deleteNode(f: FormData) {
-  await user();
-  const id = str(f, "id"), nid = str(f, "node");
-  const { flow } = await load(id);
-  const n = flow.nodes[nid];
-  if (!n) go(id);
-  const repl = nextOf(n!);
-  if (flow.start === nid) flow.start = repl;
-  for (const x of Object.values(flow.nodes) as Record<string, unknown>[]) for (const k of ["next", "yes", "no"]) if (x[k] === nid) x[k] = repl;
-  delete flow.nodes[nid];
-  // tira blocos que ficaram soltos
-  const seen = new Set<string>();
-  const walk = (k?: string) => { if (!k || seen.has(k) || !flow.nodes[k]) return; seen.add(k); const x = flow.nodes[k] as Record<string, string>; walk(x.next); walk(x.yes); walk(x.no); };
-  walk(flow.start);
-  for (const k of Object.keys(flow.nodes)) if (!seen.has(k)) delete flow.nodes[k];
-  await saveFlow(id, flow);
-  go(id);
-}
-
-export async function saveNode(f: FormData) {
-  await user();
-  const id = str(f, "id"), nid = str(f, "node");
-  const { flow } = await load(id);
-  const n = flow.nodes[nid];
-  if (!n) go(id);
-  if (n!.type === "send") {
-    const count = Math.min(6, Math.max(1, Number(str(f, "n")) || 1));
-    const parts: Part[] = [];
-    for (let i = 0; i < count; i++) {
-      const text = str(f, `text_${i}`);
-      const productImage = f.get(`img_${i}`) === "on";
-      const file = f.get(`file_${i}`);
-      let mediaUrl = f.get(`keep_${i}`) === "1" ? n!.parts[i]?.mediaUrl : undefined;
-      let mediaType = f.get(`keep_${i}`) === "1" ? n!.parts[i]?.mediaType : undefined;
-      if (file instanceof File && file.size > 0) { const up = await saveUpload(file); mediaUrl = up.url; mediaType = up.type; }
-      if (text || productImage || mediaUrl) parts.push({ text: text || undefined, productImage: productImage || undefined, mediaUrl, mediaType });
+// Limpa o que veio do editor antes de gravar (só campos conhecidos)
+function clean(raw: unknown): Flow {
+  const r = (raw ?? {}) as { start?: string; startPos?: { x: number; y: number }; nodes?: Record<string, Record<string, unknown>> };
+  const nodes: Record<string, Node> = {};
+  for (const [id, n] of Object.entries(r.nodes ?? {}).slice(0, 200)) {
+    if (!/^[\w-]{1,24}$/.test(id) || !n || !TYPES.has(String(n.type))) continue;
+    const o: Record<string, unknown> = { type: n.type, x: Math.round(num(n.x, 0, -20000, 20000)), y: Math.round(num(n.y, 0, -20000, 20000)) };
+    if (s200(n.title, 80)) o.title = s200(n.title, 80);
+    for (const k of PORT_KEYS) if (typeof n[k] === "string" && n[k]) o[k] = n[k];
+    switch (n.type) {
+      case "send":
+        o.parts = (Array.isArray(n.parts) ? n.parts : []).slice(0, 8).map((p: Record<string, unknown>) => ({ text: s200(p.text) || undefined, mediaUrl: s200(p.mediaUrl, 500) || undefined, mediaType: s200(p.mediaType, 20) || undefined, productImage: p.productImage ? true : undefined }));
+        if (!(o.parts as unknown[]).length) o.parts = [{ text: "" }];
+        o.typing = num(n.typing, 5, 0, 30); o.timeout = num(n.timeout, 60, 1, 10080);
+        if (n.utm && typeof n.utm === "object") { const u = n.utm as Record<string, unknown>; o.utm = { source: s200(u.source, 80), medium: s200(u.medium, 80), campaign: s200(u.campaign, 80) }; }
+        break;
+      case "wait": o.amount = num(n.amount, 1, 1, 999); o.unit = ["min", "h", "d"].includes(String(n.unit)) ? n.unit : "h"; break;
+      case "waitHour": o.hour = /^\d{2}:\d{2}$/.test(String(n.hour)) ? n.hour : "10:00"; if (Array.isArray(n.days)) o.days = n.days.map(Number).filter((d) => d >= 0 && d <= 6); break;
+      case "cond": {
+        const rules = (Array.isArray(n.rules) ? n.rules : []).slice(0, 10).map((x: Record<string, unknown>) => ({ check: String(x.check ?? "pagou"), value: s200(x.value, 200) || undefined }));
+        o.rules = rules.length ? rules : [{ check: "pagou" }]; o.check = (o.rules as { check: string }[])[0].check; o.mode = n.mode === "any" ? "any" : "all"; break;
+      }
+      case "random": o.pct = Math.round(num(n.pct, 50, 1, 99)); break;
+      case "tag": o.action = n.action === "remove" ? "remove" : "add"; o.tag = (s200(n.tag, 60) ?? "").toLowerCase().trim(); break;
+      case "list": o.action = n.action === "remove" ? "remove" : "add"; o.listId = s200(n.listId, 40) ?? ""; break;
+      case "note": o.text = s200(n.text, 2000) ?? ""; o.color = s200(n.color, 20); break;
     }
-    n!.parts = parts.length ? parts : [{ text: "" }];
+    nodes[id] = o as Node;
   }
-  if (n!.type === "wait") { n!.amount = Math.max(1, Number(str(f, "amount")) || 1); n!.unit = (["min", "h", "d"].includes(str(f, "unit")) ? str(f, "unit") : "h") as "min" | "h" | "d"; }
-  if (n!.type === "waitHour") n!.hour = /^\d{2}:\d{2}$/.test(str(f, "hour")) ? str(f, "hour") : "10:00";
-  if (n!.type === "cond") { n!.check = (["pagou", "respondeu", "clicou", "etiqueta", "lista"].includes(str(f, "check")) ? str(f, "check") : "pagou") as typeof n.check; n!.value = (n!.check === "lista" ? str(f, "value_list") : n!.check === "etiqueta" ? str(f, "value_tag").toLowerCase() : "") || undefined; }
-  if (n!.type === "tag") { n!.action = str(f, "action") === "remove" ? "remove" : "add"; n!.tag = str(f, "tag").toLowerCase(); }
-  if (n!.type === "list") { n!.action = str(f, "action") === "remove" ? "remove" : "add"; n!.listId = str(f, "listId"); }
-  await saveFlow(id, flow);
-  go(id, `?node=${nid}&salvo=1`);
+  // tira ligações para blocos que não existem
+  for (const n of Object.values(nodes) as Record<string, unknown>[]) for (const k of PORT_KEYS) if (n[k] && !nodes[n[k] as string]) delete n[k];
+  const start = r.start && nodes[r.start] ? r.start : undefined;
+  return { start, startPos: { x: Math.round(num(r.startPos?.x, 60, -20000, 20000)), y: Math.round(num(r.startPos?.y, 200, -20000, 20000)) }, nodes };
 }
 
-export async function saveAutomation(f: FormData) {
+// Salva tudo que foi feito no editor de blocos
+export async function saveFlowAction(id: string, data: { flow: unknown; name: string; trigger: string; config: { delayMin?: number; listId?: string; stopOnPaid?: boolean } }) {
   await user();
-  const id = str(f, "id");
-  const { a } = await load(id);
-  const trigger = TRIGGERS.some((t) => t.k === str(f, "trigger")) ? str(f, "trigger") : a.trigger;
-  await db.automation.update({ where: { id }, data: { name: str(f, "name") || a.name, trigger, config: { delayMin: Math.max(0, Number(str(f, "delayMin")) || 0), listId: str(f, "listId") || undefined } } });
-  go(id, "?salvo=1");
+  const a = await db.automation.findUnique({ where: { id } });
+  if (!a) return { ok: false, error: "Automação não encontrada" };
+  const trigger = TRIGGERS.some((t) => t.k === data.trigger) ? data.trigger : a.trigger;
+  await db.automation.update({ where: { id }, data: { flow: clean(data.flow), name: (data.name || "").trim().slice(0, 80) || a.name, trigger, config: { delayMin: num(data.config?.delayMin, 0, 0, 10080), listId: s200(data.config?.listId, 40) || undefined, stopOnPaid: !!data.config?.stopOnPaid } } });
+  revalidatePath("/automacoes");
+  revalidatePath(`/automacoes/${id}`);
+  return { ok: true, at: new Date().toISOString() };
+}
+
+// Sobe a foto/vídeo/PDF de uma parte da mensagem
+export async function uploadPartMedia(f: FormData) {
+  await user();
+  const file = f.get("file");
+  if (!(file instanceof File) || !file.size) return { ok: false as const };
+  if (file.size > 32 * 1024 * 1024) return { ok: false as const, error: "Arquivo acima de 32 MB" };
+  const up = await saveUpload(file);
+  return { ok: true as const, url: up.url, type: up.type };
+}
+
+export async function setAutomationActive(id: string, active: boolean) {
+  await user();
+  await db.automation.update({ where: { id }, data: { active } });
+  revalidatePath("/automacoes");
+  revalidatePath(`/automacoes/${id}`);
+  return { ok: true };
 }
 
 export async function toggleAutomation(f: FormData) {

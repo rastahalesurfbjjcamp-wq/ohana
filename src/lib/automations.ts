@@ -7,44 +7,30 @@ import { normalizePhone } from "./segments";
 import { ordersBetween } from "./store";
 import { isoDayLocal } from "./time";
 
-export type Part = { text?: string; mediaUrl?: string; mediaType?: string; productImage?: boolean };
-export type Node =
-  | { type: "send"; parts: Part[]; next?: string }
-  | { type: "wait"; amount: number; unit: "min" | "h" | "d"; next?: string }
-  | { type: "waitHour"; hour: string; next?: string }
-  | { type: "cond"; check: "pagou" | "respondeu" | "clicou" | "etiqueta" | "lista"; value?: string; yes?: string; no?: string }
-  | { type: "tag"; action: "add" | "remove"; tag: string; next?: string }
-  | { type: "list"; action: "add" | "remove"; listId: string; next?: string }
-  | { type: "exit" };
-export type Flow = { start?: string; nodes: Record<string, Node> };
-export type Ctx = Record<string, string>;
-
-export const TRIGGERS: { k: string; group: string; label: string; desc: string }[] = [
-  { k: "pedido_criado", group: "Pedido", label: "Pedido criado", desc: "Quando entra um pedido novo" },
-  { k: "pedido_pix", group: "Pedido", label: "Pedido criado (Pix)", desc: "Pedido com Pix gerado e ainda não pago" },
-  { k: "pedido_boleto", group: "Pedido", label: "Pedido criado (Boleto)", desc: "Pedido com boleto gerado e ainda não pago" },
-  { k: "pedido_pago", group: "Pedido", label: "Pedido pago", desc: "Quando o pagamento é aprovado" },
-  { k: "primeira_compra", group: "Pedido", label: "Primeira compra", desc: "Primeiro pedido pago do cliente" },
-  { k: "pedido_entregue", group: "Pedido", label: "Pedido entregue", desc: "Quando a transportadora marca como entregue" },
-  { k: "carrinho_abandonado", group: "Carrinho abandonado", label: "Carrinho abandonado criado", desc: "Quando alguém sai do checkout sem pagar" },
-  { k: "rastreio_criado", group: "Número de rastreio", label: "Número de rastreio criado", desc: "Quando o pedido ganha rastreio" },
-  { k: "lead_novo", group: "Lead", label: "Lead inserido", desc: "Quem preenche o formulário do Grupo VIP" },
-  { k: "lista", group: "Lead", label: "Adicionado à lista", desc: "Quem entra numa lista (planilha, API ou bloco)" },
-  { k: "entrou_grupo", group: "Comunidade", label: "Entrou no grupo", desc: "Entrou num grupo da comunidade" },
-  { k: "saiu_grupo", group: "Comunidade", label: "Saiu do grupo", desc: "Saiu de um grupo da comunidade" },
-  { k: "assinou_club", group: "Club", label: "Assinou o club", desc: "Pagamento da assinatura confirmado" },
-];
-export const triggerLabel = (k: string) => TRIGGERS.find((t) => t.k === k)?.label ?? k;
-export const VARS = ["{nome}", "{produtos}", "{valor}", "{link}", "{pedido}", "{rastreio}", "{loja}"];
+import { CHECKS, type Ctx, type Flow, type Node, type Rule } from "./flowTypes";
+export { TRIGGERS, triggerLabel, type Ctx, type Flow, type Node, type Part } from "./flowTypes";
+void CHECKS;
 
 const rid = () => Math.random().toString(36).slice(2, 9);
 export const newNodeId = rid;
 const base = () => env.appUrl().replace(/\/$/, "");
 
 // Troca {campo} pelos dados do contato; links viram link rastreado para contar clique
-function fill(text: string, ctx: Ctx, runId?: string, links?: string[]) {
+function withUtm(u: string, utm?: { source?: string; medium?: string; campaign?: string }) {
+  if (!utm || !(utm.source || utm.medium || utm.campaign)) return u;
+  try {
+    const url = new URL(u);
+    if (utm.source) url.searchParams.set("utm_source", utm.source);
+    if (utm.medium) url.searchParams.set("utm_medium", utm.medium);
+    if (utm.campaign) url.searchParams.set("utm_campaign", utm.campaign);
+    return url.toString();
+  } catch {
+    return u;
+  }
+}
+function fill(text: string, ctx: Ctx, runId?: string, links?: string[], opts: { utm?: { source?: string; medium?: string; campaign?: string }; node?: string; linkNodes?: string[] } = {}) {
   let t = text.replace(/\{(\w+)\}/g, (_, k: string) => (k === "nome" ? (ctx.nome ?? "").split(" ")[0] || "tudo bem" : k === "loja" ? env.storeName() : ctx[k] ?? ""));
-  if (runId && links) t = t.replace(/https?:\/\/[^\s]+/g, (u) => { links.push(u); return `${base()}/a/${runId}/${links.length - 1}`; });
+  if (runId && links) t = t.replace(/https?:\/\/[^\s]+/g, (u) => { links.push(withUtm(u, opts.utm)); opts.linkNodes?.push(opts.node ?? ""); return `${base()}/a/${runId}/${links.length - 1}`; });
   return t.trim();
 }
 
@@ -80,13 +66,23 @@ export async function markConverted(phoneRaw: string | null | undefined, value: 
 
 /* ---------- Execução dos passos ---------- */
 
-async function check(run: { id: string; phone: string; createdAt: Date; lastSentAt: Date | null; clicks: number; convertedAt: Date | null }, n: Extract<Node, { type: "cond" }>) {
-  if (n.check === "pagou") return !!run.convertedAt;
-  if (n.check === "clicou") return run.clicks > 0;
-  if (n.check === "respondeu") return !!(await db.chatMessage.findFirst({ where: { phone: run.phone, fromMe: false, createdAt: { gte: run.lastSentAt ?? run.createdAt } } }));
-  if (n.check === "etiqueta") return !!(await db.contactTag.findUnique({ where: { phone_tag: { phone: run.phone, tag: (n.value ?? "").trim().toLowerCase() } } }));
-  if (n.check === "lista") return !!(n.value && (await db.listMember.findUnique({ where: { listId_phone: { listId: n.value, phone: run.phone } } })));
+type RunInfo = { id: string; phone: string; createdAt: Date; lastSentAt: Date | null; clicks: number; convertedAt: Date | null };
+async function checkRule(run: RunInfo, r: Rule, ctx: Ctx) {
+  if (r.check === "pagou") return !!run.convertedAt;
+  if (r.check === "clicou") return run.clicks > 0;
+  if (r.check === "respondeu") return !!(await db.chatMessage.findFirst({ where: { phone: run.phone, fromMe: false, createdAt: { gte: run.lastSentAt ?? run.createdAt } } }));
+  if (r.check === "etiqueta") return !!(await db.contactTag.findUnique({ where: { phone_tag: { phone: run.phone, tag: (r.value ?? "").trim().toLowerCase() } } }));
+  if (r.check === "lista") return !!(r.value && (await db.listMember.findUnique({ where: { listId_phone: { listId: r.value, phone: run.phone } } })));
+  if (r.check === "valor_min") return money(ctx.valor) >= Number(String(r.value ?? "0").replace(",", "."));
+  if (r.check === "produto") return !!r.value && (ctx.produtos ?? "").toLowerCase().includes(r.value.trim().toLowerCase());
   return false;
+}
+const money = (v?: string) => Number(String(v ?? "").replace(/[^\d,]/g, "").replace(",", ".")) || 0;
+async function check(run: RunInfo, n: Extract<Node, { type: "cond" }>, ctx: Ctx) {
+  const rules = n.rules?.length ? n.rules : [{ check: n.check, value: n.value }];
+  const res: boolean[] = [];
+  for (const r of rules) res.push(await checkRule(run, r, ctx));
+  return n.mode === "any" ? res.some(Boolean) : res.every(Boolean);
 }
 
 export async function runDue(limit = 30) {
@@ -94,7 +90,8 @@ export async function runDue(limit = 30) {
   for (const run of due) {
     const flow = (run.automation.flow ?? {}) as Flow;
     const ctx = (run.ctx ?? {}) as Ctx;
-    const log = (run.log ?? []) as { at: string; t: string }[];
+    const log = (run.log ?? []) as { at: string; t: string; n?: string }[];
+    const cfg = (run.automation.config ?? {}) as { stopOnPaid?: boolean };
     let nodeId = run.nodeId;
     let nextAt: Date | null = null;
     let status = "ativo";
@@ -102,22 +99,48 @@ export async function runDue(limit = 30) {
     let lastSentAt = run.lastSentAt;
     let error: string | null = null;
     const links: string[] = ((ctx._links ?? "") ? JSON.parse(ctx._links) : []) as string[];
+    const linkNodes: string[] = ((ctx._ln ?? "") ? JSON.parse(ctx._ln) : []) as string[];
+    if (cfg.stopOnPaid && run.convertedAt) {
+      await db.automationRun.update({ where: { id: run.id }, data: { status: "fim", nextAt: null, log: [...log, { at: new Date().toISOString(), t: "Saiu: pedido pago" }].slice(-30) } });
+      continue;
+    }
     try {
       for (let steps = 0; steps < 25; steps++) {
         const n = nodeId ? flow.nodes[nodeId] : null;
-        if (!n || n.type === "exit") { status = "fim"; break; }
+        if (!n || n.type === "exit" || n.type === "note") { status = "fim"; break; }
         if (n.type === "send") {
+          const hasBranch = !!(n.clicked || n.replied || n.noReply);
+          // Já mandou e está esperando resposta ou clique
+          if (ctx._w && ctx._w.startsWith(`${nodeId}|`)) {
+            const [, dl, c0] = ctx._w.split("|");
+            const replied = n.replied ? !!(await db.chatMessage.findFirst({ where: { phone: run.phone, fromMe: false, createdAt: { gte: lastSentAt ?? run.createdAt } } })) : false;
+            const clicked = n.clicked ? run.clicks > Number(c0 || 0) : false;
+            let to: string | null | undefined;
+            if (replied) { to = n.replied; log.push({ at: new Date().toISOString(), t: "Respondeu", n: nodeId! }); }
+            else if (clicked) { to = n.clicked; log.push({ at: new Date().toISOString(), t: "Clicou", n: nodeId! }); }
+            else if (Date.now() >= Number(dl)) { to = n.noReply ?? n.next ?? null; log.push({ at: new Date().toISOString(), t: "Não respondeu", n: nodeId! }); }
+            else { nextAt = new Date(Math.min(Number(dl), Date.now() + 2 * 60_000)); break; }
+            delete ctx._w;
+            nodeId = to ?? null;
+            continue;
+          }
           const wait = await reserveSlot();
           if (wait > 0) { nextAt = new Date(Date.now() + wait); break; }
+          const delayMs = Math.min(30, Math.max(0, n.typing ?? 2)) * 1000;
           for (const [i, p] of n.parts.entries()) {
             if (i > 0) await new Promise((r) => setTimeout(r, 1500));
-            const text = p.text ? fill(p.text, ctx, run.id, links) : "";
+            const text = p.text ? fill(p.text, ctx, run.id, links, { utm: n.utm, node: nodeId!, linkNodes }) : "";
             const url = p.productImage ? ctx.imagem : p.mediaUrl ? (p.mediaUrl.startsWith("http") ? p.mediaUrl : `${base()}${p.mediaUrl}`) : null;
-            if (url) await sendMedia(run.phone, { url, type: (p.productImage ? "image" : p.mediaType ?? "image") as "image" | "video" | "document", caption: text });
-            else if (text) await sendText(run.phone, text);
+            if (url) await sendMedia(run.phone, { url, type: (p.productImage ? "image" : p.mediaType ?? "image") as "image" | "video" | "document", caption: text }, { delayMs });
+            else if (text) await sendText(run.phone, text, { delayMs });
           }
           sent++; lastSentAt = new Date();
-          log.push({ at: new Date().toISOString(), t: "Mensagem enviada" });
+          log.push({ at: new Date().toISOString(), t: "Mensagem enviada", n: nodeId! });
+          if (hasBranch) {
+            ctx._w = `${nodeId}|${Date.now() + Math.max(1, n.timeout ?? 60) * 60_000}|${run.clicks}`;
+            nextAt = new Date(Date.now() + 60_000);
+            break;
+          }
           nodeId = n.next ?? null;
           continue;
         }
@@ -132,14 +155,22 @@ export async function runDue(limit = 30) {
           const today = isoDayLocal();
           let at = new Date(`${today}T${String(h).padStart(2, "0")}:${String(m || 0).padStart(2, "0")}:00-03:00`);
           if (at.getTime() <= Date.now()) at = new Date(at.getTime() + 864e5);
+          // Só nos dias da semana escolhidos (0 = domingo)
+          if (n.days?.length) for (let k = 0; k < 7 && !n.days.includes(new Date(at.getTime() - 3 * 3600_000).getUTCDay()); k++) at = new Date(at.getTime() + 864e5);
           nodeId = n.next ?? null;
           nextAt = at;
           break;
         }
         if (n.type === "cond") {
-          const ok = await check({ ...run, lastSentAt, clicks: run.clicks }, n);
-          log.push({ at: new Date().toISOString(), t: `Condição ${n.check}: ${ok ? "sim" : "não"}` });
+          const ok = await check({ ...run, lastSentAt, clicks: run.clicks }, n, ctx);
+          log.push({ at: new Date().toISOString(), t: `Condição: ${ok ? "sim" : "não"}`, n: nodeId! });
           nodeId = (ok ? n.yes : n.no) ?? null;
+          continue;
+        }
+        if (n.type === "random") {
+          const a = Math.random() * 100 < n.pct;
+          log.push({ at: new Date().toISOString(), t: `Caminho ${a ? "A" : "B"}`, n: nodeId! });
+          nodeId = (a ? n.a : n.b) ?? null;
           continue;
         }
         if (n.type === "tag") {
@@ -161,7 +192,7 @@ export async function runDue(limit = 30) {
       status = "erro"; error = String(e).replace(/^Error: /, "").slice(0, 200);
     }
     if (status === "ativo" && !nextAt) status = "fim";
-    await db.automationRun.update({ where: { id: run.id }, data: { nodeId, nextAt, status, sent, lastSentAt, error, log: log.slice(-30), ctx: { ...ctx, _links: JSON.stringify(links) } } });
+    await db.automationRun.update({ where: { id: run.id }, data: { nodeId, nextAt, status, sent, lastSentAt, error, log: log.slice(-30), ctx: { ...ctx, _links: JSON.stringify(links), _ln: JSON.stringify(linkNodes) } } });
   }
   return due.length;
 }
