@@ -237,6 +237,20 @@ async function runCommand(d: CommandJob) {
 async function main() {
   // demonstração: respostas fictícias no lugar de Shopify, Meta e WhatsApp
   if (process.env.DEMO_MODE === "1") (await import("../lib/demo/patch")).installDemoFetch();
+  // Atualiza os eventos do webhook da Evolution quando a lista muda (ex.: entregue/lida)
+  void (async () => {
+    try {
+      const { evolution, WEBHOOK_VERSION } = await import("../lib/evolution");
+      const { db } = await import("../lib/db");
+      const cur = await db.setting.findUnique({ where: { key: "_webhook_v" } });
+      if ((cur?.value as { v?: number } | undefined)?.v !== WEBHOOK_VERSION && process.env.DEMO_MODE !== "1") {
+        await evolution.setWebhook();
+        await db.setting.upsert({ where: { key: "_webhook_v" }, create: { key: "_webhook_v", value: { v: WEBHOOK_VERSION } }, update: { value: { v: WEBHOOK_VERSION } } });
+      }
+    } catch (e) {
+      console.error("[webhook-set]", String(e).slice(0, 200));
+    }
+  })();
   const worker = new Worker(
     "hub",
     async (job) => {

@@ -1,4 +1,5 @@
 // Recebe os eventos da Evolution API (entradas e saídas, mensagens, conexão).
+import { markDelivery } from "@/lib/automations";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
@@ -50,6 +51,16 @@ export async function POST(req: NextRequest) {
         update: { value: { state: d?.state ?? "unknown", at: new Date().toISOString() } },
       });
       if (d?.state === "open") await enqueue("sync-groups", {}, { jobId: `sync-open-${Date.now()}` });
+    }
+
+    // Entregue / lida das mensagens das automações e campanhas
+    if (ev === "messagesupdate") {
+      const list = Array.isArray(body.data) ? body.data : [body.data];
+      for (const d of list) {
+        const id = (d?.keyId as string | undefined) ?? (d?.key as { id?: string } | undefined)?.id ?? (d?.messageId as string | undefined);
+        const st = (d?.status as string | undefined) ?? ((d?.update as { status?: string | number } | undefined)?.status as string | undefined);
+        if (id && st) await markDelivery(id, String(st === "3" ? "DELIVERY_ACK" : st === "4" ? "READ" : st));
+      }
     }
 
     if (ev === "messagesupsert") {

@@ -3,19 +3,25 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type PointerEvent as RPointerEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
-  AlertTriangle, CalendarClock, ChevronDown, ChevronUp, Clock, Copy, GitBranch, Image as ImageIcon, ListPlus, LogOut, Maximize2, MessageCircle,
-  Minus, Paperclip, Plus, Shuffle, StickyNote, Tag, Trash2, Undo2, X, Zap,
+  AlertTriangle, BarChart3, Bell, CalendarClock, CalendarDays, ChevronDown, ChevronUp, Clock, Copy, FlaskConical, GitBranch, Headset, Hourglass, Image as ImageIcon, Library, ListPlus, LogOut, Maximize2, MessageCircle,
+  Minus, Paperclip, Pencil, Plus, Shuffle, Split, StickyNote, Tag, Trash2, Undo2, Webhook, Workflow, X, Zap,
 } from "lucide-react";
-import { BLOCKS, CHECKS, TRIGGERS, VARS, blockMeta, newNode, portsOf, type Flow, type Node, type NodeType, type Part, type Port } from "@/lib/flowTypes";
+import Link from "next/link";
+import { BLOCKS, CHECKS, TRIGGERS, VARS, blockMeta, newNode, portsOf, type Branch, type Flow, type Node, type NodeType, type Part, type Port, type Rule } from "@/lib/flowTypes";
+import { MessageEditor, PhonePreview, WaText, type TemplateData } from "@/components/MessageEditor";
 import { saveFlowAction, setAutomationActive, uploadPartMedia } from "../../acoes10";
+import { testAutomation } from "../../acoes11";
 
 type Meta = { name: string; trigger: string; config: { delayMin?: number; listId?: string; stopOnPaid?: boolean } };
 type Stats = Record<string, { sent: number; clicks: number; replied: number }>;
 type Person = { id: string; name: string; status: string };
+export type Tpl = { id: string; name: string; folder: string; kind: string; parts: Part[] };
+type Opt = { id: string; name: string };
+type Extra = { templates: Tpl[]; automations: Opt[]; users: string[]; groups: Opt[] };
 type Props = {
-  id: string; active: boolean; meta: Meta; flow: Flow; lists: { id: string; name: string }[]; stats: Stats; people: Person[];
+  id: string; active: boolean; meta: Meta; flow: Flow; lists: Opt[]; stats: Stats; people: Person[];
   totals: { entered: number; sent: number; clickPct: number; value: string };
-};
+} & Extra;
 type Sel = { kind: "node"; id: string } | { kind: "edge"; from: string; port: string } | null;
 type Pt = { x: number; y: number };
 
@@ -24,8 +30,11 @@ const W = 256;
 const ICON: Record<string, ReactNode> = {
   send: <MessageCircle size={15} />, wait: <Clock size={15} />, waitHour: <CalendarClock size={15} />, cond: <GitBranch size={15} />,
   random: <Shuffle size={15} />, tag: <Tag size={15} />, list: <ListPlus size={15} />, exit: <LogOut size={15} />, note: <StickyNote size={15} />,
+  waitDate: <CalendarDays size={15} />, waitUntil: <Hourglass size={15} />, multi: <Split size={15} />, chat: <Headset size={15} />, goto: <Workflow size={15} />, notify: <Bell size={15} />, webhook: <Webhook size={15} />,
 };
-const TONE_COLOR: Record<Port["tone"], string> = { n: "#7d8781", l: "#34c26a", c: "#ef4444", s: "#f7c928", k: "#60a5fa" };
+const TONE_COLOR: Record<Port["tone"], string> = { n: "#7d8781", l: "#34c26a", c: "#ef4444", s: "#f7c928", k: "#60a5fa", p: "#a78bfa" };
+const CHAT_ACT: Record<string, string> = { transfer: "Transferir para", archive: "Arquivar conversa", note: "Nota interna", ai_on: "Ligar robô de IA", ai_off: "Desligar robô de IA" };
+const EVENT: Record<string, string> = { pagou: "pagar", respondeu: "responder", clicou: "clicar" };
 const UNIT: Record<string, string> = { min: "minuto(s)", h: "hora(s)", d: "dia(s)" };
 const DAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const TIMEOUTS = [5, 15, 30, 60, 120, 240, 480, 720, 1440, 2880, 4320];
@@ -57,33 +66,58 @@ function layout(flow: Flow): Flow {
   return f;
 }
 
-function title(n: Node, lists: Map<string, string>) {
+type Ctx = { lists: Map<string, string>; tpl: Map<string, Tpl>; autos: Map<string, string> };
+const ruleText = (rules: Rule[], mode: "all" | "any" | undefined, c: Ctx) => rules.map((r) => `${CHECKS.find((x) => x.k === r.check)?.label ?? r.check}${r.value ? ` ${r.check === "lista" ? c.lists.get(r.value) ?? "" : r.value}` : ""}`).join(mode === "any" ? " ou " : " e ");
+const partsFor = (n: Extract<Node, { type: "send" }>, c: Ctx) => (n.messageId ? c.tpl.get(n.messageId)?.parts ?? [] : n.parts);
+function title(n: Node, c: Ctx) {
   if (n.title) return n.title;
-  if (n.type === "send") return (n.parts.find((p) => p.text)?.text ?? "Mensagem").split("\n")[0].slice(0, 40) || "Mensagem";
+  if (n.type === "send") return n.messageId ? c.tpl.get(n.messageId)?.name ?? "Mensagem apagada" : (n.parts.find((p) => p.text)?.text ?? "Mensagem").split("\n")[0].slice(0, 40) || "Mensagem";
   if (n.type === "wait") return `${n.amount} ${UNIT[n.unit]}`;
   if (n.type === "waitHour") return `Até as ${n.hour}${n.days?.length ? ` · ${n.days.map((d) => DAYS[d]).join(", ")}` : ""}`;
-  if (n.type === "cond") return (n.rules ?? [{ check: n.check }]).map((r) => CHECKS.find((c) => c.k === r.check)?.label ?? r.check).join(n.mode === "any" ? " ou " : " e ");
+  if (n.type === "waitDate") return n.at ? new Date(`${n.at}:00-03:00`).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "Escolha a data";
+  if (n.type === "waitUntil") return `Até ${EVENT[n.event]} · prazo ${n.amount} ${UNIT[n.unit]}`;
+  if (n.type === "cond") return ruleText(n.rules ?? [{ check: n.check }], n.mode, c);
+  if (n.type === "multi") return `${n.branches.length} caminhos`;
   if (n.type === "random") return `Divide ${n.pct}% / ${100 - n.pct}%`;
   if (n.type === "tag") return `${n.action === "add" ? "Adicionar" : "Remover"} "${n.tag || "?"}"`;
-  if (n.type === "list") return `${n.action === "add" ? "Entrar na" : "Sair da"} lista ${lists.get(n.listId) ?? "?"}`;
+  if (n.type === "list") return `${n.action === "add" ? "Entrar na" : "Sair da"} lista ${c.lists.get(n.listId) ?? "?"}`;
+  if (n.type === "chat") return n.action === "transfer" ? `${CHAT_ACT.transfer} ${n.assignee || "a fila"}` : CHAT_ACT[n.action];
+  if (n.type === "goto") return c.autos.get(n.automationId) ?? "Escolha a automação";
+  if (n.type === "notify") return n.to ? `Para ${n.to.includes("@g.us") ? "grupo" : n.to}` : "Escolha quem recebe";
+  if (n.type === "webhook") return n.url ? n.url.replace(/^https:\/\//, "").slice(0, 34) : "Cole a URL";
   if (n.type === "exit") return "Sai da automação";
   return "Nota";
 }
-function warning(n: Node) {
-  if (n.type === "send" && !n.parts.some((p) => p.text || p.mediaUrl || p.productImage)) return "Mensagem vazia";
+function warning(n: Node, c: Ctx) {
+  if (n.type === "send" && !partsFor(n, c).some((p) => p.text || p.mediaUrl || p.productImage)) return n.messageId && !c.tpl.get(n.messageId) ? "A mensagem da biblioteca foi apagada" : "Mensagem vazia";
   if (n.type === "tag" && !n.tag) return "Falta a etiqueta";
   if (n.type === "list" && !n.listId) return "Falta escolher a lista";
-  if (n.type === "cond" && (n.rules ?? []).some((r) => CHECKS.find((c) => c.k === r.check)?.needs && !r.value)) return "Regra sem valor";
+  if (n.type === "cond" && (n.rules ?? []).some((r) => CHECKS.find((x) => x.k === r.check)?.needs && !r.value)) return "Regra sem valor";
+  if (n.type === "multi" && n.branches.some((b) => b.rules.some((r) => CHECKS.find((x) => x.k === r.check)?.needs && !r.value))) return "Regra sem valor";
+  if (n.type === "waitDate" && !n.at) return "Falta a data";
+  if (n.type === "goto" && !n.automationId) return "Falta a automação";
+  if (n.type === "notify" && (!n.to || !n.text)) return "Falta destino ou texto";
+  if (n.type === "webhook" && !n.url) return "Falta a URL";
   return "";
 }
 function Rich({ text }: { text: string }) {
-  const bits = text.split(/(\{\w+\})/g);
-  return <>{bits.map((b, i) => (/^\{\w+\}$/.test(b) ? <span key={i} className="cv-var">{VARS.find((v) => v.k === b)?.label ?? b.slice(1, -1)}</span> : b))}</>;
+  return <WaText text={text} />;
 }
+void VARS;
 
 export function Canvas(props: Props) {
   const router = useRouter();
   const lists = useMemo(() => new Map(props.lists.map((l) => [l.id, l.name])), [props.lists]);
+  const [templates, setTemplates] = useState<Tpl[]>(props.templates);
+  const cx: Ctx = useMemo(() => ({ lists, tpl: new Map(templates.map((t) => [t.id, t])), autos: new Map(props.automations.map((a) => [a.id, a.name])) }), [lists, templates, props.automations]);
+  const [testing, setTesting] = useState(false);
+  const runTest = async () => {
+    if (dirty) await save();
+    setTesting(true);
+    const r = await testAutomation(props.id).catch(() => ({ ok: false, error: "Falhou" }));
+    setTesting(false);
+    setMsg(r.ok ? ("msg" in r ? r.msg ?? "Enviado" : "Enviado") : ("error" in r ? r.error ?? "Falhou" : "Falhou"));
+  };
   const [flow, setFlow] = useState<Flow>(() => layout(props.flow));
   const [meta, setMeta] = useState<Meta>(props.meta);
   const [active, setActive] = useState(props.active);
@@ -353,6 +387,8 @@ export function Canvas(props: Props) {
         <span className="cv-stat">{props.totals.entered} entraram · {props.totals.sent} envios · {props.totals.clickPct}% clique · {props.totals.value}</span>
         <div className="cv-acts">
           {msg && !dirty && <span className="cv-msg">{msg}</span>}
+          <Link className="btn sm ghost" href={`/automacoes/${props.id}/relatorio`} title="Relatório completo"><BarChart3 size={14} /> Relatório</Link>
+          <button className="btn sm ghost" disabled={testing} onClick={runTest} title="Manda as mensagens do caminho principal no grupo de teste"><FlaskConical size={14} /> {testing ? "Enviando…" : "Testar"}</button>
           {dirty && <span className="cv-msg warn">Alterações não salvas</span>}
           <div className="cv-act-wrap">
             <button className={`sw2 ${active ? "on" : ""}`} onClick={() => setAskActive((v) => !v)} aria-label={active ? "Desligar" : "Ligar"} title={active ? "Ligada" : "Desligada"}><i /></button>
@@ -371,7 +407,7 @@ export function Canvas(props: Props) {
       <div className="cv-body">
         <aside className="cv-side">
           {selNode && sel?.kind === "node" ? (
-            <NodePanel key={sel.id} id={sel.id} n={selNode} lists={props.lists} stats={st(sel.id)} onChange={(fn) => editNode(sel.id, fn)} onClose={() => setSel(null)} onDelete={() => removeNode(sel.id)} onDuplicate={() => duplicate(sel.id)} />
+            <NodePanel key={sel.id} id={sel.id} n={selNode} lists={props.lists} extra={{ templates, automations: props.automations.filter((a) => a.id !== props.id), users: props.users, groups: props.groups }} onTemplate={(t) => setTemplates((cur) => [...cur.filter((x) => x.id !== t.id), t])} stats={st(sel.id)} onChange={(fn) => editNode(sel.id, fn)} onClose={() => setSel(null)} onDelete={() => removeNode(sel.id)} onDuplicate={() => duplicate(sel.id)} />
           ) : (
             <div className="cv-panel">
               <div className="cv-ph"><span className="tile sm t-n"><Zap size={15} /></span><b>Configurações</b></div>
@@ -453,7 +489,7 @@ export function Canvas(props: Props) {
 
             {Object.entries(flow.nodes).map(([id, n]) => {
               const m = blockMeta(n.type);
-              const w = warning(n);
+              const w = warning(n, cx);
               const isSel = sel?.kind === "node" && sel.id === id;
               if (n.type === "note")
                 return (
@@ -472,21 +508,27 @@ export function Canvas(props: Props) {
                     </div>
                   )}
                   <span className="cv-dot-in" data-in={id} />
-                  <div className="cv-h"><span className={`tile xs ${m.tone}`}>{ICON[n.type]}</span><div><small>{m.label}</small><b>{title(n, lists)}</b></div></div>
+                  <div className="cv-h"><span className={`tile xs ${m.tone}`}>{ICON[n.type]}</span><div><small>{m.label}</small><b>{title(n, cx)}</b></div></div>
                   {n.type === "send" && (
                     <>
                       <div className="cv-k"><div><b>{s.sent}</b><span>envios</span></div><div><b>{s.sent ? Math.min(100, Math.round((s.clicks / s.sent) * 100)) : 0}%</b><span>clique</span></div><div><b>{s.replied}</b><span>respostas</span></div></div>
                       <div className="cv-mini">
-                        {n.parts.slice(0, 3).map((p, i) => (
+                        {n.messageId && <div className="cv-lib"><Library size={11} /> {cx.tpl.get(n.messageId)?.folder || "Biblioteca"}</div>}
+                        {partsFor(n, cx).slice(0, 3).map((p, i) => (
                           <div key={i} className="cv-bb">
-                            {(p.productImage || p.mediaUrl) && <div className="cv-img">{p.mediaType === "image" && p.mediaUrl ? <img src={p.mediaUrl} alt="" /> : p.productImage ? <><ImageIcon size={14} /> foto do produto</> : <><Paperclip size={13} /> arquivo</>}</div>}
+                            {(p.productImage || p.mediaUrl) && <div className="cv-img">{p.mediaType === "image" && p.mediaUrl ? <img src={(p.mediaUrl ?? "").replace(/^https?:\/\/[^/]+/, "")} alt="" /> : p.productImage ? <><ImageIcon size={14} /> foto do produto</> : <><Paperclip size={13} /> arquivo</>}</div>}
                             {p.text ? <Rich text={p.text.length > 160 ? `${p.text.slice(0, 160)}…` : p.text} /> : !(p.productImage || p.mediaUrl) ? <span className="dim">Vazia</span> : null}
                           </div>
                         ))}
-                        {n.parts.length > 3 && <small className="dim">+{n.parts.length - 3} partes</small>}
+                        {partsFor(n, cx).length > 3 && <small className="dim">+{partsFor(n, cx).length - 3} partes</small>}
                       </div>
                     </>
                   )}
+                  {n.type === "multi" && (
+                    <div className="cv-rules">{n.branches.map((b, i) => <div key={i}><em>{"ABCDEFGHIJ"[i]}</em>{ruleText(b.rules, b.mode, cx) || "sem regra"}</div>)}</div>
+                  )}
+                  {n.type === "chat" && n.action === "note" && n.text && <div className="cv-rules">{n.text.slice(0, 90)}</div>}
+                  {n.type === "notify" && n.text && <div className="cv-rules">{n.text.slice(0, 90)}</div>}
                   {n.type === "cond" && (n.rules?.length ?? 0) > 1 && (
                     <div className="cv-rules">{n.rules!.map((r, i) => <div key={i}>{i > 0 && <em>{n.mode === "any" ? "ou" : "e"}</em>}<b>{CHECKS.find((c) => c.k === r.check)?.label}</b>{r.value ? ` ${r.check === "lista" ? lists.get(r.value) ?? "" : r.value}` : ""}</div>)}</div>
                   )}
@@ -527,8 +569,37 @@ export function Canvas(props: Props) {
 
 /* ---------- Painel do bloco aberto ---------- */
 
-function NodePanel({ id, n, lists, stats, onChange, onClose, onDelete, onDuplicate }: {
-  id: string; n: Node; lists: { id: string; name: string }[]; stats: { sent: number; clicks: number; replied: number };
+function RulesEditor({ rules, mode, lists, onRules, onMode }: { rules: Rule[]; mode?: "all" | "any"; lists: Opt[]; onRules: (fn: (r: Rule[]) => void) => void; onMode: (m: "all" | "any") => void }) {
+  return (
+    <>
+      <div className="seg" style={{ alignSelf: "flex-start" }}>
+        <button className={mode !== "any" ? "on" : ""} onClick={() => onMode("all")}>Todas as regras</button>
+        <button className={mode === "any" ? "on" : ""} onClick={() => onMode("any")}>Qualquer regra</button>
+      </div>
+      {rules.map((r, i) => {
+        const c = CHECKS.find((x) => x.k === r.check);
+        const set = (fn: (rr: Rule) => void) => onRules((rs) => fn(rs[i]));
+        return (
+          <div key={i} className="cv-rule">
+            {i > 0 && <span className="cv-or">{mode === "any" ? "ou" : "e"}</span>}
+            <div className="row" style={{ gap: 6 }}>
+              <select className="in" value={r.check} onChange={(e) => set((rr) => { rr.check = e.target.value; rr.value = undefined; })}>{CHECKS.map((x) => <option key={x.k} value={x.k}>{x.label}</option>)}</select>
+              {rules.length > 1 && <button className="cv-ib sm" title="Tirar regra" onClick={() => onRules((rs) => { rs.splice(i, 1); })}><X size={14} /></button>}
+            </div>
+            {c?.needs === "list" && <select className="in" value={r.value ?? ""} onChange={(e) => set((rr) => { rr.value = e.target.value || undefined; })}><option value="">Escolha a lista</option>{lists.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</select>}
+            {c?.needs === "text" && <input className="in" value={r.value ?? ""} placeholder={r.check === "etiqueta" ? "Ex.: carrinho frio" : r.check === "pagamento" ? "Ex.: pix" : r.check === "status_entrega" ? "Ex.: saiu" : r.check === "hora_entre" ? "Ex.: 8-20" : r.check === "dia_semana" ? "Ex.: 1-5" : "Ex.: kimono"} onChange={(e) => set((rr) => { rr.value = e.target.value || undefined; })} />}
+            {c?.needs === "number" && <input className="in" inputMode="decimal" value={r.value ?? ""} placeholder="Ex.: 300" onChange={(e) => set((rr) => { rr.value = e.target.value || undefined; })} />}
+          </div>
+        );
+      })}
+      <button className="btn sm" style={{ alignSelf: "flex-start" }} onClick={() => onRules((rs) => { rs.push({ check: "clicou" }); })}><Plus size={14} /> Adicionar regra</button>
+      <small className="cv-sum">Quem passa: {rules.map((r) => `${CHECKS.find((x) => x.k === r.check)?.label.toLowerCase() ?? r.check}${r.value ? ` ${r.check === "lista" ? lists.find((l) => l.id === r.value)?.name ?? "" : r.value}` : ""}`).join(mode === "any" ? " ou " : " e ")}</small>
+    </>
+  );
+}
+
+function NodePanel({ id, n, lists, extra, onTemplate, stats, onChange, onClose, onDelete, onDuplicate }: {
+  id: string; n: Node; lists: Opt[]; extra: Extra; onTemplate: (t: Tpl) => void; stats: { sent: number; clicks: number; replied: number };
   onChange: (fn: (n: Node) => void) => void; onClose: () => void; onDelete: () => void; onDuplicate: () => void;
 }) {
   const m = blockMeta(n.type);
@@ -541,7 +612,7 @@ function NodePanel({ id, n, lists, stats, onChange, onClose, onDelete, onDuplica
           <label className="cv-field">Nome do bloco (opcional)<input className="in" value={n.title ?? ""} placeholder="Ex.: Lembrete com cupom" onChange={(e) => onChange((x) => { x.title = e.target.value || undefined; })} /></label>
         </div>
       )}
-      {n.type === "send" && <SendForm n={n} onChange={onChange} stats={stats} />}
+      {n.type === "send" && <SendForm n={n} onChange={onChange} stats={stats} extra={extra} onTemplate={onTemplate} />}
       {n.type === "wait" && (
         <div className="cv-card">
           <b>Aguardar</b><small>Quanto tempo esperar antes de seguir</small>
@@ -562,28 +633,29 @@ function NodePanel({ id, n, lists, stats, onChange, onClose, onDelete, onDuplica
       {n.type === "cond" && (
         <div className="cv-card">
           <b>Condição</b><small>Quem atender segue pela saída verde, o resto pela vermelha</small>
-          <div className="seg" style={{ alignSelf: "flex-start" }}>
-            <button className={n.mode !== "any" ? "on" : ""} onClick={() => onChange((x) => { if (x.type === "cond") x.mode = "all"; })}>Todas as regras</button>
-            <button className={n.mode === "any" ? "on" : ""} onClick={() => onChange((x) => { if (x.type === "cond") x.mode = "any"; })}>Qualquer regra</button>
-          </div>
-          {(n.rules?.length ? n.rules : [{ check: n.check, value: n.value }]).map((r, i, all) => {
-            const c = CHECKS.find((x) => x.k === r.check);
-            const set = (fn: (rr: { check: string; value?: string }) => void) => onChange((x) => { if (x.type === "cond") { x.rules = x.rules?.length ? x.rules : [{ check: x.check, value: x.value }]; fn(x.rules[i]); x.check = x.rules[0].check; } });
-            return (
-              <div key={i} className="cv-rule">
-                {i > 0 && <span className="cv-or">{n.mode === "any" ? "ou" : "e"}</span>}
-                <div className="row" style={{ gap: 6 }}>
-                  <select className="in" value={r.check} onChange={(e) => set((rr) => { rr.check = e.target.value; rr.value = undefined; })}>{CHECKS.map((x) => <option key={x.k} value={x.k}>{x.label}</option>)}</select>
-                  {all.length > 1 && <button className="cv-ib sm" title="Tirar regra" onClick={() => onChange((x) => { if (x.type === "cond" && x.rules) { x.rules.splice(i, 1); x.check = x.rules[0]?.check ?? "pagou"; } })}><X size={14} /></button>}
-                </div>
-                {c?.needs === "list" && <select className="in" value={r.value ?? ""} onChange={(e) => set((rr) => { rr.value = e.target.value || undefined; })}><option value="">Escolha a lista</option>{lists.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</select>}
-                {c?.needs === "text" && <input className="in" value={r.value ?? ""} placeholder={r.check === "etiqueta" ? "Ex.: carrinho frio" : "Ex.: kimono"} onChange={(e) => set((rr) => { rr.value = e.target.value || undefined; })} />}
-                {c?.needs === "number" && <input className="in" inputMode="decimal" value={r.value ?? ""} placeholder="Ex.: 300" onChange={(e) => set((rr) => { rr.value = e.target.value || undefined; })} />}
-              </div>
-            );
-          })}
-          <button className="btn sm" style={{ alignSelf: "flex-start" }} onClick={() => onChange((x) => { if (x.type === "cond") { x.rules = [...(x.rules?.length ? x.rules : [{ check: x.check, value: x.value }]), { check: "clicou" }]; } })}><Plus size={14} /> Adicionar regra</button>
+          <RulesEditor rules={n.rules?.length ? n.rules : [{ check: n.check, value: n.value }]} mode={n.mode} lists={lists}
+            onMode={(m) => onChange((x) => { if (x.type === "cond") x.mode = m; })}
+            onRules={(fn) => onChange((x) => { if (x.type === "cond") { x.rules = x.rules?.length ? x.rules : [{ check: x.check, value: x.value }]; fn(x.rules); if (!x.rules.length) x.rules.push({ check: "pagou" }); x.check = x.rules[0].check; } })} />
           <small>&quot;Pagou&quot; vira sim quando a pessoa tem um pedido pago depois de receber a mensagem.</small>
+        </div>
+      )}
+      {n.type === "multi" && (
+        <div className="cv-card">
+          <b>Condição múltipla</b><small>A pessoa sai pelo primeiro caminho que atender (A, depois B…). Quem não atende nenhum sai pela saída vermelha.</small>
+          {n.branches.map((b: Branch, i) => (
+            <div key={i} className="cv-branch">
+              <div className="row" style={{ gap: 6 }}>
+                <span className="cv-letter">{"ABCDEFGHIJ"[i]}</span>
+                <input className="in" value={b.label ?? ""} placeholder="Nome do caminho (opcional)" onChange={(e) => onChange((x) => { if (x.type === "multi") x.branches[i].label = e.target.value || undefined; })} />
+                <button className="cv-ib sm" title="Duplicar caminho" disabled={n.branches.length >= 10} onClick={() => onChange((x) => { if (x.type === "multi") x.branches.splice(i + 1, 0, structuredClone(x.branches[i])); })}><Copy size={13} /></button>
+                {n.branches.length > 1 && <button className="cv-ib sm" title="Tirar caminho" onClick={() => onChange((x) => { if (x.type === "multi") { x.branches.splice(i, 1); const r = x as Record<string, unknown>; for (let k = i; k < 10; k++) r[`m${k}`] = r[`m${k + 1}`]; } })}><X size={14} /></button>}
+              </div>
+              <RulesEditor rules={b.rules} mode={b.mode} lists={lists}
+                onMode={(m) => onChange((x) => { if (x.type === "multi") x.branches[i].mode = m; })}
+                onRules={(fn) => onChange((x) => { if (x.type === "multi") { fn(x.branches[i].rules); if (!x.branches[i].rules.length) x.branches[i].rules.push({ check: "pagou" }); } })} />
+            </div>
+          ))}
+          {n.branches.length < 10 && <button className="btn sm" style={{ alignSelf: "flex-start" }} onClick={() => onChange((x) => { if (x.type === "multi") x.branches.push({ rules: [{ check: "produto" }] }); })}><Plus size={14} /> Adicionar caminho</button>}
         </div>
       )}
       {n.type === "random" && (
@@ -608,6 +680,61 @@ function NodePanel({ id, n, lists, stats, onChange, onClose, onDelete, onDuplica
           {!lists.length && <small>Crie uma lista em Listas primeiro.</small>}
         </div>
       )}
+      {n.type === "waitDate" && (
+        <div className="cv-card">
+          <b>Aguardar data e hora</b><small>Segura a pessoa até o dia e a hora marcados (horário de Brasília). Se a data já passou, segue direto.</small>
+          <input className="in" type="datetime-local" value={n.at} onChange={(e) => onChange((x) => { if (x.type === "waitDate") x.at = e.target.value; })} />
+        </div>
+      )}
+      {n.type === "waitUntil" && (
+        <div className="cv-card">
+          <b>Aguardar acontecer</b><small>Fica parado aqui até a pessoa fazer a ação ou até acabar o prazo. Sai pela verde se aconteceu e pela vermelha se não.</small>
+          <div className="seg" style={{ alignSelf: "flex-start" }}>
+            {(["pagou", "respondeu", "clicou"] as const).map((k) => <button key={k} className={n.event === k ? "on" : ""} onClick={() => onChange((x) => { if (x.type === "waitUntil") x.event = k; })}>{k === "pagou" ? "Pagar" : k === "respondeu" ? "Responder" : "Clicar"}</button>)}
+          </div>
+          <label className="cv-field">Prazo
+            <span className="row" style={{ gap: 8 }}>
+              <input className="in" inputMode="numeric" style={{ width: 90 }} value={n.amount} onChange={(e) => onChange((x) => { if (x.type === "waitUntil") x.amount = Math.max(1, Number(e.target.value.replace(/\D/g, "")) || 1); })} />
+              <select className="in" value={n.unit} onChange={(e) => onChange((x) => { if (x.type === "waitUntil") x.unit = e.target.value as "min" | "h" | "d"; })}>{Object.entries(UNIT).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
+            </span>
+          </label>
+        </div>
+      )}
+      {n.type === "chat" && (
+        <div className="cv-card">
+          <b>Atendimento</b><small>Mexe na conversa dessa pessoa na tela de Atendimento</small>
+          <select className="in" value={n.action} onChange={(e) => onChange((x) => { if (x.type === "chat") x.action = e.target.value as typeof x.action; })}>{Object.entries(CHAT_ACT).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
+          {n.action === "transfer" && <select className="in" value={n.assignee ?? ""} onChange={(e) => onChange((x) => { if (x.type === "chat") x.assignee = e.target.value; })}><option value="">Fila (quem pegar primeiro)</option>{extra.users.map((u) => <option key={u} value={u}>{u}</option>)}</select>}
+          {n.action === "note" && <textarea className="in" rows={4} value={n.text ?? ""} placeholder="Ex.: Cliente recebeu o lembrete do Pix 2x" onChange={(e) => onChange((x) => { if (x.type === "chat") x.text = e.target.value; })} />}
+          {n.action === "ai_on" && <small>O robô de IA passa a responder essa pessoa no privado.</small>}
+        </div>
+      )}
+      {n.type === "goto" && (
+        <div className="cv-card">
+          <b>Outra automação</b><small>Coloca a pessoa em outra automação (mesmo que ela não tenha o gatilho dela) e segue aqui.</small>
+          <select className="in" value={n.automationId} onChange={(e) => onChange((x) => { if (x.type === "goto") x.automationId = e.target.value; })}><option value="">Escolha a automação</option>{extra.automations.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</select>
+        </div>
+      )}
+      {n.type === "notify" && (
+        <div className="cv-card">
+          <b>Avisar a equipe</b><small>Manda um aviso interno (não vai para o cliente). Use variáveis para saber quem é.</small>
+          <select className="in" value={extra.groups.some((g) => g.id === n.to) ? n.to : n.to ? "_num" : ""} onChange={(e) => onChange((x) => { if (x.type === "notify") x.to = e.target.value === "_num" ? "" : e.target.value; })}>
+            <option value="">Escolha um grupo ou número</option>
+            {extra.groups.map((g) => <option key={g.id} value={g.id}>Grupo: {g.name}</option>)}
+            <option value="_num">Um número de WhatsApp</option>
+          </select>
+          {!extra.groups.some((g) => g.id === n.to) && <input className="in" inputMode="tel" value={n.to} placeholder="(21) 99999-9999" onChange={(e) => onChange((x) => { if (x.type === "notify") x.to = e.target.value; })} />}
+          <textarea className="in" rows={4} value={n.text} onChange={(e) => onChange((x) => { if (x.type === "notify") x.text = e.target.value; })} />
+          <small>Campos: {"{nome}"} {"{telefone}"} {"{pedido}"} {"{valor}"} {"{produtos}"}</small>
+        </div>
+      )}
+      {n.type === "webhook" && (
+        <div className="cv-card">
+          <b>Webhook</b><small>Manda um POST com o telefone, nome e dados do pedido para a URL (planilha, Zapier, Make, outro sistema).</small>
+          <input className="in" value={n.url} placeholder="https://…" onChange={(e) => onChange((x) => { if (x.type === "webhook") x.url = e.target.value.trim(); })} />
+          {n.url && !/^https:\/\//.test(n.url) && <small style={{ color: "var(--coral)" }}>Precisa começar com https://</small>}
+        </div>
+      )}
       {n.type === "exit" && <div className="cv-card"><b>Sair</b><small>A pessoa sai da automação aqui.</small></div>}
       {n.type === "note" && (
         <div className="cv-card">
@@ -624,7 +751,12 @@ function NodePanel({ id, n, lists, stats, onChange, onClose, onDelete, onDuplica
   );
 }
 
-function SendForm({ n, onChange, stats }: { n: Extract<Node, { type: "send" }>; onChange: (fn: (n: Node) => void) => void; stats: { sent: number; clicks: number; replied: number } }) {
+function SendForm({ n, onChange, stats, extra, onTemplate }: { n: Extract<Node, { type: "send" }>; onChange: (fn: (n: Node) => void) => void; stats: { sent: number; clicks: number; replied: number }; extra: Extra; onTemplate: (t: Tpl) => void }) {
+  const [mode, setMode] = useState<"lib" | "here">(n.messageId || !n.parts.some((p) => p.text || p.mediaUrl || p.productImage) ? "lib" : "here");
+  const [modal, setModal] = useState<TemplateData | null>(null);
+  const tpl = n.messageId ? extra.templates.find((t) => t.id === n.messageId) : undefined;
+  const folders = [...new Set(extra.templates.map((t) => t.folder).filter(Boolean))].sort();
+  const byFolder = [...new Set(extra.templates.map((t) => t.folder))].sort().map((f) => ({ f, items: extra.templates.filter((t) => t.folder === f).sort((a, b) => a.name.localeCompare(b.name)) }));
   const refs = useRef<(HTMLTextAreaElement | null)[]>([]);
   const [focus, setFocus] = useState(0);
   const [up, setUp] = useState<number | null>(null);
@@ -651,37 +783,74 @@ function SendForm({ n, onChange, stats }: { n: Extract<Node, { type: "send" }>; 
   return (
     <>
       <div className="cv-card">
-        <b>Mensagem</b><small>Cada parte sai como uma mensagem separada, na ordem</small>
-        {n.parts.map((p, i) => (
-          <div key={i} className="cv-part">
-            <div className="row" style={{ justifyContent: "space-between" }}>
-              <b style={{ fontSize: 12 }}>Parte {i + 1}</b>
-              <span className="row" style={{ gap: 2 }}>
-                <button className="cv-ib sm" disabled={i === 0} title="Subir" onClick={() => onChange((x) => { if (x.type === "send") [x.parts[i - 1], x.parts[i]] = [x.parts[i], x.parts[i - 1]]; })}><ChevronUp size={14} /></button>
-                <button className="cv-ib sm" disabled={i === n.parts.length - 1} title="Descer" onClick={() => onChange((x) => { if (x.type === "send") [x.parts[i + 1], x.parts[i]] = [x.parts[i], x.parts[i + 1]]; })}><ChevronDown size={14} /></button>
-                {n.parts.length > 1 && <button className="cv-ib sm" title="Tirar parte" onClick={() => onChange((x) => { if (x.type === "send") x.parts.splice(i, 1); })}><X size={14} /></button>}
-              </span>
-            </div>
-            {(p.mediaUrl || p.productImage) && (
-              <div className="cv-att">
-                {p.productImage ? <><ImageIcon size={14} /> Foto do 1º produto</> : p.mediaType === "image" ? <img src={p.mediaUrl} alt="" /> : <><Paperclip size={14} /> {p.mediaType === "video" ? "Vídeo" : "Arquivo"}</>}
-                <button className="cv-ib sm" style={{ marginLeft: "auto" }} onClick={() => setPart(i, (q) => { q.mediaUrl = undefined; q.mediaType = undefined; q.productImage = undefined; })} title="Tirar"><X size={13} /></button>
-              </div>
-            )}
-            <textarea ref={(el) => { refs.current[i] = el; }} className="in" rows={i === 0 ? 5 : 3} value={p.text ?? ""} placeholder={p.mediaUrl || p.productImage ? "Legenda (opcional)" : "Texto ou link"} onFocus={() => setFocus(i)} onChange={(e) => setPart(i, (q) => { q.text = e.target.value || undefined; })} />
+        <b>Mensagem</b>
+        <div className="seg" style={{ alignSelf: "flex-start" }}>
+          <button className={mode === "lib" ? "on" : ""} onClick={() => setMode("lib")}><Library size={13} /> Da biblioteca</button>
+          <button className={mode === "here" ? "on" : ""} onClick={() => setMode("here")}><Pencil size={13} /> Escrever aqui</button>
+        </div>
+        {mode === "lib" ? (
+          <>
+            <select className="in" value={n.messageId ?? ""} onChange={(e) => onChange((x) => { if (x.type === "send") x.messageId = e.target.value || undefined; })}>
+              <option value="">Escolha uma mensagem</option>
+              {byFolder.map((g) => <optgroup key={g.f || "_"} label={g.f || "Sem pasta"}>{g.items.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</optgroup>)}
+            </select>
+            {tpl ? (
+              <div className="cv-mini">{tpl.parts.slice(0, 4).map((p, i) => <div key={i} className="cv-bb">{(p.productImage || p.mediaUrl) && <div className="cv-img">{p.productImage ? <><ImageIcon size={13} /> foto do produto</> : <><Paperclip size={12} /> {p.mediaType === "audio" ? "voz" : p.fileName ?? "arquivo"}</>}</div>}{p.text && <Rich text={p.text} />}</div>)}</div>
+            ) : n.messageId ? <small style={{ color: "var(--coral)" }}>Essa mensagem foi apagada da biblioteca. Escolha outra.</small> : null}
             <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
-              <button className="cv-chip" onClick={() => setPart(i, (q) => { q.productImage = !q.productImage || undefined; if (q.productImage) { q.mediaUrl = undefined; q.mediaType = undefined; } })}><ImageIcon size={12} /> {p.productImage ? "Tirar foto do produto" : "Foto do produto"}</button>
-              <label className="cv-chip"><Paperclip size={12} /> {up === i ? "Subindo…" : "Foto, vídeo ou PDF"}<input type="file" hidden accept="image/*,video/*,application/pdf" onChange={(e) => { const f = e.target.files?.[0]; if (f) void upload(i, f); e.target.value = ""; }} /></label>
+              {tpl && <button className="btn sm" onClick={() => setModal({ id: tpl.id, name: tpl.name, folder: tpl.folder, kind: tpl.kind, parts: tpl.parts })}><Pencil size={13} /> Editar mensagem</button>}
+              <button className="btn sm" onClick={() => setModal({ name: "", folder: folders[0] ?? "", kind: "nenhum", parts: [{ text: "" }] })}><Plus size={13} /> Nova mensagem</button>
             </div>
-          </div>
-        ))}
-        {err && <div className="err" style={{ fontSize: 12 }}>{err}</div>}
-        {n.parts.length < 8 && <button className="btn sm" style={{ alignSelf: "flex-start" }} onClick={() => { onChange((x) => { if (x.type === "send") x.parts.push({ text: "" }); }); setFocus(n.parts.length); }}><Plus size={14} /> Adicionar parte</button>}
-        <small>Inserir campo na parte {Math.min(focus, n.parts.length - 1) + 1}:</small>
-        <div className="row" style={{ gap: 5, flexWrap: "wrap" }}>{VARS.map((v) => <button key={v.k} className="cv-var btn-var" onMouseDown={(e) => e.preventDefault()} onClick={() => insertVar(v.k)}>{v.label}</button>)}</div>
-        <small>Em listas, use o nome da coluna da planilha, ex.: {"{link}"}. Os links contam clique sozinhos.</small>
-        <label className="cv-field">Intervalo de digitação <span className="row" style={{ gap: 8 }}><input type="range" min={0} max={30} value={n.typing ?? 5} onChange={(e) => onChange((x) => { if (x.type === "send") x.typing = Number(e.target.value); })} style={{ flex: 1 }} /><b style={{ width: 44, textAlign: "right" }}>{n.typing ?? 5} seg</b></span></label>
+            <small>Editar aqui muda a mensagem em todo lugar que ela é usada.</small>
+          </>
+        ) : (
+          <>
+            <small>Cada parte sai como uma mensagem separada, na ordem. Essa mensagem fica só neste bloco.</small>
+      <>
+          {n.parts.map((p, i) => (
+            <div key={i} className="cv-part">
+              <div className="row" style={{ justifyContent: "space-between" }}>
+                <b style={{ fontSize: 12 }}>Parte {i + 1}</b>
+                <span className="row" style={{ gap: 2 }}>
+                  <button className="cv-ib sm" disabled={i === 0} title="Subir" onClick={() => onChange((x) => { if (x.type === "send") [x.parts[i - 1], x.parts[i]] = [x.parts[i], x.parts[i - 1]]; })}><ChevronUp size={14} /></button>
+                  <button className="cv-ib sm" disabled={i === n.parts.length - 1} title="Descer" onClick={() => onChange((x) => { if (x.type === "send") [x.parts[i + 1], x.parts[i]] = [x.parts[i], x.parts[i + 1]]; })}><ChevronDown size={14} /></button>
+                  {n.parts.length > 1 && <button className="cv-ib sm" title="Tirar parte" onClick={() => onChange((x) => { if (x.type === "send") x.parts.splice(i, 1); })}><X size={14} /></button>}
+                </span>
+              </div>
+              {(p.mediaUrl || p.productImage) && (
+                <div className="cv-att">
+                  {p.productImage ? <><ImageIcon size={14} /> Foto do 1º produto</> : p.mediaType === "image" ? <img src={(p.mediaUrl ?? "").replace(/^https?:\/\/[^/]+/, "")} alt="" /> : <><Paperclip size={14} /> {p.mediaType === "video" ? "Vídeo" : "Arquivo"}</>}
+                  <button className="cv-ib sm" style={{ marginLeft: "auto" }} onClick={() => setPart(i, (q) => { q.mediaUrl = undefined; q.mediaType = undefined; q.productImage = undefined; })} title="Tirar"><X size={13} /></button>
+                </div>
+              )}
+              <textarea ref={(el) => { refs.current[i] = el; }} className="in" rows={i === 0 ? 5 : 3} value={p.text ?? ""} placeholder={p.mediaUrl || p.productImage ? "Legenda (opcional)" : "Texto ou link"} onFocus={() => setFocus(i)} onChange={(e) => setPart(i, (q) => { q.text = e.target.value || undefined; })} />
+              <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+                <button className="cv-chip" onClick={() => setPart(i, (q) => { q.productImage = !q.productImage || undefined; if (q.productImage) { q.mediaUrl = undefined; q.mediaType = undefined; } })}><ImageIcon size={12} /> {p.productImage ? "Tirar foto do produto" : "Foto do produto"}</button>
+                <label className="cv-chip"><Paperclip size={12} /> {up === i ? "Subindo…" : "Foto, vídeo ou PDF"}<input type="file" hidden accept="image/*,video/*,application/pdf" onChange={(e) => { const f = e.target.files?.[0]; if (f) void upload(i, f); e.target.value = ""; }} /></label>
+              </div>
+            </div>
+          ))}
+          {err && <div className="err" style={{ fontSize: 12 }}>{err}</div>}
+          {n.parts.length < 8 && <button className="btn sm" style={{ alignSelf: "flex-start" }} onClick={() => { onChange((x) => { if (x.type === "send") x.parts.push({ text: "" }); }); setFocus(n.parts.length); }}><Plus size={14} /> Adicionar parte</button>}
+          <small>Inserir campo na parte {Math.min(focus, n.parts.length - 1) + 1}:</small>
+          <div className="row" style={{ gap: 5, flexWrap: "wrap" }}>{VARS.map((v) => <button key={v.k} className="cv-var btn-var" onMouseDown={(e) => e.preventDefault()} onClick={() => insertVar(v.k)}>{v.label}</button>)}</div>
+          <small>Em listas, use o nome da coluna da planilha, ex.: {"{link}"}. Os links contam clique sozinhos.</small>
+          <label className="cv-field">Intervalo de digitação <span className="row" style={{ gap: 8 }}><input type="range" min={0} max={30} value={n.typing ?? 5} onChange={(e) => onChange((x) => { if (x.type === "send") x.typing = Number(e.target.value); })} style={{ flex: 1 }} /><b style={{ width: 44, textAlign: "right" }}>{n.typing ?? 5} seg</b></span></label>
+        </>
+  
+  
+            <button className="btn sm" style={{ alignSelf: "flex-start" }} onClick={() => setModal({ name: n.title || "Mensagem da automação", folder: folders[0] ?? "", kind: "nenhum", parts: n.parts })}><Library size={13} /> Salvar na biblioteca</button>
+          </>
+        )}
       </div>
+      {modal && (
+        <div className="cv-modal" onPointerDown={(e) => { if (e.target === e.currentTarget) setModal(null); }}>
+          <div className="cv-modal-in">
+            <div className="row" style={{ justifyContent: "space-between", marginBottom: 10 }}><b>{modal.id ? "Editar mensagem" : "Nova mensagem"}</b><button className="cv-ib" onClick={() => setModal(null)}><X size={16} /></button></div>
+            <MessageEditor compact initial={modal} folders={folders} onSaved={(t) => { onTemplate({ id: t.id, name: t.name, folder: t.folder, kind: t.kind, parts: t.parts }); onChange((x) => { if (x.type === "send") { x.messageId = t.id; x.parts = [{ text: "" }]; } }); setMode("lib"); }} />
+          </div>
+        </div>
+      )}
 
       <div className="cv-card">
         <b>Resposta da pessoa</b><small>Vale quando você liga as saídas &quot;Se responder&quot;, &quot;Se clicar&quot; ou &quot;Se não responder&quot;</small>
@@ -698,14 +867,7 @@ function SendForm({ n, onChange, stats }: { n: Extract<Node, { type: "send" }>; 
 
       <div className="cv-card">
         <b>Prévia</b>
-        <div className="cv-phone"><div className="tp">WhatsApp</div><div className="bd">
-          {n.parts.map((p, i) => (
-            <div key={i} className="cv-bb big">
-              {(p.productImage || p.mediaUrl) && <div className="cv-img">{p.mediaType === "image" && p.mediaUrl ? <img src={p.mediaUrl} alt="" /> : p.productImage ? <><ImageIcon size={16} /> foto do produto</> : <><Paperclip size={14} /> arquivo</>}</div>}
-              {p.text ? <Rich text={p.text} /> : null}
-            </div>
-          ))}
-        </div></div>
+        <PhonePreview parts={mode === "lib" ? tpl?.parts ?? [] : n.parts} sample={false} />
         {stats.sent > 0 && <small>{stats.sent} envios · {stats.clicks} cliques · {stats.replied} respostas</small>}
       </div>
     </>

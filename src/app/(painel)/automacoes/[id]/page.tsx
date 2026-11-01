@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { brl } from "@/lib/time";
-import type { Flow } from "@/lib/flowTypes";
+import type { Flow, Part } from "@/lib/flowTypes";
 import { Canvas } from "./Canvas";
 
 export const dynamic = "force-dynamic";
@@ -13,6 +13,12 @@ export default async function Editor({ params }: { params: Promise<{ id: string 
   const fl = (a.flow ?? {}) as Partial<Flow>;
   const flow: Flow = { start: fl.start, startPos: fl.startPos, nodes: fl.nodes ?? {} };
   const cfg = (a.config ?? {}) as { delayMin?: number; listId?: string; stopOnPaid?: boolean };
+  const [templates, autos, users, groups] = await Promise.all([
+    db.messageTemplate.findMany({ orderBy: [{ folder: "asc" }, { name: "asc" }] }),
+    db.automation.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    db.user.findMany({ select: { name: true } }).catch(() => [] as { name: string }[]),
+    db.group.findMany({ where: { OR: [{ isResults: true }, { name: { contains: "equipe", mode: "insensitive" } }, { name: { contains: "teste", mode: "insensitive" } }] }, select: { jid: true, name: true } }),
+  ]);
   const [lists, agg, clicked, recent, logs] = await Promise.all([
     db.contactList.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
     db.automationRun.aggregate({ where: { automationId: id }, _count: true, _sum: { sent: true, value: true } }),
@@ -40,6 +46,10 @@ export default async function Editor({ params }: { params: Promise<{ id: string 
       lists={lists}
       stats={stats}
       people={people}
+      templates={templates.map((t) => ({ id: t.id, name: t.name, folder: t.folder, kind: t.kind, parts: (t.parts ?? []) as Part[] }))}
+      automations={autos}
+      users={users.map((u) => u.name).filter(Boolean)}
+      groups={groups.map((g) => ({ id: g.jid, name: g.name }))}
       totals={{ entered: agg._count, sent: agg._sum.sent ?? 0, clickPct: agg._count ? Math.round((clicked / agg._count) * 100) : 0, value: `${brl(agg._sum.value ?? 0, 0)} em conversão` }}
     />
   );

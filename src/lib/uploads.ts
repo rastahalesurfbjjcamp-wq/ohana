@@ -7,7 +7,7 @@ export const uploadDir = () => process.env.UPLOAD_DIR ?? path.join(process.cwd()
 
 const MIME: Record<string, string> = {
   jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp", gif: "image/gif",
-  mp4: "video/mp4", mov: "video/quicktime", pdf: "application/pdf", mp3: "audio/mpeg", ogg: "audio/ogg",
+  mp4: "video/mp4", mov: "video/quicktime", pdf: "application/pdf", mp3: "audio/mpeg", ogg: "audio/ogg", webm: "audio/webm", m4a: "audio/mp4", opus: "audio/ogg",
 };
 export const mimeFor = (name: string) => MIME[name.split(".").pop() ?? ""] ?? "application/octet-stream";
 

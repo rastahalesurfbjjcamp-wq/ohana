@@ -706,3 +706,33 @@ model ListMember {
 
   @@unique([listId, phone])
 }
+
+// Biblioteca de mensagens (usada em automações, campanhas, envio manual e atendimento)
+model MessageTemplate {
+  id        String   @id @default(cuid())
+  name      String
+  folder    String   @default("")
+  kind      String   @default("nenhum") // nenhum | pedido | carrinho | rastreio | resposta
+  parts     Json     @default("[]")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([folder])
+}
+
+// Cada mensagem que uma automação ou campanha mandou, com entrega e leitura vindas do WhatsApp
+model AutoMsg {
+  id           String    @id @default(cuid())
+  runId        String
+  automationId String
+  nodeId       String
+  messageId    String?   @unique
+  phone        String
+  status       String    @default("enviada") // enviada | entregue | lida
+  sentAt       DateTime  @default(now())
+  deliveredAt  DateTime?
+  readAt       DateTime?
+
+  @@index([automationId, sentAt])
+  @@index([runId])
+}

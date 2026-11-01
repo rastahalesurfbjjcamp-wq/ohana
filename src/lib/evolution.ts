@@ -32,7 +32,9 @@ export const WEBHOOK_EVENTS = [
   "GROUP_UPDATE",
   "GROUP_PARTICIPANTS_UPDATE",
   "MESSAGES_UPSERT",
+  "MESSAGES_UPDATE",
 ];
+export const WEBHOOK_VERSION = 2;
 
 export function webhookUrl() {
   return `${env.internalUrl().replace(/\/$/, "")}/api/webhooks/evolution?secret=${encodeURIComponent(env.webhookSecret())}`;
@@ -107,6 +109,11 @@ export const evolution = {
       delay: opts.delayMs ?? 1200,
       mentionsEveryOne: !!opts.mentionAll,
     });
+  },
+
+  // Áudio como se fosse gravado na hora (mensagem de voz)
+  async sendAudio(to: string, url: string, opts: { delayMs?: number } = {}) {
+    return call("POST", `/message/sendWhatsAppAudio/${inst()}`, { number: to, audio: url, delay: opts.delayMs ?? 1500 });
   },
 
   async sendMedia(

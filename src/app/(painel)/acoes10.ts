@@ -26,7 +26,8 @@ export async function createAutomation(f: FormData) {
   go(a.id);
 }
 
-const TYPES = new Set(["send", "wait", "waitHour", "cond", "random", "tag", "list", "exit", "note"]);
+const TYPES = new Set(["send", "wait", "waitHour", "waitDate", "waitUntil", "cond", "multi", "random", "tag", "list", "chat", "goto", "notify", "webhook", "exit", "note"]);
+const cleanRules = (v: unknown) => (Array.isArray(v) ? v : []).slice(0, 10).map((x: Record<string, unknown>) => ({ check: String(x.check ?? "pagou").slice(0, 30), value: s200(x.value, 200) || undefined }));
 const num = (v: unknown, d: number, min: number, max: number) => { const n = Number(v); return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : d; };
 const s200 = (v: unknown, max = 4000) => (typeof v === "string" ? v.slice(0, max) : undefined);
 
@@ -41,7 +42,8 @@ function clean(raw: unknown): Flow {
     for (const k of PORT_KEYS) if (typeof n[k] === "string" && n[k]) o[k] = n[k];
     switch (n.type) {
       case "send":
-        o.parts = (Array.isArray(n.parts) ? n.parts : []).slice(0, 8).map((p: Record<string, unknown>) => ({ text: s200(p.text) || undefined, mediaUrl: s200(p.mediaUrl, 500) || undefined, mediaType: s200(p.mediaType, 20) || undefined, productImage: p.productImage ? true : undefined }));
+        o.parts = (Array.isArray(n.parts) ? n.parts : []).slice(0, 8).map((p: Record<string, unknown>) => ({ text: s200(p.text) || undefined, mediaUrl: s200(p.mediaUrl, 500) || undefined, mediaType: s200(p.mediaType, 20) || undefined, fileName: s200(p.fileName, 120) || undefined, productImage: p.productImage ? true : undefined }));
+        if (s200(n.messageId, 40)) o.messageId = s200(n.messageId, 40);
         if (!(o.parts as unknown[]).length) o.parts = [{ text: "" }];
         o.typing = num(n.typing, 5, 0, 30); o.timeout = num(n.timeout, 60, 1, 10080);
         if (n.utm && typeof n.utm === "object") { const u = n.utm as Record<string, unknown>; o.utm = { source: s200(u.source, 80), medium: s200(u.medium, 80), campaign: s200(u.campaign, 80) }; }
@@ -49,9 +51,20 @@ function clean(raw: unknown): Flow {
       case "wait": o.amount = num(n.amount, 1, 1, 999); o.unit = ["min", "h", "d"].includes(String(n.unit)) ? n.unit : "h"; break;
       case "waitHour": o.hour = /^\d{2}:\d{2}$/.test(String(n.hour)) ? n.hour : "10:00"; if (Array.isArray(n.days)) o.days = n.days.map(Number).filter((d) => d >= 0 && d <= 6); break;
       case "cond": {
-        const rules = (Array.isArray(n.rules) ? n.rules : []).slice(0, 10).map((x: Record<string, unknown>) => ({ check: String(x.check ?? "pagou"), value: s200(x.value, 200) || undefined }));
+        const rules = cleanRules(n.rules);
         o.rules = rules.length ? rules : [{ check: "pagou" }]; o.check = (o.rules as { check: string }[])[0].check; o.mode = n.mode === "any" ? "any" : "all"; break;
       }
+      case "waitDate": o.at = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(String(n.at)) ? n.at : ""; break;
+      case "waitUntil": o.event = ["pagou", "respondeu", "clicou"].includes(String(n.event)) ? n.event : "pagou"; o.amount = num(n.amount, 1, 1, 999); o.unit = ["min", "h", "d"].includes(String(n.unit)) ? n.unit : "d"; break;
+      case "multi": {
+        const br = (Array.isArray(n.branches) ? n.branches : []).slice(0, 10).map((b: Record<string, unknown>) => ({ label: s200(b.label, 40) || undefined, rules: cleanRules(b.rules), mode: b.mode === "any" ? "any" : "all" }));
+        o.branches = br.length ? br : [{ rules: [{ check: "pagou" }], mode: "all" }];
+        break;
+      }
+      case "chat": o.action = ["transfer", "archive", "note", "ai_on", "ai_off"].includes(String(n.action)) ? n.action : "transfer"; o.assignee = s200(n.assignee, 60); o.text = s200(n.text, 1000); break;
+      case "goto": o.automationId = s200(n.automationId, 40) ?? ""; break;
+      case "notify": o.to = s200(n.to, 60) ?? ""; o.text = s200(n.text, 1500) ?? ""; break;
+      case "webhook": o.url = /^https:\/\//.test(String(n.url ?? "")) ? s200(n.url, 500) : ""; break;
       case "random": o.pct = Math.round(num(n.pct, 50, 1, 99)); break;
       case "tag": o.action = n.action === "remove" ? "remove" : "add"; o.tag = (s200(n.tag, 60) ?? "").toLowerCase().trim(); break;
       case "list": o.action = n.action === "remove" ? "remove" : "add"; o.listId = s200(n.listId, 40) ?? ""; break;
@@ -84,7 +97,8 @@ export async function uploadPartMedia(f: FormData) {
   if (!(file instanceof File) || !file.size) return { ok: false as const };
   if (file.size > 32 * 1024 * 1024) return { ok: false as const, error: "Arquivo acima de 32 MB" };
   const up = await saveUpload(file);
-  return { ok: true as const, url: up.url, type: up.type };
+  const audio = (file.type || "").startsWith("audio/") || /\.(mp3|ogg|webm|m4a|opus)$/i.test(file.name);
+  return { ok: true as const, url: up.url, type: audio ? "audio" : up.type, fileName: file.name.slice(0, 120) };
 }
 
 export async function setAutomationActive(id: string, active: boolean) {

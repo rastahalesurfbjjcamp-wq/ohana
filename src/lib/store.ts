@@ -62,6 +62,7 @@ export interface Order {
   customerId: string | null;
   cpf: string | null;
   statusUrl: string | null;
+  address: string | null;
 }
 
 type RawOrder = {
@@ -75,7 +76,7 @@ type RawOrder = {
   currentTotalPriceSet: { shopMoney: { amount: string } };
   customer: { displayName: string; id?: string } | null;
   localizedFields?: { nodes: { key: string; value: string }[] };
-  shippingAddress: { provinceCode: string | null; city: string | null; phone: string | null } | null;
+  shippingAddress: { provinceCode: string | null; city: string | null; phone: string | null; address1?: string | null; address2?: string | null; zip?: string | null } | null;
   customerJourneySummary: {
     firstVisit: { source: string | null; utmParameters: Record<string, string | null> | null } | null;
     lastVisit: { source: string | null; utmParameters: Record<string, string | null> | null } | null;
@@ -101,7 +102,7 @@ type RawOrder = {
 
 const ORDER_FIELDS = `id name createdAt cancelledAt displayFinancialStatus displayFulfillmentStatus
   currentSubtotalPriceSet{shopMoney{amount}} currentTotalPriceSet{shopMoney{amount}}
-  customer{id displayName} shippingAddress{provinceCode city phone}
+  customer{id displayName} shippingAddress{provinceCode city phone address1 address2 zip}
   localizedFields(first:3){ nodes{ key value } }
   customerJourneySummary{ firstVisit{ source utmParameters{source medium campaign content term} } lastVisit{ source utmParameters{source medium campaign content term} } }
   fulfillments(first:3){ displayStatus trackingInfo{number company url} }
@@ -134,6 +135,7 @@ function mapOrder(o: RawOrder): Order {
     customerId: o.customer?.id ?? null,
     cpf: (o.localizedFields?.nodes.find((f) => f.key === "TAX_CREDENTIAL_BR")?.value ?? "").replace(/\D/g, "") || null,
     statusUrl: o.statusPageUrl ?? null,
+    address: o.shippingAddress ? [o.shippingAddress.address1, o.shippingAddress.address2, [o.shippingAddress.city, o.shippingAddress.provinceCode].filter(Boolean).join(" - "), o.shippingAddress.zip].filter(Boolean).join(", ") || null : null,
     email: o.email ?? null,
     phone: o.phone ?? o.shippingAddress?.phone ?? null,
     images: o.lineItems.nodes.map((l) => l.image?.url).filter((x): x is string => !!x),
