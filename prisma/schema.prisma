@@ -691,6 +691,10 @@ model ContactTag {
 model ContactList {
   id        String       @id @default(cuid())
   name      String
+  dynamic   Boolean      @default(false) // atualiza sozinha pelas regras
+  rules     Json         @default("[]")  // [{ field, op, value }]
+  mode      String       @default("all") // all | any
+  refreshedAt DateTime?
   createdAt DateTime     @default(now())
   members   ListMember[]
 }

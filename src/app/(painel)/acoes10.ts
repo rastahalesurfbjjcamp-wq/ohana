@@ -84,7 +84,7 @@ export async function saveFlowAction(id: string, data: { flow: unknown; name: st
   const a = await db.automation.findUnique({ where: { id } });
   if (!a) return { ok: false, error: "Automação não encontrada" };
   const trigger = TRIGGERS.some((t) => t.k === data.trigger) ? data.trigger : a.trigger;
-  await db.automation.update({ where: { id }, data: { flow: clean(data.flow), name: (data.name || "").trim().slice(0, 80) || a.name, trigger, config: { delayMin: num(data.config?.delayMin, 0, 0, 10080), listId: s200(data.config?.listId, 40) || undefined, stopOnPaid: !!data.config?.stopOnPaid } } });
+  await db.automation.update({ where: { id }, data: { flow: clean(data.flow), name: (data.name || "").trim().slice(0, 80) || a.name, trigger, config: { ...((a.config ?? {}) as object), delayMin: num(data.config?.delayMin, 0, 0, 10080), listId: s200(data.config?.listId, 40) || undefined, stopOnPaid: !!data.config?.stopOnPaid } } });
   revalidatePath("/automacoes");
   revalidatePath(`/automacoes/${id}`);
   return { ok: true, at: new Date().toISOString() };

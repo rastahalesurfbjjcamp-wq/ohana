@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 
 export default async function Automacoes({ searchParams }: { searchParams: Promise<{ novo?: string; cat?: string; adicionadas?: string }> }) {
   const sp = await searchParams;
-  const list = await db.automation.findMany({ orderBy: { createdAt: "asc" } });
+  const list = (await db.automation.findMany({ orderBy: { createdAt: "asc" } })).filter((a) => !(a.config as { campaign?: boolean } | null)?.campaign);
   const stats = await db.automationRun.groupBy({ by: ["automationId"], _count: true, _sum: { sent: true, value: true } });
   const clicks = await db.automationRun.groupBy({ by: ["automationId"], where: { clicks: { gt: 0 } }, _count: true });
   const st = new Map(stats.map((x) => [x.automationId, x]));

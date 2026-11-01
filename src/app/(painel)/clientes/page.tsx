@@ -4,6 +4,8 @@ import { brl } from "@/lib/time";
 import Link from "next/link";
 import { Crown, MessageCircle, Repeat, Send, Users } from "lucide-react";
 import { ErrorNote, Header, Kpi, Panel } from "@/components/ui";
+import { RFM_SEGMENTS, rfmOf } from "@/lib/audience";
+import { createRfmList } from "../acoes12";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +27,10 @@ export default async function Clientes({ searchParams }: { searchParams: Promise
   for (const c of all) if (c.state) byUf.set(c.state, (byUf.get(c.state) ?? 0) + 1);
   const ufs = [...byUf.entries()].sort((a, b) => b[1] - a[1]);
   const fmt = new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "2-digit" });
+  const sorted = [...all.map((c) => c.spent)].sort((x, y) => x - y);
+  const mCut = [0.2, 0.4, 0.6, 0.8].map((p) => sorted[Math.floor(p * (sorted.length - 1))] ?? 0);
+  const rfmCount = new Map<string, { n: number; spent: number }>();
+  for (const c of all) { const k = rfmOf(c, mCut).seg; const x = rfmCount.get(k) ?? { n: 0, spent: 0 }; x.n++; x.spent += c.spent; rfmCount.set(k, x); }
   const q = (k: string, v: string) => `/clientes?s=${k === "s" ? v : seg}${(k === "uf" ? v : uf) ? `&uf=${k === "uf" ? v : uf}` : ""}`;
 
   return (
@@ -37,6 +43,25 @@ export default async function Clientes({ searchParams }: { searchParams: Promise
         <Kpi icon={<Repeat size={15} />} tone="k" label="Compraram mais de uma vez" value={`${Math.round(repeat * 100)}%`} />
         <Kpi icon={<MessageCircle size={15} />} tone="p" label="Com WhatsApp" value={all.filter((c) => c.phone).length.toLocaleString("pt-BR")} sub="podem receber disparos" />
       </div>
+      <Panel title="Matriz RFM" sub="Clientes separados por quando compraram pela última vez, quantas vezes e quanto gastaram. Clique para virar lista ou campanha.">
+        <div className="rfm">
+          {RFM_SEGMENTS.map((sg) => {
+            const x = rfmCount.get(sg.k) ?? { n: 0, spent: 0 };
+            if (!x.n) return null;
+            return (
+              <div key={sg.k} className="rfm-t" style={{ flexGrow: x.n, background: sg.color }} title={`${sg.desc}. Sugestão: ${sg.action}`}>
+                <b>{sg.label}</b>
+                <span>{x.n.toLocaleString("pt-BR")} · {all.length ? ((x.n / all.length) * 100).toFixed(1).replace(".", ",") : 0}%</span>
+                <small>{brl(x.spent, 0)} gastos</small>
+                <div className="rfm-a">
+                  <form action={createRfmList}><input type="hidden" name="seg" value={sg.k} /><button type="submit">Ver lista</button></form>
+                  <Link href={`/campanhas-whatsapp?nova=1&rfm=${sg.k}`}>Campanha</Link>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </Panel>
       <div className="segs">
         {Object.entries(SEGMENTS).map(([k, v]) => (
           <Link key={k} href={q("s", k)} className={`segc${seg === k ? " on" : ""}`} title={v.desc}>

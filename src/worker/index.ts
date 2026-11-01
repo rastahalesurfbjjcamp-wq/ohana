@@ -18,7 +18,7 @@ import { runFunnels } from "../lib/funnels";
 import { assistantReply } from "../lib/assistant";
 import { refreshReferralUsage } from "../lib/referral";
 
-type Marks = { payday?: string; daily?: string; weekly?: string; sync?: number; scan?: number; repurchase?: string; referral?: number; club?: number; clubDay?: string; perks?: number; autoScan?: number; wa?: number; monthly?: string; autoDisc?: number };
+type Marks = { payday?: string; daily?: string; weekly?: string; sync?: number; scan?: number; repurchase?: string; referral?: number; club?: number; clubDay?: string; perks?: number; autoScan?: number; lists?: number; wa?: number; monthly?: string; autoDisc?: number };
 
 async function getMarks(): Promise<Marks> {
   const r = await db.setting.findUnique({ where: { key: "_marks" } });
@@ -63,6 +63,9 @@ async function tick() {
     await A.runDue().catch((e) => console.error("[automações]", e));
     const mk = await getMarks();
     if (!mk.autoScan || Date.now() - mk.autoScan > 5 * 60_000) { await setMarks({ autoScan: Date.now() }); await A.scanAutomationEvents().catch((e) => console.error("[automações gatilhos]", e)); }
+    // Campanhas agendadas e listas por regra (atualizam a cada 6 horas)
+    await (await import("../lib/campaigns")).runCampaigns().catch((e) => console.error("[campanhas]", e));
+    if (!mk.lists || Date.now() - mk.lists > 6 * 3600_000) { await setMarks({ lists: Date.now() }); await (await import("../lib/audience")).refreshAllLists().catch((e) => console.error("[listas]", e)); }
   }
   await sendDueRecovery().catch((e) => console.error("[recuperação]", e));
   await runFunnels().catch((e) => console.error("[funis]", e));

@@ -1407,3 +1407,21 @@ a.itile:hover { border-color: #34403b; transform: translateY(-1px); }
 .rp-tl li.bad::before { background: var(--coral); }
 .rp-tl li span { display: inline-block; min-width: 92px; color: var(--ink3); font-size: 11.5px; }
 @media (max-width: 900px) { .rp-funnel { grid-template-columns: repeat(3, minmax(0, 1fr)); } .rp-who { min-width: 0; } }
+
+/* Matriz RFM e campanhas */
+.rfm { display: flex; flex-wrap: wrap; gap: 4px; min-height: 280px; }
+.rfm-t { flex-basis: 150px; min-height: 120px; border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 2px; color: #fff; position: relative; overflow: hidden; }
+.rfm-t b { font-size: 14px; text-shadow: 0 1px 2px rgba(0,0,0,.25); }
+.rfm-t span { font-size: 13px; opacity: .95; }
+.rfm-t small { font-size: 11.5px; opacity: .8; }
+.rfm-a { display: flex; gap: 6px; margin-top: auto; padding-top: 8px; opacity: 0; transition: opacity .15s; }
+.rfm-t:hover .rfm-a { opacity: 1; }
+.rfm-a button, .rfm-a a { font-size: 11.5px; padding: 4px 9px; border-radius: 7px; border: 0; background: rgba(0,0,0,.28); color: #fff; cursor: pointer; }
+.rfm-a button:hover, .rfm-a a:hover { background: rgba(0,0,0,.45); }
+@media (hover: none) { .rfm-a { opacity: 1; } }
+.cp-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; align-items: end; }
+.rb { display: flex; flex-direction: column; gap: 8px; }
+.rb-row { display: grid; grid-template-columns: minmax(150px, 1.2fr) minmax(120px, 1fr) minmax(120px, 1fr) 30px; gap: 6px; align-items: center; }
+.rb-prev { background: #0d100f; border: 1px solid var(--line2); border-radius: 12px; padding: 12px; font-size: 13px; }
+.rb-prev b.n { font-size: 22px; color: var(--lagoon); }
+@media (max-width: 700px) { .rb-row { grid-template-columns: 1fr 1fr; } }
