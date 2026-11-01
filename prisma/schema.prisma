@@ -770,3 +770,16 @@ model ChatSchedule {
   @@index([status, at])
   @@index([phone])
 }
+
+// Popups de captura no site (boas-vindas, saída, Grupo VIP, roleta, raspadinha...)
+model Popup {
+  id        String   @id @default(cuid())
+  name      String
+  kind      String   @default("boasvindas")
+  active    Boolean  @default(false)
+  config    Json     @default("{}")
+  views     Int      @default(0)
+  leads     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

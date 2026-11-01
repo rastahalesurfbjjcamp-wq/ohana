@@ -22,6 +22,8 @@ import { Heart } from "lucide-react";
 import { CardPicker } from "@/components/CardPicker";
 import { metaLabel } from "@/lib/metaLabels";
 import { RefreshButton } from "@/components/RefreshButton";
+import { Pendencias } from "@/components/Pendencias";
+import { Suspense } from "react";
 
 const CARDS: [string, string][] = [
   ["faturamento", "Faturamento"], ["pedidos", "Pedidos"], ["lucro", "Lucro"],
@@ -239,6 +241,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
           <span className="act">Continuar <ArrowRight size={14} /></span>
         </Link>
       )}
+      <Suspense fallback={null}><Pendencias /></Suspense>
       <div className="kstrip dyn" style={{ marginBottom: 16, ["--kc" as string]: Math.min(shown.length, 7) }}>
         {shown.map((k) => ks[k])}
       </div>
