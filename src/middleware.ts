@@ -3,7 +3,7 @@ import { jwtVerify } from "jose";
 import { env } from "@/lib/env";
 import { canSee, firstAllowed } from "@/lib/access";
 
-const PUBLIC = ["/login", "/api/auth/login", "/api/webhooks", "/api/health", "/api/media", "/fonts", "/api/leads", "/convite", "/parceiro", "/api/parceiro", "/api/avise", "/r", "/g", "/votar", "/api/votar", "/assinar", "/api/clube", "/club", "/a", "/api/listas", "/demo", "/brand", "/icon.png", "/apple-icon.png", "/favicon.ico"];
+const PUBLIC = ["/login", "/api/auth/login", "/api/webhooks", "/api/health", "/api/media", "/fonts", "/api/leads", "/convite", "/parceiro", "/api/parceiro", "/api/avise", "/r", "/g", "/votar", "/api/votar", "/assinar", "/api/clube", "/club", "/a", "/api/listas", "/demo", "/brand", "/clube-loja.js", "/icon.png", "/apple-icon.png", "/favicon.ico"];
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -37,5 +37,5 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   runtime: "nodejs",
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|svg|ico|woff2?|ttf)$).*)", "/brand/:path*", "/icon.png", "/apple-icon.png", "/favicon.ico"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|svg|ico|woff2?|ttf)$).*)", "/brand/:path*", "/clube-loja.js", "/icon.png", "/apple-icon.png", "/favicon.ico"],
 };
