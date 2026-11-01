@@ -25,7 +25,8 @@ async function pedirCodigo(f: FormData) {
       await db.setting.upsert({ where: { key: key(u.id) }, create: { key: key(u.id), value }, update: { value } });
       const { evolution } = await import("@/lib/evolution");
       // vai para o WhatsApp cadastrado da pessoa; o administrador sem número recebe no próprio número do Hub
-      const to = u.phone || (u.role === "ADMIN" ? await evolution.ownerPhone() : null);
+      let to = u.phone || (u.role === "ADMIN" ? await evolution.ownerPhone() : null);
+      if (to && (to.length === 10 || to.length === 11)) to = `55${to}`; // número sem o código do país
       if (to) await evolution.sendText(to, `Código para trocar a senha do ${env.storeName()} Hub: *${code}*\n\nVale por 15 minutos. Se não foi você, ignore esta mensagem.`).catch((e) => console.error("[senha]", String(e).slice(0, 160)));
       else console.error("[senha] sem WhatsApp para", email);
     }
