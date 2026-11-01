@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { Braces, CheckCheck, FlaskConical, ImageIcon, Send, Video, X } from "lucide-react";
 import { DateTimeField, ToggleCard } from "./fields";
+import { LibraryPicker, type LibMsg } from "./LibraryPicker";
 
 export type Audience = { key: string; label: string; count: number; unit?: string; hint?: string };
 
@@ -12,8 +13,8 @@ function Submit() {
   return <button className="btn pri lg" type="submit" disabled={pending}><Send size={16} /> {pending ? "Salvando…" : "Agendar disparo"}</button>;
 }
 
-export function BroadcastComposer({ action, testAction, audiences, defaultAudience, store, maxPerHour, owner }: {
-  action: (f: FormData) => Promise<void>; testAction: (f: FormData) => Promise<void>; audiences: Audience[]; defaultAudience: string; store: string; maxPerHour: number; owner: string;
+export function BroadcastComposer({ action, testAction, audiences, defaultAudience, store, maxPerHour, owner, library = [] }: {
+  action: (f: FormData) => Promise<void>; testAction: (f: FormData) => Promise<void>; audiences: Audience[]; defaultAudience: string; store: string; maxPerHour: number; owner: string; library?: LibMsg[];
 }) {
   const [aud, setAud] = useState(defaultAudience);
   const [text, setText] = useState("Oi {nome}, ");
@@ -67,6 +68,7 @@ export function BroadcastComposer({ action, testAction, audiences, defaultAudien
 
           <div className="sep" />
           <h4><span className="stepn">2</span> Mensagem</h4>
+          <LibraryPicker items={library} onPick={(t) => setText(t)} />
           <textarea ref={ta} className="in" name="text" required value={text} onChange={(e) => setText(e.target.value)} style={{ minHeight: 120 }} placeholder="Oi {nome}, ..." />
           <div className="row" style={{ gap: 6, marginTop: 8 }}>
             <button type="button" className="tbtn" onClick={() => pick("image/*")}><ImageIcon size={14} /> Imagem</button>

@@ -7,6 +7,7 @@ import { normalizePhone } from "./segments";
 import { ordersBetween, type Order } from "./store";
 import { isoDayLocal } from "./time";
 import { getSettings } from "./settings";
+import { redirectLink } from "./redirect";
 import { type Branch, type Ctx, type Flow, type Node, type Part, type Rule } from "./flowTypes";
 export { TRIGGERS, triggerLabel, type Ctx, type Flow, type Node, type Part } from "./flowTypes";
 
@@ -52,6 +53,7 @@ export function fill(text: string, ctx: Ctx, runId?: string, links?: string[], o
     if (k === "nome") return (ctx.nome ?? "").split(" ")[0] || "tudo bem";
     if (k === "loja") return env.storeName();
     if (k === "site") return ctx.site ?? "";
+    if (k === "grupo") return ctx.grupo || redirectLink();
     return ctx[k] ?? "";
   });
   if (runId && links) t = t.replace(/https?:\/\/[^\s]+/g, (u) => { links.push(withUtm(u, opts.utm)); opts.linkNodes?.push(opts.node ?? ""); return `${base()}/a/${runId}/${links.length - 1}`; });
@@ -163,6 +165,11 @@ async function checkRule(run: RunInfo, r: Rule, ctx: Ctx) {
     case "produto": return !!val && `${ctx.produtos_variante ?? ""} ${ctx.produtos ?? ""}`.toLowerCase().includes(val);
     case "pagamento": return !!val && (ctx.pagamento ?? "").toLowerCase().includes(val);
     case "status_entrega": return !!val && (ctx.status_entrega ?? "").toLowerCase().includes(val);
+    case "no_grupo":
+    case "fora_grupo": {
+      const n = await db.membership.count({ where: { contact: { phone: run.phone }, leftAt: null, group: { isCommunity: true } } });
+      return r.check === "no_grupo" ? n > 0 : n === 0;
+    }
     case "club": return !!(await db.clubMember.findFirst({ where: { phone: run.phone, status: "ativo" } }));
     case "hora_entre": return inRange(val, nowSP().getUTCHours());
     case "dia_semana": return inRange(val, nowSP().getUTCDay());

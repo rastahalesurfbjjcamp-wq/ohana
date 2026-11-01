@@ -7,6 +7,7 @@ import { customers } from "@/lib/store";
 import { inSegment, normalizePhone, SEGMENTS, type SegmentKey } from "@/lib/segments";
 import { Bar, Panel } from "@/components/ui";
 import { BroadcastComposer, type Audience } from "@/components/BroadcastComposer";
+import { libMsgs } from "@/lib/libMsgs";
 import { broadcastAction, createBroadcast, sendBroadcastTest } from "../acoes2";
 
 export const dynamic = "force-dynamic";
@@ -62,7 +63,7 @@ export default async function Disparos({ searchParams }: { searchParams: Promise
       {sp.erro === "campos" && <div className="err">Escreva a mensagem e escolha o público.</div>}
       {sp.erro === "numero" && <div className="err">Não achei o número conectado. Confira o WhatsApp em Configurações.</div>}
       <BroadcastComposer action={createBroadcast} testAction={sendBroadcastTest} audiences={audiences} defaultAudience={selected && sp.lista ? "selecionados" : "leads-nao-entrou"}
-        store={env.storeName()} maxPerHour={s.sending.maxPerHour} owner={(session?.name ?? "Leonardo").split(" ")[0]} />
+        store={env.storeName()} maxPerHour={s.sending.maxPerHour} owner={(session?.name ?? "Leonardo").split(" ")[0]} library={await libMsgs()} />
         <Panel title="Disparos anteriores" sub="Andamento de cada envio" body={false}>
           {list.length ? (
             <table className="tb">

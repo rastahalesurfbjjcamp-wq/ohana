@@ -4,6 +4,7 @@ import { useState } from "react";
 import { CalendarClock, Plus, Send, X } from "lucide-react";
 import { useFormStatus } from "react-dom";
 import { DateTimeField, FileField, GroupPicker, ToggleCard, type GroupOpt } from "./fields";
+import { LibraryPicker, type LibMsg } from "./LibraryPicker";
 
 function Buttons({ count }: { count: number }) {
   const { pending } = useFormStatus();
@@ -19,7 +20,7 @@ function Buttons({ count }: { count: number }) {
   );
 }
 
-export function ScheduleForm({ action, groups, defaultDate }: { action: (f: FormData) => Promise<void>; groups: GroupOpt[]; defaultDate?: string }) {
+export function ScheduleForm({ action, groups, defaultDate, library = [] }: { action: (f: FormData) => Promise<void>; groups: GroupOpt[]; defaultDate?: string; library?: LibMsg[] }) {
   const [count, setCount] = useState(groups.filter((g) => g.checked).length);
   const [parts, setParts] = useState(1);
   return (
@@ -32,7 +33,8 @@ export function ScheduleForm({ action, groups, defaultDate }: { action: (f: Form
               <span>{parts > 1 ? `Mensagem ${i + 1}` : "Mensagem"}</span>
               {i > 0 && i === parts - 1 && <button type="button" className="menu-b" aria-label="Tirar esta mensagem" onClick={() => setParts(parts - 1)}><X size={14} /></button>}
             </label>
-            <textarea className="in" name={i === 0 ? "text" : `text_${i}`} placeholder={i === 0 ? "Ex.: Lançamento hoje às 19h, só para quem está no grupo." : "Texto, link ou legenda da foto"} style={{ minHeight: i === 0 ? 110 : 80 }} />
+            <LibraryPicker items={library} onPick={(t) => { const el = document.getElementById(`sf-text-${i}`) as HTMLTextAreaElement | null; if (el) el.value = t; }} />
+            <textarea id={`sf-text-${i}`} className="in" name={i === 0 ? "text" : `text_${i}`} placeholder={i === 0 ? "Ex.: Lançamento hoje às 19h, só para quem está no grupo." : "Texto, link ou legenda da foto"} style={{ minHeight: i === 0 ? 110 : 80 }} />
           </div>
           <FileField name={i === 0 ? "media" : `media_${i}`} hint="Foto, vídeo ou PDF. O texto vira a legenda (opcional)" />
         </div>

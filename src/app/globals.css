@@ -1629,3 +1629,6 @@ a.itile:hover { border-color: #34403b; transform: translateY(-1px); }
 .flowed .me-kinds button { background: #fff; border-color: #dadce0; color: #3c4043; }
 .flowed .me-kinds button.on { background: #e6f4ea; border-color: #34a853; color: #137333; }
 .cv-okchip { display: inline-flex; align-items: center; gap: 4px; margin-top: 3px; font-size: 9.5px; font-weight: 500; color: #137333; background: #e6f4ea; border-radius: 10px; padding: 1px 7px; }
+.libpick { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding: 0 10px; height: 36px; border: 1px dashed #2f3833; border-radius: 10px; color: var(--ink2); font-size: 13px; }
+.libpick select { flex: 1; background: none; border: 0; color: var(--ink); font-size: 13px; outline: none; cursor: pointer; }
+.libpick select option, .libpick select optgroup { background: #111413; }

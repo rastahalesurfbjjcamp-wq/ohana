@@ -7,7 +7,7 @@ import {
   Minus, Paperclip, Pencil, Plus, Shuffle, Split, StickyNote, Tag, Trash2, Undo2, Webhook, Workflow, X, Zap,
 } from "lucide-react";
 import Link from "next/link";
-import { BLOCKS, CHECKS, TRIGGERS, VARS, blockMeta, newNode, portsOf, type Branch, type Flow, type Node, type NodeType, type Part, type Port, type Rule } from "@/lib/flowTypes";
+import { BLOCKS, CHECKS, TRIGGERS, VARS, blockMeta, varLabel, newNode, portsOf, type Branch, type Flow, type Node, type NodeType, type Part, type Port, type Rule } from "@/lib/flowTypes";
 import { MessageEditor, PhonePreview, WaText, type TemplateData } from "@/components/MessageEditor";
 import { saveFlowAction, setAutomationActive, uploadPartMedia } from "../../acoes10";
 import { testAutomation } from "../../acoes11";
@@ -74,7 +74,7 @@ const ruleText = (rules: Rule[], mode: "all" | "any" | undefined, c: Ctx) => rul
 const partsFor = (n: Extract<Node, { type: "send" }>, c: Ctx) => (n.messageId ? c.tpl.get(n.messageId)?.parts ?? [] : n.parts);
 function title(n: Node, c: Ctx) {
   if (n.title) return n.title;
-  if (n.type === "send") return n.messageId ? c.tpl.get(n.messageId)?.name ?? "Mensagem apagada" : (n.parts.find((p) => p.text)?.text ?? "Mensagem").split("\n")[0].slice(0, 40) || "Mensagem";
+  if (n.type === "send") return n.messageId ? c.tpl.get(n.messageId)?.name ?? "Mensagem apagada" : (n.parts.find((p) => p.text)?.text ?? "Mensagem").split("\n")[0].replace(/\{(\w+)\}/g, (m) => varLabel(m)).replace(/[*_~]/g, "").slice(0, 40) || "Mensagem";
   if (n.type === "wait") return `${n.amount} ${UNIT[n.unit]}`;
   if (n.type === "waitHour") return `Até as ${n.hour}${n.days?.length ? ` · ${n.days.map((d) => DAYS[d]).join(", ")}` : ""}`;
   if (n.type === "waitDate") return n.at ? new Date(`${n.at}:00-03:00`).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "Escolha a data";

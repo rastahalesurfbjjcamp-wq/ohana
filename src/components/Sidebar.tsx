@@ -35,7 +35,6 @@ export function Sidebar({ name, store, connected, leaves, logout }: { name: stri
         { href: "/mensagens", icon: Library, label: "Mensagens" },
         { href: "/campanhas-whatsapp", icon: Megaphone, label: "Campanhas WhatsApp" },
         { href: "/listas", icon: Contact, label: "Listas" },
-        { href: "/funis", icon: Route, label: "Funis" },
       ],
     },
     {

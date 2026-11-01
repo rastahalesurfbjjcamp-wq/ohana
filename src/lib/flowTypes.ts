@@ -52,7 +52,7 @@ export const VAR_GROUPS: { group: string; vars: { k: string; label: string }[] }
   { group: "Contato", vars: [{ k: "{nome}", label: "Nome" }, { k: "{nome_completo}", label: "Nome completo" }, { k: "{sobrenome}", label: "Sobrenome" }, { k: "{email}", label: "E-mail" }, { k: "{telefone}", label: "Telefone" }] },
   { group: "Pedido", vars: [{ k: "{pedido}", label: "Nº do pedido" }, { k: "{produtos}", label: "Produtos" }, { k: "{produtos_variante}", label: "Produtos com tamanho" }, { k: "{valor}", label: "Valor total" }, { k: "{subtotal}", label: "Subtotal" }, { k: "{endereco}", label: "Endereço de entrega" }, { k: "{link}", label: "Link do pedido / checkout" }, { k: "{pix}", label: "Link para pagar o Pix" }, { k: "{boleto}", label: "Link do boleto" }, { k: "{vencimento}", label: "Vencimento do boleto" }, { k: "{cupom}", label: "Cupom usado" }] },
   { group: "Entrega", vars: [{ k: "{rastreio}", label: "Código de rastreio" }, { k: "{rastreio_link}", label: "Link de rastreio" }, { k: "{status_entrega}", label: "Status da entrega" }, { k: "{transportadora}", label: "Transportadora" }] },
-  { group: "Loja", vars: [{ k: "{loja}", label: "Nome da loja" }, { k: "{site}", label: "Site" }] },
+  { group: "Loja", vars: [{ k: "{loja}", label: "Nome da loja" }, { k: "{site}", label: "Site" }, { k: "{grupo}", label: "Link do Grupo VIP" }] },
 ];
 export const VARS = VAR_GROUPS.flatMap((g) => g.vars);
 export const varLabel = (k: string) => VARS.find((v) => v.k === k)?.label ?? k.replace(/[{}]/g, "");
@@ -78,6 +78,8 @@ export const CHECKS: { k: string; label: string; needs?: "list" | "text" | "numb
   { k: "pagamento", label: "Forma de pagamento contém", needs: "text" },
   { k: "status_entrega", label: "Status da entrega contém", needs: "text" },
   { k: "club", label: "É membro do club" },
+  { k: "no_grupo", label: "Está no grupo da comunidade" },
+  { k: "fora_grupo", label: "Não está no grupo da comunidade" },
   { k: "hora_entre", label: "Hora entre (ex.: 08-20)", needs: "text" },
   { k: "dia_semana", label: "Dia da semana (ex.: 1-5, seg a sex)", needs: "text" },
 ];

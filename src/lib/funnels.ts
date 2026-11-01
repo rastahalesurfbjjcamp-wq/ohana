@@ -33,9 +33,11 @@ async function condOk(cond: string | null | undefined, phone: string, since: Dat
 
 export async function funnelEvent(trigger: string, phone: string, name?: string | null) {
   // automações com o mesmo gatilho (uma vez por dia por pessoa)
-  await import("./automations").then((a) => a.automationEvent(trigger, `${trigger}-${phone}-${new Date().toISOString().slice(0, 10)}`, phone, { nome: name ?? "" })).catch(() => null);
+  await import("./automations").then((a) => a.automationEvent(trigger, `${trigger}-${phone}-${new Date().toISOString().slice(0, 10)}`, phone, { nome: name ?? "", grupo: redirectLink(), link: redirectLink() })).catch(() => null);
+  const migrated = await import("./funnelMigrate").then((m) => m.migratedFunnelIds()).catch(() => new Set<string>());
   const funnels = await db.funnel.findMany({ where: { trigger, active: true } });
   for (const f of funnels) {
+    if (migrated.has(f.id)) continue; // agora roda pela automação
     const steps = f.steps as Step[];
     if (!steps.length) continue;
     const exists = await db.funnelRun.findUnique({ where: { funnelId_phone: { funnelId: f.id, phone } } });

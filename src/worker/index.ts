@@ -242,6 +242,7 @@ async function main() {
   // demonstração: respostas fictícias no lugar de Shopify, Meta e WhatsApp
   if (process.env.DEMO_MODE === "1") (await import("../lib/demo/patch")).installDemoFetch();
   // Atualiza os eventos do webhook da Evolution quando a lista muda (ex.: entregue/lida)
+  void import("../lib/funnelMigrate").then((m) => m.migrateFunnels()).catch((e) => console.error("[funis-migrar]", e));
   void (async () => {
     try {
       const { evolution, WEBHOOK_VERSION } = await import("../lib/evolution");

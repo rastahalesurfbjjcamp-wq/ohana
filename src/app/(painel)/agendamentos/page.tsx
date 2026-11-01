@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { addDays, isoDayLocal } from "@/lib/time";
 import { Header } from "@/components/ui";
 import { ScheduleForm } from "@/components/ScheduleForm";
+import { libMsgs } from "@/lib/libMsgs";
 import { cancelSchedule, createSchedule, retrySchedule } from "../actions";
 
 export const dynamic = "force-dynamic";
@@ -147,7 +148,7 @@ export default async function Agendamentos({ searchParams }: { searchParams: Pro
           ) : (
             <>
               <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>Nova mensagem{sp.novo ? ` para ${sp.novo.slice(8)}/${sp.novo.slice(5, 7)}` : ""}</h3>
-              <ScheduleForm key={sp.novo ?? "x"} action={createSchedule} groups={opts} defaultDate={sp.novo && /^\d{4}-\d{2}-\d{2}$/.test(sp.novo) ? `${sp.novo}T19:00` : undefined} />
+              <ScheduleForm key={sp.novo ?? "x"} action={createSchedule} library={await libMsgs()} groups={opts} defaultDate={sp.novo && /^\d{4}-\d{2}-\d{2}$/.test(sp.novo) ? `${sp.novo}T19:00` : undefined} />
             </>
           )}
         </section>
