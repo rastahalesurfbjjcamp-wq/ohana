@@ -58,7 +58,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           </div>
           <small>Comunidade e vendas</small>
         </div>
-        {erro && <div className="err">E-mail ou senha incorretos.</div>}
+        {erro && <div className="err">{erro === "2" ? "Seu acesso foi desativado. Fale com o administrador." : "E-mail ou senha incorretos."}</div>}
         <div className="field">
           <label htmlFor="email">E-mail</label>
           <input className="in" id="email" name="email" type="email" autoComplete="username" required />

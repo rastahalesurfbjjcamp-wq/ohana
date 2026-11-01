@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 import { env } from "@/lib/env";
+import { canSee, firstAllowed } from "@/lib/access";
 
-const PUBLIC = ["/login", "/api/auth/login", "/api/webhooks", "/api/health", "/api/media", "/fonts", "/api/leads", "/api/avise", "/r", "/g", "/votar", "/api/votar", "/assinar", "/api/clube", "/club", "/a", "/api/listas", "/demo", "/brand", "/icon.png", "/apple-icon.png", "/favicon.ico"];
+const PUBLIC = ["/login", "/api/auth/login", "/api/webhooks", "/api/health", "/api/media", "/fonts", "/api/leads", "/convite", "/parceiro", "/api/parceiro", "/api/avise", "/r", "/g", "/votar", "/api/votar", "/assinar", "/api/clube", "/club", "/a", "/api/listas", "/demo", "/brand", "/icon.png", "/apple-icon.png", "/favicon.ico"];
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -14,7 +15,15 @@ export async function middleware(req: NextRequest) {
   const token = req.cookies.get("hub_session")?.value;
   if (token) {
     try {
-      await jwtVerify(token, new TextEncoder().encode(env.sessionSecret()));
+      const { payload } = await jwtVerify(token, new TextEncoder().encode(env.sessionSecret()));
+      const p = payload as { role?: string; areas?: string[] };
+      // equipe só abre as páginas liberadas para ela
+      if (!pathname.startsWith("/api/") && !pathname.startsWith("/brand") && !canSee(pathname, p.role, p.areas)) {
+        const url = req.nextUrl.clone();
+        url.pathname = firstAllowed(p.role, p.areas);
+        url.search = "";
+        if (url.pathname !== pathname) return NextResponse.redirect(url);
+      }
       return NextResponse.next();
     } catch {
       /* sessão inválida */

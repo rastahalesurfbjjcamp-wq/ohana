@@ -70,6 +70,7 @@ async function tick() {
   }
   await sendDueRecovery().catch((e) => console.error("[recuperação]", e));
   await runFunnels().catch((e) => console.error("[funis]", e));
+  await import("../lib/ledger").then((m) => m.syncLedger()).catch((e) => console.error("[comissoes]", e));
 
   // demonstração: volta tudo ao original de madrugada
   if (process.env.DEMO_MODE === "1" && hhmmLocal() >= "03:00") await (await import("../lib/demo/seed")).ensureDemoSeed().catch((e) => console.error("[demo]", e));

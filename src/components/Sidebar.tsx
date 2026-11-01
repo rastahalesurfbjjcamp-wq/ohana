@@ -2,10 +2,11 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
+import { canSee } from "@/lib/access";
 import {
   ArrowLeftRight, Bot, Box, CalendarClock, CalendarHeart, ChartNoAxesCombined, ChevronDown, ChevronRight, Contact,
   Gift, HeartHandshake, LayoutDashboard, LogOut, MessageCircle, MessagesSquare, Package, Percent, ReceiptText,
-  RefreshCcw, Rocket, Route, Send, Settings, ShoppingBag, Sparkles, SquareCheckBig, Truck, UserPlus, Users, Vote,
+  RefreshCcw, Rocket, Route, UserCog, Send, Settings, ShoppingBag, Sparkles, SquareCheckBig, Truck, UserPlus, Users, Vote,
   Wallet, Warehouse, Workflow, Coins, Plug, LayoutTemplate, Medal, Crown, Calculator, Menu, X, RefreshCw, type LucideIcon,
   History, Library, Megaphone,
 } from "lucide-react";
@@ -13,7 +14,7 @@ import {
 type Item = { href: string; icon: LucideIcon; label: string; badge?: number; soon?: boolean };
 type Group = { label: string; icon: LucideIcon; items: Item[] };
 
-export function Sidebar({ name, store, connected, leaves, logout }: { name: string; store: string; connected: boolean; leaves: number; logout: () => Promise<void> }) {
+export function Sidebar({ name, store, connected, leaves, logout, role = "ADMIN", areas = [] }: { name: string; store: string; connected: boolean; leaves: number; logout: () => Promise<void>; role?: string; areas?: string[] }) {
   const path = usePathname();
   const pinned: Item[] = [
     { href: "/", icon: LayoutDashboard, label: "Visão geral" },
@@ -79,6 +80,8 @@ export function Sidebar({ name, store, connected, leaves, logout }: { name: stri
       ],
     },
   ];
+  const ok = (h: string) => canSee(h, role, areas);
+  for (const g of groups) g.items = g.items.filter((i) => ok(i.href));
   const active = (h: string) => (h === "/" ? path === "/" : path === h || path.startsWith(h + "/"));
   const [open, setOpen] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(groups.map((g) => [g.label, g.items.some((i) => active(i.href)) || g.label === "Comunidade"])),
@@ -120,7 +123,7 @@ export function Sidebar({ name, store, connected, leaves, logout }: { name: stri
     </header>
     {nav && <div className="nav-ov" onClick={() => setNav(false)} />}
     <nav className="mtabs" aria-label="Atalhos">
-      {tabs.map((t) => (
+      {tabs.filter((t) => ok(t.href)).map((t) => (
         <Link key={t.href} href={t.href} className={active(t.href) ? "on" : ""}><t.icon size={20} strokeWidth={1.8} /><span>{t.label}</span></Link>
       ))}
       <button type="button" onClick={() => setNav(true)} className={nav ? "on" : ""}><Menu size={20} strokeWidth={1.8} /><span>Menu</span></button>
@@ -136,8 +139,8 @@ export function Sidebar({ name, store, connected, leaves, logout }: { name: stri
         </div>
       </div>
       <nav className="nav">
-        {pinned.map((it) => link(it))}
-        {groups.map((g) => (
+        {pinned.filter((it) => ok(it.href)).map((it) => link(it))}
+        {groups.filter((g) => g.items.length).map((g) => (
           <div className="grp" key={g.label}>
             <button type="button" className="gh" onClick={() => setOpen((o) => ({ ...o, [g.label]: !o[g.label] }))}>
               <g.icon size={18} strokeWidth={1.75} className="ic" />
@@ -149,8 +152,9 @@ export function Sidebar({ name, store, connected, leaves, logout }: { name: stri
         ))}
       </nav>
       <div className="foot">
-        {link({ href: "/integracoes", icon: Plug, label: "Integrações" })}
-        {link({ href: "/configuracoes", icon: Settings, label: "Configurações" })}
+        {ok("/integracoes") && link({ href: "/integracoes", icon: Plug, label: "Integrações" })}
+        {ok("/equipe") && link({ href: "/equipe", icon: UserCog, label: "Equipe e acessos" })}
+        {ok("/configuracoes") && link({ href: "/configuracoes", icon: Settings, label: "Configurações" })}
         <div className="me">
           <div className="av">{initials}</div>
           <div>

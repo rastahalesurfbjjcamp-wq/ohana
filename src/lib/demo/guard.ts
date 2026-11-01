@@ -2,5 +2,5 @@
 import { redirect } from "next/navigation";
 
 export function demoBlock(back = "/?demo=bloqueado") {
-  if (process.env.DEMO_MODE === "1") redirect(back);
+  if (process.env.DEMO_MODE === "1" && process.env.DEMO_ALLOW_WRITE !== "1") redirect(back);
 }

@@ -7,7 +7,7 @@ import { env } from "./env";
 export const SESSION_COOKIE = "hub_session";
 const key = () => new TextEncoder().encode(env.sessionSecret());
 
-export type Session = { userId: string; name: string; role: string };
+export type Session = { userId: string; name: string; role: string; areas?: string[] };
 
 export async function createSession(s: Session) {
   const token = await new SignJWT(s)
@@ -40,10 +40,11 @@ export async function getSession(): Promise<Session | null> {
 
 export async function login(email: string, password: string): Promise<Session | null> {
   const user = await db.user.findUnique({ where: { email: email.trim().toLowerCase() } });
-  if (!user) return null;
+  if (!user || !user.active || !user.passwordHash) return null;
   const ok = await bcrypt.compare(password, user.passwordHash);
   if (!ok) return null;
-  const s = { userId: user.id, name: user.name, role: user.role };
+  const s = { userId: user.id, name: user.name, role: user.role, areas: user.areas ?? [] };
+  await db.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } }).catch(() => null);
   await createSession(s);
   return s;
 }

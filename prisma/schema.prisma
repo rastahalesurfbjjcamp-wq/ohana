@@ -18,6 +18,11 @@ model User {
   role         Role     @default(ADMIN)
   phone        String?  // número autorizado a dar comandos no grupo de resultados (só dígitos, com DDI)
   createdAt    DateTime @default(now())
+  areas        String[] @default([]) // vazio = acesso a tudo
+  active       Boolean  @default(true)
+  inviteToken  String?
+  inviteAt     DateTime?
+  lastLoginAt  DateTime?
 }
 
 enum Role {
@@ -355,6 +360,12 @@ model Referral {
   minSubtotal Float?
   active     Boolean  @default(true)
   createdAt  DateTime @default(now())
+  commissionPct Float?    // acordo próprio; vazio usa o padrão do programa
+  passwordHash  String?
+  inviteToken   String?
+  inviteAt      DateTime?
+  lastLoginAt   DateTime?
+  pixKey        String?
 }
 
 // Lançamentos (drops)
@@ -783,4 +794,41 @@ model Popup {
   leads     Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// Livro de comissões dos parceiros, em centavos. Nada é apagado: cancelamento vira um lançamento de estorno.
+model PartnerEarning {
+  id          String   @id @default(cuid())
+  referralId  String
+  key         String   @unique // venda:<pedido> | estorno:<pedido> | bonus:<mes>:<faixa> | ajuste:<id>
+  kind        String   // venda | estorno | bonus | ajuste
+  month       String   // AAAA-MM de referência
+  orderId     String?
+  orderName   String?
+  orderAt     DateTime?
+  baseCents   Int      @default(0) // valor dos produtos usado no cálculo (não aparece para o parceiro)
+  pct         Float    @default(0)
+  amountCents Int
+  availableAt DateTime // quando entra no saldo disponível
+  note        String?
+  createdBy   String?
+  createdAt   DateTime @default(now())
+
+  @@index([referralId, availableAt])
+}
+
+model PartnerWithdrawal {
+  id          String    @id @default(cuid())
+  referralId  String
+  amountCents Int
+  status      String    @default("solicitado") // solicitado | pago | recusado
+  pixKey      String?
+  method      String    @default("pix")
+  requestedAt DateTime  @default(now())
+  paidAt      DateTime?
+  paidBy      String?
+  note        String?
+  legacy      Boolean   @default(false)
+
+  @@index([referralId, status])
 }

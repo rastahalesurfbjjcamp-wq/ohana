@@ -19,6 +19,11 @@ async function sair() {
 export default async function PainelLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession();
   if (!session) redirect("/login");
+  // acesso mudou (áreas ou conta desativada): renova a sessão
+  if (process.env.DEMO_MODE !== "1") {
+    const u = await db.user.findUnique({ where: { id: session.userId }, select: { active: true, areas: true, role: true } }).catch(() => null);
+    if (u && (!u.active || u.role !== session.role || JSON.stringify(u.areas ?? []) !== JSON.stringify(session.areas ?? []))) redirect("/api/auth/refresh");
+  }
   warmSoon();
   const [wa, leaves] = await Promise.all([
     db.setting.findUnique({ where: { key: "_whatsapp" } }),
@@ -27,7 +32,7 @@ export default async function PainelLayout({ children }: { children: React.React
   const connected = (wa?.value as { state?: string } | undefined)?.state === "open";
   return (
     <div className="app">
-      <Sidebar name={session.name} store={env.storeName()} connected={connected} leaves={leaves} logout={sair} />
+      <Sidebar name={session.name} store={env.storeName()} connected={connected} leaves={leaves} logout={sair} role={session.role} areas={session.areas ?? []} />
       <main className="main">
         {children}
       </main>

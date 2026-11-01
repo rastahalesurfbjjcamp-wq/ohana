@@ -324,7 +324,7 @@ export default async function Integracoes({ searchParams }: { searchParams: Prom
       <h3 className="isec">Equipe · {users.length} acesso{users.length > 1 ? "s" : ""}</h3>
       <div className="igrid">
         {users.map((u) => (
-          <Link key={u.id} href="/configuracoes" className="itile">
+          <Link key={u.id} href={`/equipe?editar=${u.id}`} className="itile">
             <span className="av-s" style={{ width: 42, height: 42 }}>{u.name.split(" ").map((x) => x[0]).slice(0, 2).join("").toUpperCase()}</span>
             <div style={{ flex: 1 }}><b>{u.name}{u.name === session?.name ? " (você)" : ""}</b><small>{u.role === "ADMIN" ? "Administrador · acesso total" : "Equipe"}{u.phone ? " · número para comandos" : ""}</small></div>
             <span className="chip c-l">Ativo</span>
