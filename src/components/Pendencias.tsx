@@ -15,14 +15,13 @@ const dueOf = (o: Order) => isoDayLocal(new Date(new Date(o.createdAt).getTime()
 export async function Pendencias() {
   const today = isoDayLocal();
   const weekAgo = new Date(Date.now() - 7 * 864e5);
-  const [wa, waiting, errs, camps, orders, autos, popups] = await Promise.all([
+  const [wa, waiting, errs, camps, orders, autos] = await Promise.all([
     process.env.DEMO_MODE === "1" ? Promise.resolve("open") : evolution.connectionState().catch(() => "error"),
     db.chatThread.count({ where: { status: "aberto", unread: { gt: 0 } } }).catch(() => 0),
     db.automationRun.groupBy({ by: ["automationId"], where: { status: "erro", OR: [{ lastSentAt: { gte: weekAgo } }, { nextAt: { gte: weekAgo } }] }, _count: true }).catch(() => []),
     db.automation.findMany({ where: { trigger: "manual" }, select: { id: true, name: true, config: true } }).catch(() => []),
     recentOrders(150).catch(() => [] as Order[]),
     db.automation.findMany({ select: { id: true, name: true, trigger: true, active: true } }).catch(() => []),
-    db.popup.count({ where: { active: true } }).catch(() => 0),
   ]);
   const items: Item[] = [];
   if (wa !== "open") items.push({ sev: 1, title: "WhatsApp desconectado", sub: "Automações, campanhas e respostas ficam paradas até reconectar.", href: "/configuracoes", cta: "Reconectar" });
@@ -45,7 +44,6 @@ export async function Pendencias() {
 
   const has = new Set(autos.map((a) => a.trigger));
   const recs: Item[] = FLOW_TEMPLATES.filter((t) => !has.has(t.trigger)).slice(0, 3).map((t) => ({ sev: 3, title: t.name, sub: "Ainda não tem automação para isso", href: `/automacoes?novo=1&cat=${encodeURIComponent(t.cat)}`, cta: "Criar" }));
-  if (!popups) recs.push({ sev: 3, title: "Popup no site", sub: "Capture o WhatsApp de quem visita a loja", href: "/popups", cta: "Criar" });
   const off = autos.filter((a) => !a.active && a.trigger !== "manual");
   if (off.length && recs.length < 4) recs.push({ sev: 3, title: `${off.length} ${off.length === 1 ? "automação desligada" : "automações desligadas"}`, sub: "Revise e ligue quando estiver tudo certo", href: "/automacoes", cta: "Ver" });
 

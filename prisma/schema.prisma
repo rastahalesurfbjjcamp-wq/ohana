@@ -772,6 +772,7 @@ model ChatSchedule {
 }
 
 // Popups de captura no site (boas-vindas, saída, Grupo VIP, roleta, raspadinha...)
+// Sem uso (popups removidos). A tabela fica para o db push não apagar nada.
 model Popup {
   id        String   @id @default(cuid())
   name      String

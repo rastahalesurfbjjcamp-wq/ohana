@@ -38,7 +38,7 @@ export const TRIGGERS: { k: string; group: string; label: string; desc: string }
   { k: "carrinho_abandonado", group: "Carrinho abandonado", label: "Carrinho abandonado criado", desc: "Quando alguém sai do checkout sem pagar" },
   { k: "rastreio_criado", group: "Número de rastreio", label: "Número de rastreio criado", desc: "Quando o pedido ganha rastreio" },
   { k: "rastreio_atualizado", group: "Número de rastreio", label: "Rastreio atualizado", desc: "A cada mudança de status na entrega" },
-  { k: "lead_novo", group: "Lead", label: "Lead inserido", desc: "Quem preenche o formulário do Grupo VIP ou um popup" },
+  { k: "lead_novo", group: "Lead", label: "Lead inserido", desc: "Quem preenche o formulário do Grupo VIP" },
   { k: "lista", group: "Lead", label: "Adicionado à lista", desc: "Quem entra numa lista (planilha, API ou bloco)" },
   { k: "entrou_grupo", group: "Comunidade", label: "Entrou no grupo", desc: "Entrou num grupo da comunidade" },
   { k: "saiu_grupo", group: "Comunidade", label: "Saiu do grupo", desc: "Saiu de um grupo da comunidade" },

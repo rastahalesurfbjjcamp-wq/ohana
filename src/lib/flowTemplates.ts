@@ -165,7 +165,7 @@ export const FLOW_TEMPLATES: FlowTemplate[] = [
   },
   {
     key: "lead", name: "Boas-vindas ao lead", cat: "Leads", trigger: "lead_novo",
-    desc: "Mensagem de boas-vindas para quem entra pelo formulário ou popup. Se responder, liga o atendimento.",
+    desc: "Mensagem de boas-vindas para quem entra pelo formulário. Se responder, liga o atendimento.",
     config: { delayMin: 1 },
     msgs: [{ key: "l1", name: "Boas-vindas ao lead", kind: "nenhum", parts: [{ text: "Oi {nome}, aqui é da Rasta Hale. Recebi seu cadastro!\n\nPor aqui você fica sabendo antes dos lançamentos e das condições do grupo. Se quiser ajuda pra escolher alguma peça, me responde." }] }],
     start: "s1",
