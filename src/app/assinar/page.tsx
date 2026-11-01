@@ -14,7 +14,11 @@ const Lock = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" s
 const I = { gift: <><path d="M20 12v9H4v-9M2 7h20v5H2zM12 21V7" /><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" /></>, trophy: <><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z" /><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3" /></>, cake: <><path d="M4 21h16v-8H4zM4 16s1.5-1 4-1 4 2 4 2 1.5-2 4-2 4 1 4 1M12 13V9M12 6v.01" /></>, users: <><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 6" /></>, tag: <path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z" />, clock: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>, star: <path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z" />, cal: <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /></> };
 const Ic = ({ d }: { d: React.ReactNode }) => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#141714" strokeWidth="1.8">{d}</svg>;
 
-export default async function Assinar() {
+// Dentro da página da loja (rastahale.com.br/pages/clube): sem o topo próprio, links abrem na janela da loja e a altura acompanha o conteúdo
+const EMBED_JS = `document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a");if(a&&a.href)a.target="_top"});(function(){var last=0;function send(){var h=document.documentElement.scrollHeight;if(h!==last){last=h;parent.postMessage({rhClubHeight:h},"*")}}new ResizeObserver(send).observe(document.body);setInterval(send,800);send()})();`;
+
+export default async function Assinar({ searchParams }: { searchParams: Promise<{ embed?: string }> }) {
+  const embed = (await searchParams).embed === "1";
   const { club: c, postsale } = await getSettings();
   const [prizes, ready] = await Promise.all([db.clubPrize.findMany({ where: { active: true }, orderBy: { points: "asc" }, take: 4 }), hasAppmax()]);
   const per100 = c.valuePer100;
@@ -22,7 +26,8 @@ export default async function Assinar() {
   const store = env.storeName();
 
   return (
-    <div className="sub">
+    <div className={`sub${embed ? " embed" : ""}`}>
+      {embed && <script dangerouslySetInnerHTML={{ __html: EMBED_JS }} />}
       <header className="sb-top">
         <a className="sb-logo" href={postsale.storeUrl}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
