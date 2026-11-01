@@ -1637,3 +1637,5 @@ a.itile:hover { border-color: #34403b; transform: translateY(-1px); }
 .tile.brand svg path[fill="#ffffff"] { fill: #ffffff; }
 .itile .tile { width: 44px; height: 44px; border-radius: 12px; }
 .itile .tile svg { width: 21px; height: 21px; }
+.itile .tile { display: grid !important; place-items: center; padding: 0; line-height: 0; flex-shrink: 0; }
+.itile .tile svg { display: block; margin: auto; }
