@@ -199,7 +199,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
   const sold = new Map<string, number>();
   for (const o of valid) for (const l of o.lines) sold.set(l.title, (sold.get(l.title) ?? 0) + l.quantity);
   const zeroed = prods.filter((p) => p.status === "ACTIVE" && p.totalInventory <= 0).sort((a, b) => (sold.get(b.title) ?? 0) - (sold.get(a.title) ?? 0));
-  const lowVar = prods.filter((p) => p.status === "ACTIVE").flatMap((p) => p.variants.filter((v) => v.stock > 0 && v.stock <= 2).map((v) => ({ p: p.title, v: v.title, n: v.stock })));
+  const lowVar = prods.filter((p) => p.status === "ACTIVE" && !p.bundle && p.published !== false).flatMap((p) => p.variants.filter((v) => v.stock > 0 && v.stock <= 2).map((v) => ({ p: p.title, v: v.title, n: v.stock })));
   const team = (partners?.rows ?? []).filter((r) => r.active);
   const teamRev = team.reduce((a, r) => a + r.revenue, 0);
   const teamCom = team.reduce((a, r) => a + r.commission, 0);

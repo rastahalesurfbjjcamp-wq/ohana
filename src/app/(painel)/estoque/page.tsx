@@ -39,7 +39,7 @@ export default async function Estoque({ searchParams }: { searchParams: Promise<
   const { f = "alertas", t = "top" } = await searchParams;
   const rows: Row[] = [];
   let error: unknown = null;
-  let costValue = 0, saleValue = 0, pieces = 0, missingCost = 0;
+  let costValue = 0, saleValue = 0, pieces = 0, missingCost = 0, bundles = 0, products_ = 0;
   const waitRows = await db.waitlist.findMany({ where: { notifiedAt: null } }).catch(() => []);
   const waitBy = (title: string, variant: string, size: string) =>
     waitRows.filter((w) => w.product === title && (w.variant === variant || w.variant.toUpperCase() === size.toUpperCase())).length;
@@ -53,6 +53,10 @@ export default async function Estoque({ searchParams }: { searchParams: Promise<
     }
     for (const p of list) {
       if (/gift ?card|vale.?presente|cart[aã]o.?presente/i.test(p.title)) continue;
+      // só o que está à venda na loja agora; kits (bundles) usam o estoque das peças, então não contam de novo
+      if (p.published === false) continue;
+      if (p.bundle) { bundles++; continue; }
+      products_++;
       const groups = new Map<string, Cell[]>();
       for (const v of p.variants) {
         const parts = v.title === "Default Title" ? ["Único"] : v.title.split(" / ");
@@ -115,8 +119,8 @@ export default async function Estoque({ searchParams }: { searchParams: Promise<
       </Header>
       {error ? <ErrorNote error={error} /> : null}
       <div className="grid g4">
-        <Kpi icon={<Coins size={15} />} label="Valor em estoque (custo)" value={brl(costValue, 0)} sub={missingCost ? <span style={{ color: "var(--sun)" }}>{missingCost.toLocaleString("pt-BR")} peças sem custo cadastrado ficaram de fora</span> : `${pieces.toLocaleString("pt-BR")} peças`} />
-        <Kpi icon={<Tag size={15} />} tone="k" label="Valor em estoque (venda)" value={brl(saleValue, 0)} sub={`${pieces.toLocaleString("pt-BR")} peças a preço de venda`} />
+        <Kpi icon={<Coins size={15} />} label="Valor em estoque (custo)" value={brl(costValue, 0)} sub={missingCost ? <span style={{ color: "var(--sun)" }}>{missingCost.toLocaleString("pt-BR")} peças sem custo cadastrado ficaram de fora</span> : `${pieces.toLocaleString("pt-BR")} peças de ${products_} produtos à venda`} />
+        <Kpi icon={<Tag size={15} />} tone="k" label="Valor em estoque (venda)" value={brl(saleValue, 0)} sub={`a preço de venda${bundles ? ` · ${bundles} kits não entram (usam as mesmas peças)` : ""}`} />
         <Kpi icon={<PackageX size={15} />} tone="c" label="Tamanhos zerados que vendem" value={<span className={zeroSelling.length ? "dn" : ""}>{zeroSelling.length}</span>} sub={zeroSelling.length ? `uns ${brl(lost, 0)} por semana sem vender` : "nenhum"} />
         <Kpi icon={<Hourglass size={15} />} tone="s" label="Acaba em menos de 7 dias" value={<span style={ending.length ? { color: "var(--sun)" } : undefined}>{ending.length}</span>} sub={waitingTotal ? `${waitingTotal} pessoas esperando reposição` : "no ritmo atual de venda"} />
       </div>
