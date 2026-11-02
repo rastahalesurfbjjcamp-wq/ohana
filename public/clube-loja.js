@@ -21,8 +21,10 @@
       if (!cart || !cart.item_count) return;
       var body = {};
       if ((cart.attributes || {})[K] !== code) body.attributes = { rh_ref: code };
-      // só coloca o cupom do atleta se o carrinho estiver sem nenhum cupom (não troca o que o cliente digitou)
-      if (!(cart.discount_codes || []).length) body.discount = code;
+      // garante o cupom do atleta; mantém cupom válido que o cliente colocou e tira cupom velho que não vale mais
+      var dc = cart.discount_codes || [], has = false, keep = [];
+      for (var i = 0; i < dc.length; i++) { var cc = String(dc[i].code).toUpperCase(); if (cc === code) has = true; else if (dc[i].applicable) keep.push(dc[i].code); }
+      if (!has || keep.length !== dc.length - 1) body.discount = [code].concat(keep).join(',');
       if (!body.attributes && !body.discount) return;
       return window.__rhFetch('/cart/update.js', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     }).catch(function () {}).then(function () { busy = false; });
