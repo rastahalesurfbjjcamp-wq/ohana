@@ -47,7 +47,16 @@ export default async function Atletas({ searchParams }: { searchParams: Promise<
   const tot = (k: "revenue" | "profit" | "commission" | "orders") => rows.reduce((a, r) => a + r[k], 0);
   const days = daysBetween(period.from, period.to);
   const bars = days.map((d) => ({ label: `${d.slice(8)}/${d.slice(5, 7)}`, value: stats?.daily.get(d) ?? 0 }));
-  const payRows = (payStats?.rows ?? []).filter((r) => r.commission > 0 || (r.active && (r.fixed > 0 || r.minimum > 0)));
+  // só recebe quem criou a conta no portal, e só pelo que vendeu depois do cadastro (o que ficou para trás não conta)
+  const pmEnd = pmTo < today ? pmTo : today;
+  const portalOf = new Map((await db.referral.findMany({ where: { portalAt: { not: null } }, select: { id: true, portalAt: true } })).map((x) => [x.id, isoDayLocal(x.portalAt!)]));
+  const lateIds = [...portalOf.entries()].filter(([, d]) => d > pmFrom && d <= pmEnd);
+  const lateRows = new Map<string, NonNullable<typeof payStats>["rows"][number]>();
+  for (const [id, d] of lateIds) { const st = await partnerStats(d, pmEnd).catch(() => null); const row = st?.rows.find((r) => r.id === id); if (row) lateRows.set(id, row); }
+  const payRows = (payStats?.rows ?? [])
+    .filter((r) => portalOf.has(r.id) && portalOf.get(r.id)! <= pmEnd)
+    .map((r) => lateRows.get(r.id) ?? r)
+    .filter((r) => r.commission > 0 || (r.active && (r.fixed > 0 || r.minimum > 0)));
   const toPay = payRows.filter((r) => !payouts.some((p) => p.referralId === r.id)).reduce((a, r) => a + monthPay(r).total, 0);
   // cupom parado: atleta ativo sem venda há muitos dias (em junho os cupons ficaram sem venda e ninguém viu)
   const STALE = 10;
@@ -286,7 +295,7 @@ export default async function Atletas({ searchParams }: { searchParams: Promise<
                 })}
               </tbody>
             </table></div>
-          ) : <div className="empty">Nenhuma comissão em {monthName}.</div>}
+          ) : <div className="empty">Nenhum pagamento em {monthName}. Só recebe quem já criou a conta no portal, pelo que vendeu depois do cadastro.</div>}
           {payRows.length > 0 && <div className="row" style={{ justifyContent: "flex-end", gap: 18, padding: "14px 22px", fontSize: 14 }}><span className="mut">Pago: <b style={{ color: "#fff" }}>{brl(paid)}</b></span><span className="mut">Falta: <b style={{ color: "var(--sun)" }}>{brl(payMonth === today.slice(0, 7) ? 0 : toPay)}</b></span></div>}
         </div>
       </section>
