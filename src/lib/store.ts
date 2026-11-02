@@ -218,6 +218,7 @@ export interface Product {
   variants: Variant[];
   bundle: boolean; // kit montado com outros produtos (estoque vem das peças, não é estoque próprio)
   published: boolean; // está na loja online
+  handle?: string; // endereço na loja: /products/<handle>
 }
 
 export async function products(): Promise<Product[]> {
@@ -231,6 +232,7 @@ export async function products(): Promise<Product[]> {
           nodes: {
             id: string;
             title: string;
+            handle?: string;
             status: string;
             totalInventory: number;
             publishedAt: string | null;
@@ -242,7 +244,7 @@ export async function products(): Promise<Product[]> {
       };
       const d: P = await gql<P>(
         `query($after:String){ products(first:100, after:$after, query:"status:active"){ pageInfo{hasNextPage endCursor}
-          nodes{ id title status totalInventory publishedAt hasVariantsThatRequiresComponents featuredMedia{preview{image{url}}}
+          nodes{ id title handle status totalInventory publishedAt hasVariantsThatRequiresComponents featuredMedia{preview{image{url}}}
             variants(first:60){ nodes{ id title sku price inventoryQuantity inventoryItem{ unitCost{amount} } } } } } }`,
         { after },
       );
@@ -255,6 +257,7 @@ export async function products(): Promise<Product[]> {
           totalInventory: p.totalInventory,
           bundle: !!p.hasVariantsThatRequiresComponents,
           published: !!p.publishedAt,
+          handle: p.handle,
           variants: p.variants.nodes.map((v) => ({
             id: v.id,
             title: v.title,

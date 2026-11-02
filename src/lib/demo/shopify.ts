@@ -46,7 +46,7 @@ function page<T>(all: T[], first: number, after: string | null | undefined) {
 }
 
 const productNode = (p: (typeof PRODUCTS)[number]) => ({
-  id: p.id, title: p.title, status: "ACTIVE", totalInventory: p.stock.reduce((a, b) => a + b, 0), featuredMedia: null,
+  id: p.id, title: p.title, status: "ACTIVE", publishedAt: "2026-01-01T00:00:00Z", totalInventory: p.stock.reduce((a, b) => a + b, 0), featuredMedia: null,
   variants: { nodes: p.sizes.map((s, k) => ({ id: `${p.id}/v${k}`, title: s, sku: `MA-${p.id.slice(-3)}-${s}`, price: p.price.toFixed(2), inventoryQuantity: p.stock[k], inventoryItem: { unitCost: { amount: p.cost.toFixed(2) } } })) },
 });
 

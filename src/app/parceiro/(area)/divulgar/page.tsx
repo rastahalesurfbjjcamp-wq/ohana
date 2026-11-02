@@ -2,6 +2,10 @@ import { MessageCircle } from "lucide-react";
 import { Header, Panel } from "@/components/ui";
 import { CopyButton } from "@/components/CopyButton";
 import { partnerArea } from "../data";
+import { products } from "@/lib/store";
+import { ProductLink, type PItem } from "./ProductLink";
+
+const slug = (t: string) => t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
 export const dynamic = "force-dynamic";
 
@@ -9,6 +13,11 @@ export default async function Divulgar() {
   const { p, link, shortLink, first } = await partnerArea();
   const bio = `@rastahale athlete 🏷️ ${p.code}${shortLink ? `\n${shortLink}` : ""}`;
   const handle = (p.instagram ?? p.name ?? p.code).replace(/^@/, "").replace(/^https?:\/\/(www\.)?instagram\.com\//, "").replace(/\/.*$/, "").toLowerCase().normalize("NFD").replace(/[^a-z0-9._ ]/g, "").trim().replace(/\s+/g, ".");
+  const items: PItem[] = (await products().catch(() => []))
+    .filter((x) => x.published !== false && (x.bundle || x.totalInventory > 0))
+    .map((x) => ({ handle: x.handle || slug(x.title), title: x.title, image: x.image, price: Math.min(...x.variants.map((v) => v.price).filter((v) => v > 0), Infinity) }))
+    .map((x) => ({ ...x, price: Number.isFinite(x.price) ? x.price : 0 }))
+    .sort((a, b) => a.title.localeCompare(b.title, "pt-BR"));
   const share = `Usa meu cupom ${p.code} na Rasta Hale${link ? `: ${link}` : ""}`;
   return (
     <>
@@ -41,6 +50,23 @@ export default async function Divulgar() {
           </ul>
         </Panel>
       </div>
+
+      <Panel title="Divulgar um produto" sub="Vai postar uma peça? Gere o link dela aqui">
+        <div className="pt-prod">
+          <div className="stack" style={{ gap: 12 }}>
+            <div className="pt-tip">Sempre que for mostrar uma peça, use o link gerado aqui. Ele leva a pessoa direto para o produto, já com o seu cupom, e guarda a sua indicação por 1 dia.</div>
+            <div className="pt-warn">Se você mandar o link comum da loja, copiado do navegador, a venda só conta para você se a pessoa digitar o seu cupom na hora de pagar.</div>
+            <small className="pt-lab" style={{ marginTop: 4 }}>Forma certa</small>
+            <ol className="pt-list" style={{ marginTop: 0 }}>
+              <li>Busque a peça que você vai mostrar</li>
+              <li>Copie o link que aparece</li>
+              <li>Coloque no story com a figurinha de link, ou mande no direct e no WhatsApp</li>
+              <li>Fale o seu cupom {p.code} no vídeo ou na legenda</li>
+            </ol>
+          </div>
+          <ProductLink code={p.code} items={items} />
+        </div>
+      </Panel>
 
       <Panel title="Coloque no seu perfil" sub="Mostre que você é atleta da Rasta Hale, com o seu cupom e o seu link">
         <div className="pt-bio">
