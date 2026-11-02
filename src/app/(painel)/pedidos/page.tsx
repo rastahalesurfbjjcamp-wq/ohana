@@ -44,9 +44,6 @@ const isCard = (o: Order) => /cart|card|crédito|credito/.test((o.gateway ?? "")
 const ATALHOS: Record<string, [string, (o: Order, today: string) => boolean]> = {
   pix_pendente: ["Pix pendente", (o) => !o.cancelled && o.financial === "PENDING" && (o.gateway ?? "").toLowerCase().includes("pix")],
   cartao_recusado: ["Cartão recusado", (o) => !o.cancelled && o.financial !== "PAID" && isCard(o)],
-  boleto_hoje: ["Boleto vence hoje", (o, t) => !o.cancelled && o.financial === "PENDING" && isBoleto(o) && dueOf(o) === t],
-  boleto_amanha: ["Boleto vence amanhã", (o, t) => !o.cancelled && o.financial === "PENDING" && isBoleto(o) && dueOf(o) === addDays(t, 1)],
-  boleto_vencido: ["Boleto vencido", (o, t) => !o.cancelled && o.financial === "PENDING" && isBoleto(o) && dueOf(o) < t],
   sem_rastreio: ["Pago sem rastreio há +2 dias", (o) => !o.cancelled && o.financial === "PAID" && !o.tracking && Date.now() - new Date(o.createdAt).getTime() > 2 * 864e5],
 };
 
@@ -155,7 +152,7 @@ export default async function Pedidos({ searchParams }: { searchParams: Promise<
               <div className="ps-g">Pagamento</div>
               {Object.entries(FILTERS).map(([k, [l, fn]]) => <Link key={k} href={href("f", k === "todos" ? undefined : k)} className={`ps-i${f === k ? " on" : ""}`}>{l}<small>{side.filter(fn).length}</small></Link>)}
               <div className="ps-g">Método</div>
-              <Side k="met" v="cartao" label="Cartão" /><Side k="met" v="pix" label="Pix" /><Side k="met" v="boleto" label="Boleto" />
+              <Side k="met" v="cartao" label="Cartão" /><Side k="met" v="pix" label="Pix" />
               <div className="ps-g">Atalhos</div>
               {Object.entries(ATALHOS).map(([k, [l, fn]]) => <Side key={k} k="at" v={k} label={l} n={searched.filter((o) => fn(o, today)).length} />)}
               <div className="ps-g">Status</div>

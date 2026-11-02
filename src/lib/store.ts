@@ -130,7 +130,8 @@ function mapOrder(o: RawOrder): Order {
     utm: utm && Object.keys(utm).length ? utm : null,
     tracking: tr,
     cancelled: !!o.cancelledAt,
-    gateway: o.paymentGatewayNames?.[0] ?? null,
+    // a loja não aceita boleto: o "Appmax Boleto" da Shopify é o Pix pela Appmax (último meio usado é o que pagou)
+    gateway: (o.paymentGatewayNames?.[o.paymentGatewayNames.length - 1] ?? null)?.replace(/boleto/i, "Pix") ?? null,
     codes: (o.discountCodes ?? []).map((c) => c.toUpperCase()),
     customerId: o.customer?.id ?? null,
     cpf: (o.localizedFields?.nodes.find((f) => f.key === "TAX_CREDENTIAL_BR")?.value ?? "").replace(/\D/g, "") || null,
