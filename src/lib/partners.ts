@@ -66,7 +66,7 @@ export async function partnerStats(fromIso: string, toIso: string) {
     } else {
       const orders = (await ordersBetween(dayRange(oFrom).start, dayRange(toIso).end)).filter((o) => !o.cancelled && ["PAID", "PARTIALLY_PAID", "PARTIALLY_REFUNDED"].includes(o.financial));
       for (const o of orders) {
-        const code = o.codes.find((c) => byCode.has(c));
+        const code = o.codes.find((c) => byCode.has(c)) ?? (o.ref && byCode.has(o.ref) ? o.ref : undefined);
         if (!code) continue;
         const p = byCode.get(code)!;
         const r = rows.get(p.id)!;
@@ -208,6 +208,9 @@ export async function syncPartnerDiscounts() {
 export function partnerLink(storeUrl: string, code: string, path = "/") {
   return `${storeUrl.replace(/\/$/, "")}/discount/${encodeURIComponent(code)}?redirect=${encodeURIComponent(path)}`;
 }
+
+// Link rastreável do atleta: passa pelo Hub (conta o clique), aplica o cupom e marca a referência na loja
+export const refLink = (code: string) => `https://rastahale.tech/r/${encodeURIComponent(code)}`;
 
 // Cupons ativos na Shopify que ainda não estão ligados a nenhum atleta (qualquer tipo)
 export async function unlinkedCodes(): Promise<{ code: string; title: string; uses: number; percent: number | null; disc: Disc }[]> {

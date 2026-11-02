@@ -59,6 +59,7 @@ export interface Order {
   images: string[];
   shipStatus: string | null;
   codes: string[];
+  ref?: string | null; // atleta do link de referência (cookie ou visita pelo link), mesmo sem o cupom
   customerId: string | null;
   cpf: string | null;
   statusUrl: string | null;
@@ -79,8 +80,9 @@ type RawOrder = {
   shippingAddress: { provinceCode: string | null; city: string | null; phone: string | null; address1?: string | null; address2?: string | null; zip?: string | null } | null;
   customerJourneySummary: {
     firstVisit: { source: string | null; utmParameters: Record<string, string | null> | null } | null;
-    lastVisit: { source: string | null; utmParameters: Record<string, string | null> | null } | null;
+    lastVisit: { source: string | null; occurredAt?: string | null; landingPage?: string | null; utmParameters: Record<string, string | null> | null } | null;
   } | null;
+  customAttributes?: { key: string; value: string | null }[] | null;
   fulfillments: { displayStatus: string | null; trackingInfo: { number: string; company: string | null; url: string | null }[] }[];
   paymentGatewayNames: string[] | null;
   discountCodes: string[] | null;
@@ -104,10 +106,25 @@ const ORDER_FIELDS = `id name createdAt cancelledAt displayFinancialStatus displ
   currentSubtotalPriceSet{shopMoney{amount}} currentTotalPriceSet{shopMoney{amount}}
   customer{id displayName} shippingAddress{provinceCode city phone address1 address2 zip}
   localizedFields(first:3){ nodes{ key value } }
-  customerJourneySummary{ firstVisit{ source utmParameters{source medium campaign content term} } lastVisit{ source utmParameters{source medium campaign content term} } }
+  customerJourneySummary{ firstVisit{ source utmParameters{source medium campaign content term} } lastVisit{ source occurredAt landingPage utmParameters{source medium campaign content term} } }
+  customAttributes{ key value }
   fulfillments(first:3){ displayStatus trackingInfo{number company url} }
   paymentGatewayNames email phone discountCodes statusPageUrl
   lineItems(first:50){ nodes{ title variantTitle quantity sku discountedTotalSet{shopMoney{amount}} variant{ inventoryItem{ unitCost{amount} } } image{ url(transform:{maxWidth:96, maxHeight:96}) } } }`;
+
+// Link de referência do atleta: a loja grava rh_ref no carrinho (cookie de REF_DAYS dias).
+// Reserva: a última visita pela Shopify veio do link do atleta (?ref=CODIGO) dentro do mesmo prazo.
+export const REF_DAYS = 1;
+function refOf(o: RawOrder): string | null {
+  const attr = o.customAttributes?.find((a) => a.key === "rh_ref")?.value;
+  if (attr) return attr.trim().toUpperCase() || null;
+  const lv = o.customerJourneySummary?.lastVisit;
+  if (!lv?.occurredAt) return null;
+  const fromLink = (lv.landingPage ?? "").match(/[?&]ref=([A-Za-z0-9_-]+)/)?.[1] ?? (lv.utmParameters?.source === "atleta" ? lv.utmParameters?.campaign : null);
+  if (!fromLink) return null;
+  const gap = Date.parse(o.createdAt) - Date.parse(lv.occurredAt);
+  return gap >= 0 && gap <= REF_DAYS * 864e5 ? String(fromLink).toUpperCase() : null;
+}
 
 function mapOrder(o: RawOrder): Order {
   const visit = o.customerJourneySummary?.lastVisit?.utmParameters ? o.customerJourneySummary.lastVisit : o.customerJourneySummary?.firstVisit;
@@ -133,6 +150,7 @@ function mapOrder(o: RawOrder): Order {
     // a loja não aceita boleto: o "Appmax Boleto" da Shopify é o Pix pela Appmax (último meio usado é o que pagou)
     gateway: (o.paymentGatewayNames?.[o.paymentGatewayNames.length - 1] ?? null)?.replace(/boleto/i, "Pix") ?? null,
     codes: (o.discountCodes ?? []).map((c) => c.toUpperCase()),
+    ref: refOf(o),
     customerId: o.customer?.id ?? null,
     cpf: (o.localizedFields?.nodes.find((f) => f.key === "TAX_CREDENTIAL_BR")?.value ?? "").replace(/\D/g, "") || null,
     statusUrl: o.statusPageUrl ?? null,

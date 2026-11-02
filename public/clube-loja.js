@@ -5,6 +5,38 @@
   st.textContent = '.rh-club{position:relative;display:inline-flex;align-items:center} .rh-club .rh-ic{display:inline-flex!important;align-items:center;justify-content:center;width:40px;height:40px;color:inherit;position:relative} .rh-club .rh-ic svg{width:21px;height:21px} .rh-club .rh-ic i{position:absolute;top:8px;right:7px;width:6px;height:6px;border-radius:50%;background:#f2c200;box-shadow:0 0 0 2px #fff} .rh-club .rh-tip{position:absolute!important;top:calc(100% + 2px);right:-6px;left:auto;transform:translateY(-4px);opacity:0;pointer-events:none;display:block!important;width:auto!important;height:auto!important;background:#111!important;color:#fff!important;font:600 11px/1 -apple-system,system-ui,sans-serif!important;letter-spacing:0!important;text-transform:none!important;white-space:nowrap;padding:7px 9px!important;border-radius:7px;transition:opacity .3s,transform .3s;z-index:50;text-decoration:none!important;box-shadow:0 4px 14px rgba(0,0,0,.18)} .rh-club .rh-tip:before{content:"";position:absolute;top:-4px;right:22px;border:4px solid transparent;border-top:0;border-bottom-color:#111} .rh-club .rh-tip b{color:#f2c200} .rh-club .rh-tip.on{opacity:1;transform:none;pointer-events:auto} @media (max-width:749px){ header .header__columns.rh-has-club{grid-template-columns:44px 44px 1fr 132px!important} header .header__columns.rh-has-club header-actions{grid-column:4!important;justify-self:end} }';
   (document.head || document.documentElement).appendChild(st);
 })();
+// Link de referência do atleta: ?ref=CODIGO vira cookie de 1 dia; o carrinho recebe o cupom e a marca rh_ref, que vai para o pedido.
+(function () {
+  var DAYS = 1, K = 'rh_ref';
+  function read() { var m = document.cookie.match(/(?:^|; )rh_ref=([^;]+)/); return m ? decodeURIComponent(m[1]) : ''; }
+  var q = null;
+  try { q = new URLSearchParams(location.search).get('ref'); } catch (e) {}
+  if (q && /^[A-Za-z0-9_-]{2,40}$/.test(q)) document.cookie = K + '=' + encodeURIComponent(q.toUpperCase()) + '; max-age=' + DAYS * 86400 + '; path=/; SameSite=Lax';
+  var code = read();
+  if (!code || !window.fetch) return;
+  var busy = false;
+  function sync() {
+    if (busy) return; busy = true;
+    window.__rhFetch('/cart.js', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (cart) {
+      if (!cart || !cart.item_count) return;
+      var body = {};
+      if ((cart.attributes || {})[K] !== code) body.attributes = { rh_ref: code };
+      // só coloca o cupom do atleta se o carrinho estiver sem nenhum cupom (não troca o que o cliente digitou)
+      if (!(cart.discount_codes || []).length) body.discount = code;
+      if (!body.attributes && !body.discount) return;
+      return window.__rhFetch('/cart/update.js', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    }).catch(function () {}).then(function () { busy = false; });
+  }
+  // depois de adicionar ou mudar item no carrinho, confere de novo
+  window.__rhFetch = window.__rhFetch || window.fetch.bind(window);
+  window.fetch = function (u) {
+    var p = window.__rhFetch.apply(window, arguments);
+    var url = typeof u === 'string' ? u : (u && u.url) || '';
+    if (/\/cart\/(add|change)/.test(url)) p.then(function () { setTimeout(sync, 300); }).catch(function () {});
+    return p;
+  };
+  sync();
+})();
 (function () {
     var p = location.pathname;
     // página do clube: a assinatura do Hub fica embutida e a altura acompanha o conteúdo

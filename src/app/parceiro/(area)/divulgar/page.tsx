@@ -28,7 +28,7 @@ export default async function Divulgar() {
                 <a className="btn" href={`https://wa.me/?text=${encodeURIComponent(share)}`} target="_blank" rel="noopener"><MessageCircle size={15} /> Mandar no WhatsApp</a>
                 <CopyButton text={share} label="Copiar mensagem" className="btn" />
               </div>
-              <p className="dim" style={{ fontSize: 12.5, marginTop: 12 }}>O link já abre a loja com o seu cupom aplicado.</p>
+              <p className="dim" style={{ fontSize: 12.5, marginTop: 12 }}>O link abre a loja com o seu cupom e guarda a sua indicação por 1 dia. Se a pessoa voltar e comprar nesse prazo, a venda é sua, mesmo que o cupom não apareça no pedido.</p>
             </>
           )}
         </Panel>

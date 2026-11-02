@@ -5,7 +5,7 @@ import { DateRange } from "@/components/DateRange";
 import { CopyButton } from "@/components/CopyButton";
 import { NumberInput } from "@/components/NumberInput";
 import { Bars } from "@/components/charts";
-import { describeDisc, discOf, ensureTeam, monthPay, partnerLink, partnerMessage, partnerStats, ruleDisc, sameDisc, syncPartnerDiscounts, unlinkedCodes, waLink } from "@/lib/partners";
+import { describeDisc, discOf, ensureTeam, monthPay, partnerMessage, refLink, partnerStats, ruleDisc, sameDisc, syncPartnerDiscounts, unlinkedCodes, waLink } from "@/lib/partners";
 import { DiscPicker } from "@/components/DiscPicker";
 import { daysBetween, resolvePeriod } from "@/lib/periods";
 import { getSettings } from "@/lib/settings";
@@ -215,9 +215,9 @@ export default async function Atletas({ searchParams }: { searchParams: Promise<
                         <td className="r" style={{ color: "var(--sun)", fontWeight: 650 }}>{brl(r.commission)}</td>
                         <td>
                           <div className="row" style={{ gap: 6, flexWrap: "nowrap" }}>
-                            <CopyButton text={partnerLink(store, r.code)} className="btn sm" label="Copiar link" />
-                            <CopyButton text={partnerMessage(r, partnerLink(store, r.code), s.referral.commission)} className="btn sm ghost" label="Copiar explicação" />
-                            <a className="btn sm ghost" href={waLink(r.phone, partnerMessage(r, partnerLink(store, r.code), s.referral.commission))} target="_blank" rel="noreferrer" title="Abrir no WhatsApp com a mensagem pronta (você confere e envia)"><MessageCircle size={14} /></a>
+                            <CopyButton text={refLink(r.code)} className="btn sm" label="Copiar link" />
+                            <CopyButton text={partnerMessage(r, refLink(r.code), s.referral.commission)} className="btn sm ghost" label="Copiar explicação" />
+                            <a className="btn sm ghost" href={waLink(r.phone, partnerMessage(r, refLink(r.code), s.referral.commission))} target="_blank" rel="noreferrer" title="Abrir no WhatsApp com a mensagem pronta (você confere e envia)"><MessageCircle size={14} /></a>
                           </div>
                         </td>
                       </tr>
@@ -236,7 +236,7 @@ export default async function Atletas({ searchParams }: { searchParams: Promise<
           </Panel>
           {rows[0] && (
             <Panel title="Mensagem para o atleta" sub="Explica como funciona. Copie ou abra no WhatsApp pela tabela">
-              <div className="code" style={{ fontSize: 12.5, whiteSpace: "pre-wrap", lineHeight: 1.55 }}>{partnerMessage(rows[0], partnerLink(store, rows[0].code), s.referral.commission)}</div>
+              <div className="code" style={{ fontSize: 12.5, whiteSpace: "pre-wrap", lineHeight: 1.55 }}>{partnerMessage(rows[0], refLink(rows[0].code), s.referral.commission)}</div>
             </Panel>
           )}
           <Panel title="Regras do programa">
@@ -248,8 +248,8 @@ export default async function Atletas({ searchParams }: { searchParams: Promise<
             </form>
             <p className="dim" style={{ fontSize: 12, marginTop: 10, lineHeight: 1.5 }}>A comissão é sobre o valor líquido do pedido: já com o desconto do cupom, sem frete. Pedido cancelado ou estornado não conta.</p>
             <div className="ib-sec">Link de referência</div>
-            <div className="code" style={{ fontSize: 12, wordBreak: "break-all" }}>{partnerLink(store, "CUPOM")}</div>
-            <p className="dim" style={{ fontSize: 12, marginTop: 6 }}>Abre a loja já com o cupom aplicado. Para mandar direto para um produto, troque a barra final pelo endereço do produto.</p>
+            <div className="code" style={{ fontSize: 12, wordBreak: "break-all" }}>{refLink("CUPOM")}</div>
+            <p className="dim" style={{ fontSize: 12, marginTop: 6 }}>Abre a loja com o cupom aplicado e guarda a indicação por 1 dia num cookie. A venda conta para o atleta mesmo se o cupom cair no caminho. Para mandar direto para um produto, adicione ?p=/products/nome-do-produto no final.</p>
           </Panel>
         </div>
       </div>

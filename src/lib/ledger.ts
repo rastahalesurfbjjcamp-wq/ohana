@@ -81,7 +81,7 @@ export async function syncLedger(opts: { force?: boolean } = {}) {
   for (const e of recent) if (e.orderId) sumByOrder.set(e.orderId, (sumByOrder.get(e.orderId) ?? 0) + e.amountCents);
   let added = 0;
   for (const o of orders) {
-    const code = o.codes.map((c) => c.toUpperCase()).find((c) => byCode.has(c));
+    const code = o.codes.map((c) => c.toUpperCase()).find((c) => byCode.has(c)) ?? (o.ref && byCode.has(o.ref) ? o.ref : undefined);
     if (!code) continue;
     const p = byCode.get(code)!;
     const sale = existing.get(`venda:${o.id}`);
