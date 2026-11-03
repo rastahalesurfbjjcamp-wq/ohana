@@ -14,7 +14,7 @@ export async function middleware(req: NextRequest) {
   // embaixador.rastahale.tech: a página de cadastro fica na raiz do subdomínio
   const host = (req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "").toLowerCase();
   if (host.startsWith("embaixador.") && pathname === "/") { const url = req.nextUrl.clone(); url.pathname = "/embaixador"; return NextResponse.rewrite(url); }
-  if (host.startsWith("embaixador.") && pathname === "/entrar") { const url = req.nextUrl.clone(); url.pathname = "/parceiro/entrar"; return NextResponse.redirect(url); }
+  if (host.startsWith("embaixador.") && (pathname === "/login" || pathname === "/entrar")) { const url = req.nextUrl.clone(); url.pathname = "/parceiro/entrar"; return NextResponse.rewrite(url); }
   // entrada do painel: rastahale.tech/admin (o antigo /login leva para lá)
   if (pathname === "/admin") { const url = req.nextUrl.clone(); url.pathname = "/login"; return NextResponse.rewrite(url); }
   if (pathname === "/admin/senha") { const url = req.nextUrl.clone(); url.pathname = "/recuperar-senha"; return NextResponse.rewrite(url); }
