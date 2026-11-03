@@ -11,7 +11,7 @@ const shortMonth = (m: string) => new Date(`${m}-15T12:00:00Z`).toLocaleDateStri
 
 export default async function Inicio({ searchParams }: { searchParams: Promise<{ bemvindo?: string }> }) {
   const sp = await searchParams;
-  const { p, b, prog, pct, link, first } = await partnerArea();
+  const { p, b, prog, pct, link, first, amb } = await partnerArea();
   const now = new Date();
   const cur = monthOf(now);
   const curName = monthLabel(cur).split(" ")[0];
@@ -28,6 +28,7 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
   const monthTotal = Math.max(min, fixed + b.monthCents);
   const topUp = monthTotal - (fixed + b.monthCents);
   const deal = hasFixed ? `Seu acordo: ${fixed ? `fixo de ${brlc(fixed)} + ` : ""}${pct.toLocaleString("pt-BR")}% de comissão em cada venda${min ? `, com mínimo garantido de ${brlc(min)} por mês` : ""}.` : `Seu acordo: ${pct.toLocaleString("pt-BR")}% de comissão em cada venda.`;
+  const ambLede = amb ? `Nível ${amb.level.name}: ${pct.toLocaleString("pt-BR")}% de comissão em cada venda. Quem compra com o seu cupom ganha ${brlc(Math.round(amb.prog.clientOff * 100))} de desconto.` : "";
   const canWithdraw = b.requestedCents === 0 && b.availableCents >= prog.minWithdrawCents;
   const months: string[] = [];
   for (let i = 5; i >= 0; i--) months.push(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 15)).toISOString().slice(0, 7));
@@ -35,7 +36,7 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
 
   return (
     <>
-      <Header title={`Fala, ${first}`} lede={deal}>
+      <Header title={`Fala, ${first}`} lede={amb ? ambLede : deal}>
         <Link className="btn pri" href="/parceiro/saques"><Wallet size={15} /> Pedir saque</Link>
       </Header>
       {sp.bemvindo && <div className="ok">Conta criada. Aqui você acompanha sua comissão e pede seus saques.</div>}
@@ -45,11 +46,29 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
         <Kpi label="A liberar" value={brlc(b.pendingCents)} sub={`Entra no saldo em ${fmtDay(nextRelease)}`} icon={<Coins size={15} />} tone="l" />
         {hasFixed
           ? <Kpi label={`Fixo + comissão de ${curName}`} value={brlc(fixed + b.monthCents)} sub={`${fixed ? `Fixo ${brlc(fixed)} + ` : ""}comissão ${brlc(b.monthCents)}${min ? ` · mínimo garantido de ${brlc(min)}${topUp > 0 ? ", então recebe " + brlc(monthTotal) : ""}` : ""}`} icon={<TrendingUp size={15} />} tone="c" />
-          : <Kpi label={`Comissão em ${curName}`} value={brlc(b.monthCents)} sub={reached ? `Meta batida: +${brlc(reached.bonusCents)}` : next ? `Faltam ${brlc(next.minCents - b.monthCents)} para o bônus` : "Siga divulgando"} icon={<TrendingUp size={15} />} tone="c" />}
+          : <Kpi label={`Comissão em ${curName}`} value={brlc(b.monthCents)} sub={amb ? `Nível ${amb.level.name} · ${pct.toLocaleString("pt-BR")}% por venda` : reached ? `Meta batida: +${brlc(reached.bonusCents)}` : next ? `Faltam ${brlc(next.minCents - b.monthCents)} para o bônus` : "Siga divulgando"} icon={<TrendingUp size={15} />} tone="c" />}
         <Kpi label="Já recebido" value={brlc(b.paidCents)} sub={`Total ganho: ${brlc(b.lifetimeCents)}`} icon={<Gift size={15} />} tone="p" />
       </div>
 
       <div className="grid g2">
+        {amb ? (
+          <Panel title="Seu nível" sub="Quanto mais você indica, mais sobe e maior fica a comissão">
+            <div className="stack" style={{ gap: 12 }}>
+              <div className="row" style={{ gap: 12, alignItems: "center" }}>
+                <span className={`pt-lv lv-${amb.level.key}`}>{amb.level.name}</span>
+                <b style={{ fontSize: 22 }}>{amb.level.pct.toLocaleString("pt-BR")}%</b><span className="dim">de comissão</span>
+              </div>
+              {amb.level.perks && <div className="dim" style={{ fontSize: 13.5 }}>{amb.level.perks}</div>}
+              {amb.next && !amb.next.soon && amb.next.reachCents != null ? (
+                <>
+                  <div style={{ fontSize: 15, lineHeight: 1.5 }}>Acumule <b>{brlc(amb.next.reachCents)}</b> em comissão e suba para o <b>{amb.next.name}</b>, com <b className="pt-g">{amb.next.pct.toLocaleString("pt-BR")}%</b> em cada venda.</div>
+                  <div className="pt-bar"><i style={{ width: `${Math.min(100, (b.lifetimeCents / amb.next.reachCents) * 100)}%` }} /></div>
+                  <div className="dim" style={{ fontSize: 12.5 }}>{brlc(b.lifetimeCents)} de {brlc(amb.next.reachCents)}</div>
+                </>
+              ) : amb.next ? <div className="dim" style={{ fontSize: 13.5 }}>Próximo nível: {amb.next.name}. Os benefícios estão sendo preparados.</div> : null}
+            </div>
+          </Panel>
+        ) : (
         <Panel title="Meta do mês" sub={`Bônus entra no saldo em ${fmtDay(nextRelease)}`}>
           {goal ? (
             <div className="stack" style={{ gap: 10 }}>
@@ -67,6 +86,7 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
             </div>
           )}
         </Panel>
+        )}
         <Panel title="Seu cupom" sub="Quanto mais você divulgar, mais você ganha" right={<Link className="btn sm" href="/parceiro/divulgar"><Megaphone size={14} /> Divulgar</Link>}>
           <div className="pt-code">{p.code}</div>
           {link && <div className="pt-link"><code>{link}</code><CopyButton text={link} label="Copiar link" className="btn sm pri" /></div>}

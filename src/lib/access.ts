@@ -10,7 +10,7 @@ export const AREAS: { group: string; items: { href: string; label: string }[] }[
     { href: "/historico", label: "Histórico de vendas" }, { href: "/financeiro", label: "Financeiro" }, { href: "/produtos", label: "Produtos e lucro" }, { href: "/precificacao", label: "Precificação" },
     { href: "/estoque", label: "Estoque" }, { href: "/pedidos", label: "Pedidos" }, { href: "/custos", label: "Custos e impostos" }, { href: "/recuperacao", label: "Recuperação" },
     { href: "/modelos", label: "Modelos prontos" }, { href: "/entregas", label: "Entregas" }, { href: "/atendimento", label: "Atendimento" }, { href: "/assistente", label: "Assistente IA" },
-    { href: "/pos-venda", label: "Pós-venda" }, { href: "/atletas", label: "Atletas e influenciadores" }, { href: "/clube", label: "Clube de fidelidade" }, { href: "/indique", label: "Indique e ganhe" },
+    { href: "/pos-venda", label: "Pós-venda" }, { href: "/atletas", label: "Atletas e influenciadores" }, { href: "/embaixadores", label: "Embaixadores" }, { href: "/clube", label: "Clube de fidelidade" }, { href: "/indique", label: "Indique e ganhe" },
   ] },
   { group: "Clientes", items: [{ href: "/clientes", label: "CRM" }, { href: "/calendario", label: "Calendário de vendas" }] },
   { group: "Inteligência", items: [

@@ -370,6 +370,10 @@ model Referral {
   portalAt      DateTime? // quando criou a conta no portal; comissão só conta a partir daqui
   fixedMonthly  Float?    // fixo mensal (R$)
   minMonthly    Float?    // mínimo garantido no mês (R$): recebe o maior entre o mínimo e fixo + comissão
+  belt          String?   // embaixador: faixa no jiu-jitsu
+  teacher       Boolean?  // embaixador: é professor
+  level         String?   // embaixador: bronze | prata | ...
+  pendingAt     DateTime? // embaixador: se cadastrou e espera aprovação
 }
 
 // Lançamentos (drops)

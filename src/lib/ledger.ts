@@ -69,7 +69,7 @@ export async function syncLedger(opts: { force?: boolean } = {}) {
 
   const prog = await program();
   const s = await getSettings();
-  const partners = await db.referral.findMany({ where: { kind: { in: ["atleta", "influenciador"] } } });
+  const partners = await db.referral.findMany({ where: { OR: [{ kind: { in: ["atleta", "influenciador"] } }, { kind: "embaixador", pendingAt: null }] } });
   if (!partners.length) return { added: 0 };
   const byCode = new Map(partners.map((p) => [p.code.toUpperCase(), p]));
   const start = new Date(`${prog.startDate}T03:00:00Z`);
@@ -106,6 +106,8 @@ export async function syncLedger(opts: { force?: boolean } = {}) {
 
   // Bônus por meta: quando o mês fecha, quem bateu a faixa ganha o bônus da maior faixa atingida
   const portalOf = new Map(partners.map((p) => [p.id, p.portalAt]));
+  // embaixador tem regra própria (níveis): não entra em meta do mês nem premiação
+  const amb = new Set(partners.filter((p) => p.kind === "embaixador").map((p) => p.id));
   const tiers = [...prog.tiers].filter((t) => t.minCents > 0 && t.bonusCents > 0).sort((a, b) => b.minCents - a.minCents);
   if (tiers.length) {
     const startMonth = prog.startDate.slice(0, 7);
@@ -114,6 +116,7 @@ export async function syncLedger(opts: { force?: boolean } = {}) {
       const sums = new Map<string, number>();
       for (const e of rows) if (countable(e, portalOf.get(e.referralId))) sums.set(e.referralId, (sums.get(e.referralId) ?? 0) + e.amountCents);
       for (const [referralId, total] of sums) {
+        if (amb.has(referralId)) continue;
         const r = { referralId };
         const t = tiers.find((x) => total >= x.minCents);
         if (!t) continue;
@@ -147,6 +150,7 @@ export async function syncLedger(opts: { force?: boolean } = {}) {
     for (const e of rows) if (countable(e, portalOf.get(e.referralId))) sums.set(e.referralId, (sums.get(e.referralId) ?? 0) + e.amountCents);
     const month = monthOf(new Date());
     for (const [referralId, total] of sums) {
+      if (amb.has(referralId)) continue;
       const r = { referralId };
       for (const m of miles) {
         if (total < m.minCents) continue;
@@ -198,10 +202,17 @@ export async function balanceOf(referralId: string): Promise<Balance> {
 }
 
 // Pedido de saque: confere o saldo dentro de uma transação para nunca sacar mais do que tem
+// saque mínimo: embaixador segue a regra do programa de embaixadores
+export async function minWithdrawFor(referralId: string) {
+  const r = await db.referral.findUnique({ where: { id: referralId }, select: { kind: true } });
+  if (r?.kind === "embaixador") return (await import("./ambassador").then((m) => m.ambProgram())).minWithdrawCents;
+  return (await program()).minWithdrawCents;
+}
+
 export async function requestWithdrawal(referralId: string, amountCents: number, pixKey: string) {
-  const prog = await program();
+  const min = await minWithdrawFor(referralId);
   if (!Number.isInteger(amountCents) || amountCents <= 0) return { ok: false as const, error: "Valor inválido" };
-  if (amountCents < prog.minWithdrawCents) return { ok: false as const, error: `O saque mínimo é ${brlc(prog.minWithdrawCents)}` };
+  if (amountCents < min) return { ok: false as const, error: `O saque mínimo é ${brlc(min)}` };
   if (!pixKey.trim()) return { ok: false as const, error: "Informe a chave Pix" };
   return db.$transaction(async (tx) => {
     const open = await tx.partnerWithdrawal.count({ where: { referralId, status: "solicitado" } });

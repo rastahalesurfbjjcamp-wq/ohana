@@ -48,6 +48,8 @@ const CSS = `
 .pt-pitem:hover{background:var(--bg);border-color:var(--line)}
 .pt-pitem img,.pt-pimg{width:42px;height:42px;border-radius:8px;object-fit:cover;background:#1a1f1d;flex:none}
 .pt-pitem .t{flex:1;min-width:0;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pt-pitem .v{font-size:12.5px;color:var(--ink3)}
+.pt-lv{display:inline-flex;align-items:center;gap:7px;font-weight:600;font-size:13px;padding:5px 11px;border-radius:99px;border:1px solid var(--c);color:var(--c)}
+.lv-bronze{--c:#c47a3d}.lv-prata{--c:#c9d1d6}.lv-ouro{--c:#f2c200}.lv-diamante{--c:#7dd3fc}.lv-esmeralda{--c:#34d399}
 .pt-prod{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:28px;align-items:start}.pt-prod>*{min-width:0}
 .pt-gen{border:1px solid var(--line);border-radius:14px;padding:14px;background:var(--bg)}
 .pt-gimg{width:56px;height:56px;border-radius:10px;object-fit:cover;flex:none}

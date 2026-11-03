@@ -7,7 +7,7 @@ import {
   ArrowLeftRight, Bot, Box, CalendarClock, CalendarHeart, ChartNoAxesCombined, ChevronDown, ChevronRight, Contact,
   Gift, HeartHandshake, LayoutDashboard, LogOut, MessageCircle, MessagesSquare, Package, Percent, ReceiptText,
   RefreshCcw, Rocket, Route, UserCog, Send, Settings, ShoppingBag, Sparkles, SquareCheckBig, Truck, UserPlus, Users, Vote,
-  Wallet, Warehouse, Workflow, Coins, Plug, LayoutTemplate, Medal, Crown, Calculator, Menu, X, RefreshCw, type LucideIcon,
+  Wallet, Warehouse, Workflow, Coins, Plug, LayoutTemplate, Medal, Award, Crown, Calculator, Menu, X, RefreshCw, type LucideIcon,
   History, Library, Megaphone,
 } from "lucide-react";
 
@@ -56,6 +56,7 @@ export function Sidebar({ name, store, connected, leaves, logout, role = "ADMIN"
         { href: "/assistente", icon: Bot, label: "Assistente IA" },
         { href: "/pos-venda", icon: HeartHandshake, label: "Pós-venda" },
         { href: "/atletas", icon: Medal, label: "Atletas e influenciadores" },
+        { href: "/embaixadores", icon: Award, label: "Embaixadores" },
         { href: "/clube", icon: Crown, label: "Clube de fidelidade" },
         { href: "/indique", icon: Gift, label: "Indique e ganhe" },
       ],

@@ -1650,3 +1650,6 @@ a.itile:hover { border-color: #34403b; transform: translateY(-1px); }
 .eq-areas legend { font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink2); padding: 0 6px; }
 .eq-areas label { font-size: 13px; display: flex; gap: 8px; align-items: center; cursor: pointer; }
 .pt-tb td, .pt-tb th { white-space: nowrap; }
+
+/* níveis de embaixador */
+.chip.lvl-bronze{background:rgba(196,122,61,.14);color:#e0a06a}.chip.lvl-prata{background:rgba(201,209,214,.12);color:#d9e0e4}.chip.lvl-ouro{background:rgba(242,194,0,.12);color:#f2c200}.chip.lvl-diamante{background:rgba(125,211,252,.12);color:#7dd3fc}.chip.lvl-esmeralda{background:rgba(52,211,153,.12);color:#34d399}
