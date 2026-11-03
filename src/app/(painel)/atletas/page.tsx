@@ -244,6 +244,7 @@ export default async function Atletas({ searchParams }: { searchParams: Promise<
               <div className="cfg-row" style={{ flexWrap: "wrap" }}><span>Desconto padrão para o cliente</span><DiscPicker type={rule.type} value={rule.value} min={rule.min} compact /></div>
               <div className="cfg-row"><span>Comissão do atleta</span><NumberInput size="sm" name="commission" defaultValue={s.referral.commission} suffix="%" max={50} /></div>
               <div className="cfg-row"><span>Pagamento</span><b style={{ paddingRight: 8 }}>todo dia 1</b></div>
+              <label className="row dim" style={{ gap: 6, fontSize: 12.5 }}><input type="checkbox" name="todos" defaultChecked /> Aplicar também no cupom de todos os atletas</label>
               <div><button className="btn sm" type="submit">Salvar regras</button></div>
             </form>
             <p className="dim" style={{ fontSize: 12, marginTop: 10, lineHeight: 1.5 }}>A comissão é sobre o valor líquido do pedido: já com o desconto do cupom, sem frete. Pedido cancelado ou estornado não conta.</p>

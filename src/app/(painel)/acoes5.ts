@@ -86,8 +86,26 @@ export async function savePartnerRules(f: FormData) {
   const n = (k: string, d: number) => { const v = Number(str(f, k).replace(",", ".")); return Number.isFinite(v) && v >= 0 ? v : d; };
   const t = str(f, "dtype") || "percent";
   await saveSetting("referral", { commission: Math.min(50, n("commission", 8)), discountType: t, ...(t === "percent" ? { percent: Math.min(90, Math.max(1, n("dvalue", 10))) } : {}), ...(t === "fixed" ? { fixedAmount: Math.max(1, n("dvalue", 10)) } : {}), minSubtotal: n("dmin", 0) });
+  // aplica o desconto novo no cupom de todos os atletas e influenciadores
+  let falhou = 0;
+  if (f.get("todos") === "on") {
+    const want = await ruleDisc();
+    const list = await db.referral.findMany({ where: { kind: { in: ["atleta", "influenciador"] } } });
+    for (const r of list) {
+      try {
+        const found = await findShopifyCode(r.code);
+        if (!found) continue;
+        const id = sameDisc(found.disc, want) ? found.id : await setPartnerDisc(found.id, r.code, found.disc, want);
+        await db.referral.update({ where: { id: r.id }, data: { discountId: id, ...discFields(want) } });
+        await new Promise((ok) => setTimeout(ok, 400)); // sem estourar o limite da Shopify
+      } catch (e) {
+        falhou++;
+        console.error("[atletas] desconto", r.code, String(e).slice(0, 200));
+      }
+    }
+  }
   revalidatePath("/atletas");
-  redirect("/atletas?ok=regras");
+  redirect(falhou ? `/atletas?erro=${encodeURIComponent(`${falhou} cupom(ns) não mudaram, tente salvar de novo`)}` : "/atletas?ok=regras");
 }
 
 // Marca a comissão do mês como paga
