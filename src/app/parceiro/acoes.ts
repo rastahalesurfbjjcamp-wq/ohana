@@ -15,6 +15,11 @@ export async function entrarParceiro(f: FormData) {
   const t = tries.get(email);
   if (t && t.n >= 8 && Date.now() - t.at < 15 * 60_000) redirect("/parceiro/entrar?e=muitas");
   const p = email ? await db.referral.findFirst({ where: { email: { equals: email, mode: "insensitive" }, active: true, passwordHash: { not: null } } }) : null;
+  if (!p && email) {
+    // embaixador que ainda não foi aprovado: avisa que está em análise (só depois de conferir a senha)
+    const wait = await db.referral.findFirst({ where: { email: { equals: email, mode: "insensitive" }, kind: "embaixador", pendingAt: { not: null }, passwordHash: { not: null } } });
+    if (wait && (await bcrypt.compare(pass, wait.passwordHash!))) redirect("/parceiro/entrar?e=analise");
+  }
   if (!p || !(await bcrypt.compare(pass, p.passwordHash!))) {
     tries.set(email, { n: (t && Date.now() - t.at < 15 * 60_000 ? t.n : 0) + 1, at: Date.now() });
     redirect("/parceiro/entrar?e=1");

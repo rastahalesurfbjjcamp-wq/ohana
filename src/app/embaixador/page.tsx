@@ -75,31 +75,31 @@ export default async function Embaixador({ searchParams }: { searchParams: Promi
 
       <section className="em-sec" id="cadastro">
         {ok ? (
-          <div className="pnl card em-done">
+          <div className="em-done">
             <h2>Cadastro recebido</h2>
             <p>A equipe vai analisar e você recebe o aviso no WhatsApp assim que for aprovado. Depois disso é só entrar com o seu e-mail e senha.</p>
             <a className="btn" href="/parceiro/entrar">Ir para o login</a>
           </div>
         ) : (
-          <form action={cadastrarEmbaixador} className="pnl card em-form">
-            <h2>Cadastro de embaixador</h2>
+          <form action={cadastrarEmbaixador} className="em-form">
+            <div className="em-fh"><h2>Cadastro</h2><span>Leva 1 minuto. Seu cadastro passa pela aprovação da equipe.</span></div>
             {e && <div className="err">{ERR[e] ?? "Não deu certo, tente de novo."}</div>}
             <IgField />
             <div className="em-grid">
               <div className="field"><label htmlFor="name">Nome completo</label><input className="in" id="name" name="name" autoComplete="name" required /></div>
-              <div className="field"><label htmlFor="phone">WhatsApp com DDD</label><input className="in" id="phone" name="phone" inputMode="tel" placeholder="(21) 99999-9999" required /></div>
+              <div className="field"><label htmlFor="phone">WhatsApp</label><input className="in" id="phone" name="phone" inputMode="tel" placeholder="(21) 99999-9999" required /></div>
             </div>
             <div className="field"><label htmlFor="email">E-mail</label><input className="in" id="email" name="email" type="email" autoComplete="email" required /></div>
             <div className="em-grid">
               <div className="field">
-                <label htmlFor="belt">Sua faixa no jiu-jitsu</label>
+                <label htmlFor="belt">Faixa no jiu-jitsu</label>
                 <select className="in" id="belt" name="belt" required defaultValue="">
                   <option value="" disabled>Escolha</option>
                   {BELTS.map((b) => <option key={b} value={b}>{b}</option>)}
                 </select>
               </div>
               <div className="field">
-                <label>Você é professor?</label>
+                <label>Dá aula?</label>
                 <div className="em-yn">
                   <label><input type="radio" name="teacher" value="sim" required /> Sim</label>
                   <label><input type="radio" name="teacher" value="nao" /> Não</label>
@@ -107,11 +107,10 @@ export default async function Embaixador({ searchParams }: { searchParams: Promi
               </div>
             </div>
             <div className="em-grid">
-              <div className="field"><label htmlFor="password">Crie uma senha</label><input className="in" id="password" name="password" type="password" autoComplete="new-password" minLength={8} required /></div>
-              <div className="field"><label htmlFor="again">Repita a senha</label><input className="in" id="again" name="again" type="password" autoComplete="new-password" minLength={8} required /></div>
+              <div className="field"><label htmlFor="password">Senha</label><input className="in" id="password" name="password" type="password" autoComplete="new-password" minLength={8} required /></div>
+              <div className="field"><label htmlFor="again">Confirme a senha</label><input className="in" id="again" name="again" type="password" autoComplete="new-password" minLength={8} required /></div>
             </div>
-            <button className="btn pri" type="submit" style={{ justifyContent: "center", height: 44 }}>Enviar cadastro</button>
-            <p className="dim" style={{ fontSize: 12.5, textAlign: "center" }}>Seu cadastro passa pela aprovação da equipe.</p>
+            <button className="btn pri em-send" type="submit">Enviar cadastro</button>
           </form>
         )}
       </section>

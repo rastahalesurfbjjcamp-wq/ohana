@@ -11,13 +11,13 @@ export function IgField() {
   const valid = /^[a-z0-9._]{2,30}$/.test(ig) && !ig.startsWith(".") && !ig.endsWith(".") && !ig.includes("..");
   return (
     <div className="field">
-      <label htmlFor="ig">@ do Instagram</label>
+      <label htmlFor="ig">Instagram</label>
       <div className="pre em-pre">@<input className="in" id="ig" name="instagram" value={v} onChange={(e) => setV(e.target.value)} placeholder="seuarroba" autoCapitalize="none" autoCorrect="off" spellCheck={false} required /></div>
       {ig && !valid && <span className="hint" style={{ color: "var(--coral)" }}>Use só letras, números, ponto e sublinhado, sem espaço.</span>}
       {valid && (
         <div className="em-igok">
-          <a href={`https://instagram.com/${ig}`} target="_blank" rel="noopener"><ExternalLink size={13} /> Abrir instagram.com/{ig}</a>
-          <label><input type="checkbox" name="igok" required /> Conferi, esse é o meu perfil</label>
+          <a href={`https://instagram.com/${ig}`} target="_blank" rel="noopener">Ver perfil <ExternalLink size={12} /></a>
+          <label className="em-chk"><input type="checkbox" name="igok" required /> É o meu perfil</label>
         </div>
       )}
     </div>

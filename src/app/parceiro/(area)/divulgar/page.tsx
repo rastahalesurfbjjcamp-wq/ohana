@@ -11,7 +11,8 @@ export const dynamic = "force-dynamic";
 
 export default async function Divulgar() {
   const { p, link, shortLink, first } = await partnerArea();
-  const bio = `@rastahale athlete 🏷️ ${p.code}${shortLink ? `\n${shortLink}` : ""}`;
+  const tag = p.kind === "embaixador" ? "Embaixador" : "athlete";
+  const bio = `${p.kind === "embaixador" ? `Embaixador @rastahale` : `@rastahale athlete`} 🏷️ ${p.code}${shortLink ? `\n${shortLink}` : ""}`;
   const handle = (p.instagram ?? p.name ?? p.code).replace(/^@/, "").replace(/^https?:\/\/(www\.)?instagram\.com\//, "").replace(/\/.*$/, "").toLowerCase().normalize("NFD").replace(/[^a-z0-9._ ]/g, "").trim().replace(/\s+/g, ".");
   const items: PItem[] = (await products().catch(() => []))
     .filter((x) => x.published !== false && (x.bundle || x.totalInventory > 0))
@@ -68,7 +69,7 @@ export default async function Divulgar() {
         </div>
       </Panel>
 
-      <Panel title="Coloque no seu perfil" sub="Mostre que você é atleta da Rasta Hale, com o seu cupom e o seu link">
+      <Panel title="Coloque no seu perfil" sub="Mostre que você faz parte da Rasta Hale, com o seu cupom e o seu link">
         <div className="pt-bio">
           <div className="pt-ig">
             <span className="pt-ig-tag">Exemplo</span>
@@ -78,7 +79,7 @@ export default async function Divulgar() {
             </div>
             <div className="pt-ig-name">{p.name ?? p.code}</div>
             <div className="pt-ig-at">@{handle}</div>
-            <div className="pt-ig-bio"><span className="at">@rastahale</span> athlete 🏷️ <b>{p.code}</b></div>
+            <div className="pt-ig-bio">{p.kind === "embaixador" ? <>Embaixador <span className="at">@rastahale</span></> : <><span className="at">@rastahale</span> {tag}</>} 🏷️ <b>{p.code}</b></div>
             {shortLink && <div className="pt-ig-link">{shortLink}</div>}
           </div>
           <div className="stack" style={{ gap: 10 }}>
