@@ -18,6 +18,7 @@ const ERR: Record<string, string> = {
   existe: "Esse @ já tem cadastro. Entre com o seu e-mail e senha.",
   emailuso: "Esse e-mail já tem cadastro. Entre com ele.",
   foneuso: "Esse WhatsApp já tem cadastro. Fale com a gente.",
+  nasc: "Confira a data de aniversário.",
 };
 
 export default async function Embaixador({ searchParams }: { searchParams: Promise<{ e?: string; ok?: string }> }) {
@@ -89,10 +90,13 @@ export default async function Embaixador({ searchParams }: { searchParams: Promi
               <div className="field"><label htmlFor="name">Nome completo</label><input className="in" id="name" name="name" autoComplete="name" required /></div>
               <div className="field"><label htmlFor="phone">WhatsApp</label><input className="in" id="phone" name="phone" inputMode="tel" placeholder="(21) 99999-9999" required /></div>
             </div>
-            <div className="field"><label htmlFor="email">E-mail</label><input className="in" id="email" name="email" type="email" autoComplete="email" required /></div>
+            <div className="em-grid">
+              <div className="field"><label htmlFor="email">E-mail</label><input className="in" id="email" name="email" type="email" autoComplete="email" required /></div>
+              <div className="field"><label htmlFor="birth">Data de aniversário</label><input className="in" id="birth" name="birth" type="date" min="1930-01-01" max={new Date().toISOString().slice(0, 10)} required /></div>
+            </div>
             <div className="em-grid">
               <div className="field">
-                <label htmlFor="belt">Faixa no jiu-jitsu</label>
+                <label htmlFor="belt">Faixa</label>
                 <select className="in" id="belt" name="belt" required defaultValue="">
                   <option value="" disabled>Escolha</option>
                   {BELTS.map((b) => <option key={b} value={b}>{b}</option>)}

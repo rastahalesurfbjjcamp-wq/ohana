@@ -10,6 +10,8 @@ import { aprovarEmbaixador, mudarNivel, recusarEmbaixador, salvarNiveis } from "
 
 export const dynamic = "force-dynamic";
 
+const age = (d: Date | null) => { if (!d) return null; const n = new Date(); let a = n.getUTCFullYear() - d.getUTCFullYear(); if (n.getUTCMonth() < d.getUTCMonth() || (n.getUTCMonth() === d.getUTCMonth() && n.getUTCDate() < d.getUTCDate())) a--; return a; };
+const bday = (d: Date | null) => (d ? `${d.toISOString().slice(8, 10)}/${d.toISOString().slice(5, 7)}` : "");
 const fmt = (d: Date) => d.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 
 export default async function Embaixadores({ searchParams }: { searchParams: Promise<{ aprovado?: string; salvo?: string; erro?: string }> }) {
@@ -48,13 +50,14 @@ export default async function Embaixadores({ searchParams }: { searchParams: Pro
       <Panel title="Pedidos de cadastro" sub={pending.length ? "Confira o @ antes de aprovar. Ao aprovar, o cupom é criado na Shopify." : "Nenhum pedido esperando."} body={!pending.length}>
         {pending.length ? (
           <table className="tb" data-nosort>
-            <thead><tr><th>Pessoa</th><th>Instagram</th><th>Faixa</th><th>Começa em</th><th>Pedido</th><th /></tr></thead>
+            <thead><tr><th>Pessoa</th><th>Instagram</th><th>Faixa</th><th>Idade</th><th>Começa em</th><th>Pedido</th><th /></tr></thead>
             <tbody>
               {pending.map((r) => (
                 <tr key={r.id}>
                   <td><b>{r.name}</b><br /><small className="dim">{r.email} · {r.phone}</small></td>
                   <td><a className="pt-g" href={`https://instagram.com/${(r.instagram ?? "").replace(/^@/, "")}`} target="_blank" rel="noreferrer">{r.instagram}</a></td>
                   <td>{r.belt}{r.teacher ? " · professor" : ""}</td>
+                  <td>{r.birthDate ? <>{age(r.birthDate)} anos<br /><small className="dim">aniversário {bday(r.birthDate)}</small></> : "-"}</td>
                   <td><span className={`chip lvl-${r.level ?? "bronze"}`}>{lvName(r.level)}</span></td>
                   <td className="dim" style={{ fontSize: 12.5 }}>{fmt(r.pendingAt!)}</td>
                   <td>
@@ -73,13 +76,14 @@ export default async function Embaixadores({ searchParams }: { searchParams: Pro
       <Panel title="Embaixadores" sub={`${active.length} aprovados`} body={!active.length}>
         {active.length ? (
           <table className="tb">
-            <thead><tr><th>Pessoa</th><th>Cupom</th><th>Faixa</th><th>Pedidos</th><th>Comissão</th><th>Nível</th></tr></thead>
+            <thead><tr><th>Pessoa</th><th>Cupom</th><th>Faixa</th><th>Aniversário</th><th>Pedidos</th><th>Comissão</th><th>Nível</th></tr></thead>
             <tbody>
               {active.map((r) => (
                 <tr key={r.id}>
                   <td><b>{r.name}</b><br /><small className="dim">{r.instagram}</small></td>
                   <td><code>{r.code}</code></td>
                   <td>{r.belt}{r.teacher ? " · professor" : ""}</td>
+                  <td>{r.birthDate ? `${bday(r.birthDate)} · ${age(r.birthDate)} anos` : "-"}</td>
                   <td>{orders.get(r.id) ?? 0}</td>
                   <td>{brlc(earned.get(r.id) ?? 0)}</td>
                   <td>

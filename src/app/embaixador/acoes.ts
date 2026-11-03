@@ -17,9 +17,12 @@ export async function cadastrarEmbaixador(f: FormData) {
   const belt = String(f.get("belt") ?? "");
   const teacher = String(f.get("teacher") ?? "") === "sim";
   let phone = String(f.get("phone") ?? "").replace(/\D/g, "");
+  const bd = String(f.get("birth") ?? "");
+  const birth = /^\d{4}-\d{2}-\d{2}$/.test(bd) ? new Date(`${bd}T12:00:00Z`) : null;
   if (!ig || !name || !email || !pass || !belt || !f.get("teacher")) back("campos");
   if (!/^[a-z0-9._]{2,30}$/.test(ig) || ig.startsWith(".") || ig.endsWith(".") || ig.includes("..")) back("arroba");
   if (!(BELTS as readonly string[]).includes(belt)) back("campos");
+  if (!birth || birth.getUTCFullYear() < 1930 || birth > new Date()) back("nasc");
   if (phone.length === 10 || phone.length === 11) phone = `55${phone}`;
   if (phone.length < 12 || phone.length > 13) back("fone");
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) back("email");
@@ -34,7 +37,7 @@ export async function cadastrarEmbaixador(f: FormData) {
   let code = base;
   for (let i = 2; await db.referral.findUnique({ where: { code } }); i++) code = `${base}${i}`;
   await db.referral.create({
-    data: { phone, name, email, instagram: `@${ig}`, code, kind: "embaixador", payout: "pix", active: false, pendingAt: new Date(), passwordHash: await bcrypt.hash(pass, 10), belt, teacher, level: startLevel(belt, teacher) },
+    data: { phone, name, email, instagram: `@${ig}`, code, kind: "embaixador", payout: "pix", active: false, pendingAt: new Date(), passwordHash: await bcrypt.hash(pass, 10), belt, teacher, birthDate: birth, level: startLevel(belt, teacher) },
   });
   await pushcut("Novo pedido de embaixador", `${name} (@${ig}) · faixa ${belt}${teacher ? " · professor" : ""}`).catch(() => null);
   redirect("/embaixador?ok=1#cadastro");

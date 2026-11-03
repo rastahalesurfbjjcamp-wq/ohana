@@ -374,6 +374,7 @@ model Referral {
   teacher       Boolean?  // embaixador: é professor
   level         String?   // embaixador: bronze | prata | ...
   pendingAt     DateTime? // embaixador: se cadastrou e espera aprovação
+  birthDate     DateTime? // embaixador: data de aniversário
 }
 
 // Lançamentos (drops)

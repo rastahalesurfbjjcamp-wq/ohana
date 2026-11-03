@@ -6,7 +6,7 @@ export type AmbProgram = { levels: Level[]; minWithdrawCents: number; clientOff:
 
 const KEY = "_ambassador_program";
 
-export const BELTS = ["Branca", "Cinza", "Amarela", "Laranja", "Verde", "Azul", "Roxa", "Marrom", "Preta", "Coral", "Vermelha", "Não treino jiu-jitsu"] as const;
+export const BELTS = ["Branca", "Azul", "Roxa", "Marrom", "Preta", "Coral (vermelha e preta)", "Coral (vermelha e branca)", "Vermelha"] as const;
 
 export function ambDefaults(): AmbProgram {
   return {
@@ -34,8 +34,8 @@ export async function saveAmbProgram(p: AmbProgram) {
   await db.setting.upsert({ where: { key: KEY }, create: { key: KEY, value: p as object }, update: { value: p as object } });
 }
 
-// faixa preta + professor começa direto no Prata (regra interna, não aparece no formulário)
-export const startLevel = (belt: string | null | undefined, teacher: boolean | null | undefined) => (belt === "Preta" && teacher ? "prata" : "bronze");
+// faixa preta (ou coral e vermelha) + professor começa direto no Prata (regra interna, não aparece no formulário)
+export const startLevel = (belt: string | null | undefined, teacher: boolean | null | undefined) => (teacher && /^(Preta|Coral|Vermelha)/.test(belt ?? "") ? "prata" : "bronze");
 
 // nível pelo que já acumulou de comissão: nunca desce, e quem começou acima mantém
 export function levelFor(p: AmbProgram, current: string | null | undefined, lifetimeCents: number): Level {
