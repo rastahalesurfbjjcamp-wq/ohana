@@ -1653,3 +1653,17 @@ a.itile:hover { border-color: #34403b; transform: translateY(-1px); }
 
 /* níveis de embaixador */
 .chip.lvl-bronze{background:rgba(196,122,61,.14);color:#e0a06a}.chip.lvl-prata{background:rgba(201,209,214,.12);color:#d9e0e4}.chip.lvl-ouro{background:rgba(242,194,0,.12);color:#f2c200}.chip.lvl-diamante{background:rgba(125,211,252,.12);color:#7dd3fc}.chip.lvl-esmeralda{background:rgba(52,211,153,.12);color:#34d399}
+
+/* criação de enquete: uma caixa por opção e prévia do WhatsApp */
+.pbl{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:22px;align-items:start}
+.pb-opts{display:flex;flex-direction:column;gap:8px}
+.pb-opt{display:flex;align-items:center;gap:8px}
+.pb-n{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;background:var(--sf2);border:1px solid var(--line);font-size:12px;color:var(--ink2);flex:none}
+.pb-x{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;background:none;border:1px solid var(--line);color:var(--ink3);cursor:pointer;flex:none}.pb-x:hover{color:var(--coral);border-color:var(--coral)}
+.pb-wa{background:#005c4b;border-radius:12px 12px 12px 4px;padding:12px 14px;color:#e9edef;font-family:-apple-system,system-ui,sans-serif;max-width:340px;display:flex;flex-direction:column;gap:8px}
+.pb-wa b{font-size:15px;line-height:1.35;word-break:break-word}.pb-wa small{font-size:12px;color:#a7c7c0;margin-top:-4px}
+.pb-wo{display:flex;align-items:center;gap:10px;font-size:14px;padding:4px 0;border-bottom:3px solid rgba(255,255,255,.14);word-break:break-word}
+.pb-wo i{width:18px;height:18px;border-radius:50%;border:2px solid #a7c7c0;flex:none}.pb-wo span{margin-left:auto;font-size:12px;color:#a7c7c0}
+.pb-ver{text-align:center;color:#53bdeb;font-size:13.5px;padding-top:6px;border-top:1px solid rgba(255,255,255,.12)}
+@media(max-width:900px){.pbl{grid-template-columns:minmax(0,1fr)}}
+.pbl>*{min-width:0}.pb-opt .in{flex:1;min-width:0}

@@ -152,7 +152,9 @@ export async function broadcastAction(f: FormData) {
 export async function createPoll(f: FormData) {
   const s = await auth();
   const question = str(f, "question");
-  const options = str(f, "options").split("\n").map((x) => x.trim()).filter(Boolean).slice(0, 12);
+  const boxes = f.getAll("opt").map((x) => String(x).trim()).filter(Boolean);
+  const options = (boxes.length ? boxes : str(f, "options").split("\n").map((x) => x.trim()).filter(Boolean)).slice(0, 12);
+  if (new Set(options.map((o) => o.toLowerCase())).size !== options.length) redirect("/votacoes?nova=1&erro=repetida");
   const mode = str(f, "mode") === "pagina" ? "pagina" : "grupo";
   const groupJids = f.getAll("groups").map(String).filter(Boolean);
   if (!question || options.length < 2) redirect("/votacoes?erro=campos");

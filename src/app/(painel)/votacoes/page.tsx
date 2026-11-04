@@ -5,6 +5,7 @@ import { env } from "@/lib/env";
 import { Header, Panel } from "@/components/ui";
 import { GroupPicker } from "@/components/fields";
 import { CopyButton } from "@/components/CopyButton";
+import { PollBuilder } from "./PollBuilder";
 import { cancelPoll, closePoll, createPoll, pollToPresale, pollToTask } from "../acoes2";
 
 const fmtWhen = (d: Date) => d.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).replace(",", " às");
@@ -33,12 +34,11 @@ export default async function Votacoes({ searchParams }: { searchParams: Promise
       </Header>
       {sp.ok && <div className="ok">{polls.find((p) => p.id === sp.ok)?.status === "agendada" ? "Votação agendada. Ela vai para os grupos no horário escolhido." : "Votação criada e enviada para os grupos."}</div>}
       {sp.tarefa && <div className="ok">Tarefa de produção criada. <Link href="/tarefas" style={{ textDecoration: "underline" }}>Ver tarefas</Link></div>}
-      {sp.erro && <div className="err">{sp.erro === "passado" ? "Escolha um horário que ainda não passou." : "Escreva a pergunta e pelo menos 2 opções."}</div>}
+      {sp.erro && <div className="err">{sp.erro === "passado" ? "Escolha um horário que ainda não passou." : sp.erro === "repetida" ? "Tem duas opções iguais. Troque uma delas." : "Escreva a pergunta e pelo menos 2 opções."}</div>}
       {showForm && (
         <Panel title="Nova votação" right={polls.length ? <Link className="menu-b" href="/votacoes"><X size={16} /></Link> : undefined}>
           <form action={createPoll} className="stack">
-            <div className="field"><label>Pergunta</label><input className="in" name="question" required placeholder="Qual estampa entra no próximo drop?" /></div>
-            <div className="field"><label>Opções (uma por linha)</label><textarea className="in" name="options" required placeholder={"Estampa A\nEstampa B\nEstampa C"} /></div>
+            <PollBuilder />
             <div className="field">
               <label>Como votar</label>
               <select className="in" name="mode" defaultValue="grupo">
