@@ -69,11 +69,12 @@ async function tick() {
     await (await import("../lib/chatSchedule")).runChatSchedules().catch((e) => console.error("[agendadas atendimento]", e));
     if (!mk.lists || Date.now() - mk.lists > 6 * 3600_000) { await setMarks({ lists: Date.now() }); await (await import("../lib/audience")).refreshAllLists().catch((e) => console.error("[listas]", e)); }
   }
-  await sendDueRecovery().catch((e) => console.error("[recuperação]", e));
+  const lite = process.env.HUB_LITE === "1"; // Hub simples: só WhatsApp, sem loja
+  if (!lite) await sendDueRecovery().catch((e) => console.error("[recuperação]", e));
   await runFunnels().catch((e) => console.error("[funis]", e));
-  await import("../lib/ledger").then((m) => m.syncLedger()).catch((e) => console.error("[comissoes]", e));
+  if (!lite) await import("../lib/ledger").then((m) => m.syncLedger()).catch((e) => console.error("[comissoes]", e));
   // histórico dos cupons: guarda meses fechados aos poucos (não muda mais, então só busca uma vez)
-  if (process.env.DEMO_MODE !== "1") await import("../lib/couponHistory").then((m) => m.syncCouponHistory(4)).catch((e) => console.error("[cupons]", e));
+  if (!lite && process.env.DEMO_MODE !== "1") await import("../lib/couponHistory").then((m) => m.syncCouponHistory(4)).catch((e) => console.error("[cupons]", e));
 
   // demonstração: volta tudo ao original de madrugada
   if (process.env.DEMO_MODE === "1" && hhmmLocal() >= "03:00") await (await import("../lib/demo/seed")).ensureDemoSeed().catch((e) => console.error("[demo]", e));
@@ -100,7 +101,7 @@ async function tick() {
     await postToResults(await monthlyClosing()).catch((e) => console.error("[fechamento]", e));
   }
   // Dia 1: lembrete para pagar as comissões dos atletas do mês anterior
-  if (today.slice(8) === "01" && hhmm >= "09:00" && marks.payday !== today) {
+  if (!lite && today.slice(8) === "01" && hhmm >= "09:00" && marks.payday !== today) {
     await setMarks({ payday: today });
     const partners = await db.referral.count({ where: { kind: { in: ["atleta", "influenciador"] }, active: true } });
     if (partners) {
@@ -111,12 +112,12 @@ async function tick() {
   }
 
   // Recuperação e primeira compra a cada 5 minutos
-  if (!marks.scan || Date.now() - marks.scan > 5 * 60_000) {
+  if (!lite && (!marks.scan || Date.now() - marks.scan > 5 * 60_000)) {
     await setMarks({ scan: Date.now() });
     await enqueue("recovery-scan", {}, { jobId: `scan-${Date.now()}` });
   }
   // Recompra uma vez por dia, às 11h
-  if (hhmm >= "11:00" && marks.repurchase !== today) {
+  if (!lite && hhmm >= "11:00" && marks.repurchase !== today) {
     await setMarks({ repurchase: today });
     await scanRepurchase().catch((e) => console.error("[recompra]", e));
   }
@@ -127,31 +128,31 @@ async function tick() {
     if (state && state !== "unknown") await db.setting.upsert({ where: { key: "_whatsapp" }, create: { key: "_whatsapp", value: { state, at: new Date().toISOString() } }, update: { value: { state, at: new Date().toISOString() } } }).catch(() => null);
   }
   // Desconto automático do clube na loja (cria uma vez; tenta de novo a cada 10 minutos se falhar)
-  if (s.club.enabled && !s.club.autoDiscountId && (!marks.autoDisc || Date.now() - marks.autoDisc > 10 * 60_000)) {
+  if (!lite && s.club.enabled && !s.club.autoDiscountId && (!marks.autoDisc || Date.now() - marks.autoDisc > 10 * 60_000)) {
     await setMarks({ autoDisc: Date.now() });
     await ensureClubAutoDiscount().catch((e) => console.error("[clube desconto automático]", e));
   }
   // Membros que pagaram e ainda estão sem cupom: tenta criar de novo a cada minuto
-  {
+  if (!lite) {
     const semCupom = await db.clubMember.findMany({ where: { code: null, status: { not: "cancelado" } }, select: { id: true }, take: 10 }).catch(() => []);
     for (const m of semCupom) await ensureMemberCode(m.id).catch(() => null);
   }
   // Clube de fidelidade: pontos das compras e cupom de quem atrasou, a cada 30 minutos
-  if (!marks.club || Date.now() - marks.club > 15 * 60_000) {
+  if (!lite && (!marks.club || Date.now() - marks.club > 15 * 60_000)) {
     await setMarks({ club: Date.now() });
     await scanClub().catch((e) => console.error("[clube]", e));
   }
   // Club: níveis por tempo e cupom de aniversário uma vez por dia; brindes (pedido R$ 0) a cada 10 minutos
-  if (s.club.enabled && hhmm >= "08:00" && marks.clubDay !== today) {
+  if (!lite && s.club.enabled && hhmm >= "08:00" && marks.clubDay !== today) {
     await setMarks({ clubDay: today });
     await (await import("../lib/clubPlus")).clubDaily();
   }
-  if (s.club.enabled && (!marks.perks || Date.now() - marks.perks > 10 * 60_000)) {
+  if (!lite && s.club.enabled && (!marks.perks || Date.now() - marks.perks > 10 * 60_000)) {
     await setMarks({ perks: Date.now() });
     await (await import("../lib/clubPlus")).processPerks().catch((e) => console.error("[club brindes]", e));
   }
   // Uso dos cupons do Indique e ganhe a cada 6 horas
-  if (!marks.referral || Date.now() - marks.referral > 6 * 3600_000) {
+  if (!lite && (!marks.referral || Date.now() - marks.referral > 6 * 3600_000)) {
     await setMarks({ referral: Date.now() });
     await refreshReferralUsage().catch(() => {});
   }
