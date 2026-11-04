@@ -40,7 +40,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
             <div className="hub-logo static" aria-label={`${env.storeName()} Hub`}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={process.env.HUB_LITE === "1" ? "/demo/mark.png" : "/brand/lion.png"} alt="" />
-              <div className="hl-r"><b>{env.storeName()} Hub</b><i /><i /><i /></div>
+              <div className="hl-r"><b>{env.storeName()} Hub</b>{process.env.HUB_LITE !== "1" && <><i /><i /><i /></>}</div>
             </div>
             <small>Demonstração</small>
           </div>
@@ -58,7 +58,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           <div className="hub-logo static" aria-label={`${env.storeName()} Hub`}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={process.env.HUB_LITE === "1" ? "/demo/mark.png" : "/brand/lion.png"} alt="" />
-            <div className="hl-r"><b>{env.storeName()} Hub</b><i /><i /><i /></div>
+            <div className="hl-r"><b>{env.storeName()} Hub</b>{process.env.HUB_LITE !== "1" && <><i /><i /><i /></>}</div>
           </div>
           <small>{process.env.HUB_LITE === "1" ? "Comunidade no WhatsApp" : "Comunidade e vendas"}</small>
         </div>
