@@ -136,6 +136,7 @@ export const evolution = {
       const { uploadDir, mimeFor } = await import("./uploads");
       const buf = await readFile(path.join(uploadDir(), own[1])).catch(() => null);
       if (buf) media = { ...media, url: buf.toString("base64"), mimetype: media.mimetype ?? mimeFor(own[1]), fileName: media.fileName ?? own[1] };
+      else throw new Error("O arquivo anexado não está mais no servidor. Abra a mensagem, anexe o arquivo de novo e salve.");
     }
     return call("POST", `/message/sendMedia/${inst()}`, {
       number: to,
