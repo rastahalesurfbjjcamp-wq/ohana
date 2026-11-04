@@ -14,7 +14,7 @@ import {
 type Item = { href: string; icon: LucideIcon; label: string; badge?: number; soon?: boolean };
 type Group = { label: string; icon: LucideIcon; items: Item[] };
 
-export function Sidebar({ name, store, connected, leaves, logout, role = "ADMIN", areas = [] }: { name: string; store: string; connected: boolean; leaves: number; logout: () => Promise<void>; role?: string; areas?: string[] }) {
+export function Sidebar({ name, store, connected, leaves, logout, role = "ADMIN", areas = [], lite = false }: { name: string; store: string; connected: boolean; leaves: number; logout: () => Promise<void>; role?: string; areas?: string[]; lite?: boolean }) {
   const path = usePathname();
   const pinned: Item[] = [
     { href: "/", icon: LayoutDashboard, label: "Visão geral" },
@@ -81,7 +81,7 @@ export function Sidebar({ name, store, connected, leaves, logout, role = "ADMIN"
       ],
     },
   ];
-  const ok = (h: string) => canSee(h, role, areas);
+  const ok = (h: string) => canSee(h, role, areas, lite);
   for (const g of groups) g.items = g.items.filter((i) => ok(i.href));
   const active = (h: string) => (h === "/" ? path === "/" : path === h || path.startsWith(h + "/"));
   const [open, setOpen] = useState<Record<string, boolean>>(() =>
@@ -116,7 +116,7 @@ export function Sidebar({ name, store, connected, leaves, logout, role = "ADMIN"
       <button type="button" className="mtop-b" onClick={() => setNav(true)} aria-label="Abrir menu"><Menu size={20} /></button>
       <Link href="/" className="mtop-brand">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/brand/lion.png" alt="" width={26} height={28} />
+        <img src={lite ? "/demo/mark.png" : "/brand/lion.png"} alt="" width={26} height={28} />
         <b>{store} Hub</b>
       </Link>
       <i className={`live${connected ? "" : " off"}`} title={connected ? "WhatsApp conectado" : "WhatsApp desconectado"} />
@@ -133,10 +133,10 @@ export function Sidebar({ name, store, connected, leaves, logout, role = "ADMIN"
       <button type="button" className="side-x" onClick={() => setNav(false)} aria-label="Fechar menu"><X size={18} /></button>
       <div className="brand">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img className="mark-img" src="/brand/lion.png" alt="" width={36} height={39} />
+        <img className="mark-img" src={lite ? "/demo/mark.png" : "/brand/lion.png"} alt="" width={36} height={39} />
         <div>
           <b>{store} Hub</b>
-          <small>Comunidade e vendas</small>
+          <small>{lite ? "Comunidade no WhatsApp" : "Comunidade e vendas"}</small>
         </div>
       </div>
       <nav className="nav">

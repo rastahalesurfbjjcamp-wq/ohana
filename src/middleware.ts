@@ -8,9 +8,11 @@ const PUBLIC = ["/login", "/cadastro-equipe", "/recuperar-senha", "/api/auth/log
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   // demonstração: logo neutro no lugar do leão
-  if (process.env.DEMO_MODE === "1" && (pathname === "/brand/lion.png" || pathname === "/brand/logo.png" || pathname === "/icon.png" || pathname === "/apple-icon.png" || pathname === "/favicon.ico")) {
+  if ((process.env.DEMO_MODE === "1" || process.env.HUB_LITE === "1") && (pathname === "/brand/lion.png" || pathname === "/brand/logo.png" || pathname === "/icon.png" || pathname === "/apple-icon.png" || pathname === "/favicon.ico")) {
     const url = req.nextUrl.clone(); url.pathname = pathname.startsWith("/brand/") ? "/demo/mark.png" : "/demo/icon.png"; return NextResponse.rewrite(url);
   }
+  // Hub simples (outra empresa): sem portal de parceiros, clube e embaixadores
+  if (process.env.HUB_LITE === "1" && /^\/(parceiro|embaixador|assinar|club|clube-loja\.js|r\/|api\/parceiro|api\/clube)/.test(pathname)) { const url = req.nextUrl.clone(); url.pathname = "/admin"; url.search = ""; return NextResponse.redirect(url); }
   // embaixador.rastahale.tech: a página de cadastro fica na raiz do subdomínio
   const host = (req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "").toLowerCase();
   if (host.startsWith("embaixador.") && pathname === "/") { const url = req.nextUrl.clone(); url.pathname = "/embaixador"; return NextResponse.rewrite(url); }

@@ -69,9 +69,11 @@ export default async function Configuracoes({ searchParams }: { searchParams: Pr
             {wa.state === "error" && <div className="err">Não consegui falar com a Evolution API: {wa.error}</div>}
           </div>
         </Panel>
+        {process.env.HUB_LITE !== "1" && (
         <Panel title="Integrações" sub="Shopify, Meta Ads, IA e transcrição agora se conectam pela aba Integrações.">
           <Link className="btn pri" href="/integracoes">Abrir Integrações</Link>
         </Panel>
+        )}
       </div>
       <div className="grid g2" style={{ alignItems: "start" }}>
         <Panel title="Proteção do número" sub="Limites para o WhatsApp não bloquear o número.">

@@ -3,7 +3,7 @@ import { MessageCircle, Plus, RefreshCcw, ShieldCheck, UserRound } from "lucide-
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
 import { getSession } from "@/lib/auth";
-import { AREAS, ADMIN_ONLY } from "@/lib/access";
+import { AREAS, ADMIN_ONLY, LITE_HREFS } from "@/lib/access";
 import { Header, Panel } from "@/components/ui";
 import { CopyButton } from "@/components/CopyButton";
 import { ConfirmButton } from "@/components/ConfirmButton";
@@ -21,10 +21,10 @@ const ago = (d: Date | null) => {
 function Areas({ value, disabled }: { value: string[]; disabled?: boolean }) {
   return (
     <div className="eq-areas">
-      {AREAS.map((g) => (
+      {AREAS.map((g) => ({ ...g, items: g.items.filter((i) => !ADMIN_ONLY.includes(i.href) && (process.env.HUB_LITE !== "1" || LITE_HREFS.includes(i.href))) })).filter((g) => g.items.length).map((g) => (
         <fieldset key={g.group} disabled={disabled}>
           <legend>{g.group}</legend>
-          {g.items.filter((i) => !ADMIN_ONLY.includes(i.href)).map((i) => (
+          {g.items.map((i) => (
             <label key={i.href}><input type="checkbox" name="areas" value={i.href} defaultChecked={value.includes(i.href)} /> {i.label}</label>
           ))}
         </fieldset>

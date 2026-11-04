@@ -24,7 +24,15 @@ export const ADMIN_ONLY = ["/equipe", "/integracoes"];
 // Telas internas que acompanham uma página principal
 const PARENT: Record<string, string> = { "/comecar": "/", "/modelos": "/modelos", "/em-breve": "/" };
 
-export function canSee(path: string, role: string | undefined, areas: string[] | undefined) {
+// Hub simples (HUB_LITE=1): para outra empresa usar só o WhatsApp. Grupos, coleta, disparos, agendamentos e mensagens.
+export const LITE_HREFS = ["/grupos", "/entradas", "/leads", "/disparos", "/agendamentos", "/mensagens", "/listas", "/configuracoes", "/equipe"];
+const serverLite = () => typeof window === "undefined" && process.env.HUB_LITE === "1";
+
+export function canSee(path: string, role: string | undefined, areas: string[] | undefined, lite = serverLite()) {
+  if (lite) {
+    const b = "/" + (path.split("/")[1] ?? "");
+    if (!LITE_HREFS.includes(b)) return false;
+  }
   if (role === "ADMIN") return true;
   const base = "/" + (path.split("/")[1] ?? "");
   const href = PARENT[base] ?? base;
@@ -32,6 +40,6 @@ export function canSee(path: string, role: string | undefined, areas: string[] |
   if (!areas || !areas.length) return true; // sem restrição marcada
   return areas.includes(href);
 }
-export function firstAllowed(role: string | undefined, areas: string[] | undefined) {
-  return ALL_HREFS.find((h) => canSee(h, role, areas)) ?? "/";
+export function firstAllowed(role: string | undefined, areas: string[] | undefined, lite = serverLite()) {
+  return ALL_HREFS.find((h) => canSee(h, role, areas, lite)) ?? (lite ? "/grupos" : "/");
 }

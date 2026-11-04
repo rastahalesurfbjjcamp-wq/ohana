@@ -32,7 +32,7 @@ export default async function PainelLayout({ children }: { children: React.React
   const connected = (wa?.value as { state?: string } | undefined)?.state === "open";
   return (
     <div className="app">
-      <Sidebar name={session.name} store={env.storeName()} connected={connected} leaves={leaves} logout={sair} role={session.role} areas={session.areas ?? []} />
+      <Sidebar name={session.name} store={env.storeName()} connected={connected} leaves={leaves} logout={sair} role={session.role} areas={session.areas ?? []} lite={process.env.HUB_LITE === "1"} />
       <main className="main">
         {children}
       </main>

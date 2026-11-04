@@ -39,7 +39,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           <div className="login-head">
             <div className="hub-logo static" aria-label={`${env.storeName()} Hub`}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/brand/lion.png" alt="" />
+              <img src={process.env.HUB_LITE === "1" ? "/demo/mark.png" : "/brand/lion.png"} alt="" />
               <div className="hl-r"><b>{env.storeName()} Hub</b><i /><i /><i /></div>
             </div>
             <small>Demonstração</small>
@@ -57,10 +57,10 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         <div className="login-head">
           <div className="hub-logo static" aria-label={`${env.storeName()} Hub`}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/brand/lion.png" alt="" />
+            <img src={process.env.HUB_LITE === "1" ? "/demo/mark.png" : "/brand/lion.png"} alt="" />
             <div className="hl-r"><b>{env.storeName()} Hub</b><i /><i /><i /></div>
           </div>
-          <small>Comunidade e vendas</small>
+          <small>{process.env.HUB_LITE === "1" ? "Comunidade no WhatsApp" : "Comunidade e vendas"}</small>
         </div>
         {erro && <div className="err">{erro === "2" ? "Seu acesso foi desativado. Fale com o administrador." : erro === "3" ? "Seu acesso ainda está esperando a aprovação do administrador." : "E-mail ou senha incorretos."}</div>}
         <div className="field">
