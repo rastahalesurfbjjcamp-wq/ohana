@@ -160,18 +160,20 @@ export async function createPoll(f: FormData) {
   for (const file of f.getAll("images")) {
     if (file instanceof File && file.size > 0) images.push((await saveUpload(file)).url);
   }
-  const poll = await db.poll.create({ data: { question, options, mode, groupJids, imageUrls: images, createdBy: s.name } });
-  if (mode === "grupo") {
-    for (const jid of await (await import("@/lib/send")).sendableJids(groupJids)) {
-      await evolution.sendPoll(jid, question, options, 1);
-      await new Promise((r) => setTimeout(r, 2500));
-    }
-  } else if (groupJids.length) {
-    // Página fechada: manda o link nos grupos
-    await enqueue("poll-link", { pollId: poll.id }, { jobId: `poll-${poll.id}` });
-  }
+  // agendar: data e hora de Brasília
+  const when = str(f, "sendAt");
+  const sendAt = str(f, "quando") === "agendar" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(when) ? new Date(`${when}:00-03:00`) : null;
+  if (sendAt && sendAt.getTime() < Date.now() - 60_000) redirect("/votacoes?erro=passado");
+  const poll = await db.poll.create({ data: { question, options, mode, groupJids, imageUrls: images, createdBy: s.name, sendAt, status: sendAt ? "agendada" : "aberta" } });
+  if (!sendAt) await (await import("@/lib/polls")).dispatchPoll(poll.id);
   revalidatePath("/votacoes");
   redirect(`/votacoes?ok=${poll.id}`);
+}
+export async function cancelPoll(f: FormData) {
+  await auth();
+  await db.poll.deleteMany({ where: { id: str(f, "id"), status: "agendada" } });
+  revalidatePath("/votacoes");
+  redirect("/votacoes");
 }
 export async function closePoll(f: FormData) {
   await auth();

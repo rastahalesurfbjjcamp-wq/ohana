@@ -57,6 +57,7 @@ async function tick() {
   }
 
   await dueBroadcasts();
+  await (await import("../lib/polls")).duePolls().catch((e) => console.error("[votações]", e));
   // Automações: passos que chegaram na hora (a cada minuto) e gatilhos de pedido/carrinho (a cada 5 minutos)
   {
     const A = await import("../lib/automations");

@@ -5,7 +5,9 @@ import { env } from "@/lib/env";
 import { Header, Panel } from "@/components/ui";
 import { GroupPicker } from "@/components/fields";
 import { CopyButton } from "@/components/CopyButton";
-import { closePoll, createPoll, pollToPresale, pollToTask } from "../acoes2";
+import { cancelPoll, closePoll, createPoll, pollToPresale, pollToTask } from "../acoes2";
+
+const fmtWhen = (d: Date) => d.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).replace(",", " às");
 
 export const dynamic = "force-dynamic";
 
@@ -29,9 +31,9 @@ export default async function Votacoes({ searchParams }: { searchParams: Promise
       <Header title="Votações da comunidade" lede="A comunidade escolhe o próximo drop. Você produz o que já tem gente querendo comprar.">
         <Link className="btn pri" href={showForm && polls.length ? "/votacoes" : "/votacoes?nova=1"}><Plus size={16} /> Nova votação</Link>
       </Header>
-      {sp.ok && <div className="ok">Votação criada e enviada para os grupos.</div>}
+      {sp.ok && <div className="ok">{polls.find((p) => p.id === sp.ok)?.status === "agendada" ? "Votação agendada. Ela vai para os grupos no horário escolhido." : "Votação criada e enviada para os grupos."}</div>}
       {sp.tarefa && <div className="ok">Tarefa de produção criada. <Link href="/tarefas" style={{ textDecoration: "underline" }}>Ver tarefas</Link></div>}
-      {sp.erro && <div className="err">Escreva a pergunta e pelo menos 2 opções.</div>}
+      {sp.erro && <div className="err">{sp.erro === "passado" ? "Escolha um horário que ainda não passou." : "Escreva a pergunta e pelo menos 2 opções."}</div>}
       {showForm && (
         <Panel title="Nova votação" right={polls.length ? <Link className="menu-b" href="/votacoes"><X size={16} /></Link> : undefined}>
           <form action={createPoll} className="stack">
@@ -50,7 +52,18 @@ export default async function Votacoes({ searchParams }: { searchParams: Promise
               <label>Grupos</label>
               <GroupPicker name="groups" groups={groups.filter((g) => g.kind !== "comunidade").map((g) => ({ jid: g.jid, name: g.kind === "avisos" ? `Avisos: ${g.name}` : g.name, size: g.size, checked: true }))} />
             </div>
-            <div><button className="btn pri" type="submit">Criar e enviar</button></div>
+            <div className="field">
+              <label>Quando enviar</label>
+              <div className="row" style={{ gap: 10, flexWrap: "wrap" }}>
+                <select className="in" name="quando" defaultValue="agora" style={{ width: 200 }}>
+                  <option value="agora">Agora</option>
+                  <option value="agendar">Agendar</option>
+                </select>
+                <input className="in" type="datetime-local" name="sendAt" style={{ width: 230 }} />
+              </div>
+              <span className="hint">Para agendar, escolha Agendar e o dia e horário (horário de Brasília).</span>
+            </div>
+            <div><button className="btn pri" type="submit">Salvar votação</button></div>
           </form>
         </Panel>
       )}
@@ -60,9 +73,9 @@ export default async function Votacoes({ searchParams }: { searchParams: Promise
             <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
               <div>
                 <h3 style={{ fontSize: 17, fontWeight: 650 }}>{cur.question}</h3>
-                <small className="dim">Enviada em {cur.groupJids.length} grupo(s){cur.mode === "pagina" ? " · página fechada com fotos" : " · enquete no grupo"}{closes != null && cur.status === "aberta" ? ` · fecha em ${closes} dia(s)` : ""}</small>
+                <small className="dim">{cur.status === "agendada" && cur.sendAt ? `Agendada para ${fmtWhen(cur.sendAt)} em` : "Enviada em"} {cur.groupJids.length} grupo(s){cur.mode === "pagina" ? " · página fechada com fotos" : " · enquete no grupo"}{closes != null && cur.status === "aberta" ? ` · fecha em ${closes} dia(s)` : ""}</small>
               </div>
-              <span className={`chip ${cur.status === "aberta" ? "c-l" : "c-n"}`}><Vote size={12} /> {cur.status === "aberta" ? "Aberta" : "Encerrada"}</span>
+              <span className={`chip ${cur.status === "aberta" ? "c-l" : cur.status === "agendada" ? "c-s" : "c-n"}`}><Vote size={12} /> {cur.status === "aberta" ? "Aberta" : cur.status === "agendada" ? "Agendada" : "Encerrada"}</span>
             </div>
             {cur.mode === "pagina" ? (
               <div className="stack" style={{ gap: 10 }}>
@@ -91,8 +104,9 @@ export default async function Votacoes({ searchParams }: { searchParams: Promise
               <div className="kv"><span className="mut">Participação</span><b>{members ? `${Math.round((total / members) * 100)}% da comunidade` : "–"}</b></div>
               {lead >= 0 && total > 0 && <div className="kv"><span className="mut">Na frente</span><b style={{ color: "var(--sun)" }}>{cur.options[lead]}</b></div>}
               <div className="stack" style={{ gap: 8, marginTop: 14 }}>
-                <form action={pollToTask}><input type="hidden" name="id" value={cur.id} /><button className="btn pri lg" type="submit" disabled={!total} style={{ width: "100%", justifyContent: "center" }}><ListChecks size={16} /> Virar tarefa de produção</button></form>
-                <form action={pollToPresale}><input type="hidden" name="id" value={cur.id} /><button className="btn" type="submit" disabled={!total} style={{ width: "100%", justifyContent: "center" }}><BellRing size={15} /> Abrir pré-venda para quem votou</button></form>
+                {process.env.HUB_LITE !== "1" && <form action={pollToTask}><input type="hidden" name="id" value={cur.id} /><button className="btn pri lg" type="submit" disabled={!total} style={{ width: "100%", justifyContent: "center" }}><ListChecks size={16} /> Virar tarefa de produção</button></form>}
+                {process.env.HUB_LITE !== "1" && <form action={pollToPresale}><input type="hidden" name="id" value={cur.id} /><button className="btn" type="submit" disabled={!total} style={{ width: "100%", justifyContent: "center" }}><BellRing size={15} /> Abrir pré-venda para quem votou</button></form>}
+                {cur.status === "agendada" && <form action={cancelPoll}><input type="hidden" name="id" value={cur.id} /><button className="btn ghost sm danger" type="submit" style={{ width: "100%", justifyContent: "center" }}>Cancelar agendamento</button></form>}
                 {cur.status === "aberta" && <form action={closePoll}><input type="hidden" name="id" value={cur.id} /><button className="btn ghost sm" type="submit" style={{ width: "100%", justifyContent: "center" }}>Encerrar votação</button></form>}
               </div>
               {cur.mode === "pagina" && (

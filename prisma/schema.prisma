@@ -267,7 +267,8 @@ model Poll {
   groupJids  String[]
   imageUrls  String[]
   closesAt   DateTime?
-  status     String     @default("aberta") // aberta | fechada
+  sendAt     DateTime?  // agendada: envia nesse horário
+  status     String     @default("aberta") // agendada | aberta | fechada
   createdBy  String?
   createdAt  DateTime   @default(now())
   votes      PollVote[]
