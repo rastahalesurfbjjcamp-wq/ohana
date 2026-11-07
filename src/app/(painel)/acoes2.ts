@@ -67,7 +67,9 @@ export async function createBroadcast(f: FormData) {
   const s = await auth();
   const name = str(f, "name") || "Disparo";
   const text = str(f, "text");
-  const audience = str(f, "audience");
+  // o público vem do campo escondido; se não vier, usa o botão marcado ou a lista colada
+  const audience = str(f, "audience") || str(f, "_aud") || (str(f, "list") ? "lista" : "");
+  if (!str(f, "audience")) console.warn("[disparo] público não veio no formulário", [...f.keys()].join(","), "->", audience || "vazio");
   if (!audience && !text) redirect("/disparos?erro=envio"); // formulário chegou vazio (arquivo grande demais ou conexão caiu)
   if (!text) redirect("/disparos?erro=texto");
   if (!audience) redirect("/disparos?erro=publico");
@@ -91,9 +93,12 @@ export async function createBroadcast(f: FormData) {
     const members = await db.membership.findMany({ where: { leftAt: null, group: { isCommunity: true } }, include: { contact: true } });
     for (const m of members) people.set(m.contact.phone, m.contact.name);
   } else if (audience === "lista") {
-    for (const line of str(f, "list").split(/\n|,|;/)) {
-      const p = normalizePhone(line);
-      if (p) people.set(p, null);
+    // aceita "21 99999-9999", "+55 (21) 99999-9999  Nome", colunas copiadas da planilha etc.
+    for (const line of str(f, "list").split(/\n|;/)) {
+      const found = [...line.matchAll(/\+?\d[\d\s().-]{8,}\d/g)].map((m) => m[0]);
+      const phones = found.map((x) => normalizePhone(x)).filter(Boolean) as string[];
+      const nm = found.length === 1 ? line.replace(found[0], "").replace(/[\t,;|]+/g, " ").trim() : "";
+      for (const p of phones) people.set(p, phones.length === 1 && /[a-zà-ú]/i.test(nm) ? nm.slice(0, 60) : null);
     }
   } else {
     const seg = audience.replace("clientes-", "") as SegmentKey;
@@ -143,8 +148,10 @@ export async function createBroadcast(f: FormData) {
 }
 export async function broadcastAction(f: FormData) {
   await auth();
-  const id = str(f, "id");
-  const act = str(f, "act");
+  const [act, idFromAct] = str(f, "act").split(":");
+  const id = str(f, "id") || idFromAct || "";
+  if (!str(f, "id")) console.warn("[disparo] id não veio no formulário", [...f.keys()].join(","));
+  if (!id) redirect("/disparos?erro=acao");
   if (act === "start") await db.broadcast.update({ where: { id }, data: { status: "SCHEDULED", sendAt: new Date() } });
   if (act === "pause") await db.broadcast.update({ where: { id }, data: { status: "PAUSED" } });
   if (act === "cancel") await db.broadcast.update({ where: { id }, data: { status: "CANCELED" } });

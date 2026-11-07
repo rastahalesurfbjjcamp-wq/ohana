@@ -67,6 +67,7 @@ export default async function Disparos({ searchParams }: { searchParams: Promise
       {sp.erro === "publico" && <div className="err">Escolha o público do disparo.</div>}
       {sp.erro === "lista" && <div className="err">Cole os números na caixa da lista, um por linha.</div>}
       {sp.erro === "envio" && <div className="err">O formulário não chegou completo. Se anexou um vídeo, ele pode ser grande demais (máximo 45 MB). Tente de novo com um arquivo menor.</div>}
+      {sp.erro === "acao" && <div className="err">Não consegui identificar o disparo. Atualize a página e tente de novo.</div>}
       {sp.erro === "reenvio" && <div className="err">Não tinha ninguém para reenviar. Quem falhou por não ter WhatsApp fica de fora.</div>}
       {sp.reenvio && <div className="ok">Reenvio começou para {sp.reenvio} pessoas. Acompanhe o andamento aqui embaixo.</div>}
       {sp.editado && <div className="ok">Disparo atualizado.</div>}
@@ -117,8 +118,9 @@ export default async function Disparos({ searchParams }: { searchParams: Promise
 function ActBtn({ id, act, title, danger, children }: { id: string; act: string; title: string; danger?: boolean; children: React.ReactNode }) {
   return (
     <form action={broadcastAction}>
+      <input type="hidden" name="_" value="1" />
       <input type="hidden" name="id" value={id} />
-      <input type="hidden" name="act" value={act} />
+      <input type="hidden" name="act" value={`${act}:${id}`} />
       <button className={`btn sm${danger ? " danger" : ""}`} title={title}>{children}</button>
     </form>
   );

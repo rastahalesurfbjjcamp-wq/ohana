@@ -49,6 +49,7 @@ export function BroadcastComposer({ action, testAction, audiences, defaultAudien
           <Submit />
         </div>
       </div>
+      <input type="hidden" name="_" value="1" />
       <input type="hidden" name="audience" value={aud} />
       {now && <input type="hidden" name="now" value="1" />}
       <input ref={fileRef} type="file" name="media" hidden onChange={(e) => { const f = e.target.files?.[0] ?? null; if (f && f.size > 45 * 1024 * 1024) { setFileErr(`Esse arquivo tem ${Math.round(f.size / 1048576)} MB. O máximo é 45 MB: comprima o vídeo e anexe de novo.`); e.target.value = ""; setFile(null); return; } setFileErr(""); setFile(f); }} />
@@ -58,7 +59,7 @@ export function BroadcastComposer({ action, testAction, audiences, defaultAudien
           <div className="stack" style={{ gap: 8 }}>
             {audiences.map((a) => (
               <label key={a.key} className={`rc${aud === a.key ? " on" : ""}`}>
-                <input type="radio" name="_aud" checked={aud === a.key} onChange={() => setAud(a.key)} />
+                <input type="radio" name="_aud" value={a.key} checked={aud === a.key} onChange={() => setAud(a.key)} />
                 <span className="dot" />
                 <span style={{ flex: 1 }}>{a.label}{a.hint && <small>{a.hint}</small>}</span>
                 <span className="dim" style={{ fontSize: 12.5 }}>{a.count.toLocaleString("pt-BR")} {a.unit ?? "pessoas"}</span>
