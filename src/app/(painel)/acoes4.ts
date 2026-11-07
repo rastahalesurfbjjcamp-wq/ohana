@@ -45,7 +45,7 @@ export async function bulkGroupInfo(form: FormData) {
     if (name) await evolution.updateSubject(jid, name.replace(/\{n\}/g, String(start + i).padStart(2, "0")));
     if (desc) await evolution.updateDescription(jid, desc);
   });
-  if (name) await syncGroups().catch(() => null);
+  if (name) await syncGroups({ manual: true }).catch(() => null);
   revalidatePath("/grupos");
   redirect(`/grupos?feito=${r.ok}&falha=${r.fail}`);
 }
@@ -85,7 +85,7 @@ export async function createGroupsBatch(form: FormData) {
     }
     await pause(3000);
   }
-  await syncGroups().catch(() => null);
+  await syncGroups({ manual: true }).catch(() => null);
   // os grupos novos já entram na comunidade, no fim da fila
   const fresh = await db.group.findMany({ where: { name: { startsWith: prefix }, isCommunity: false, archived: false } });
   for (const g of fresh) await db.group.update({ where: { id: g.id }, data: { isCommunity: true } });

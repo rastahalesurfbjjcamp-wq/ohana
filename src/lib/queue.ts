@@ -22,7 +22,8 @@ export async function enqueue(name: JobName, data: Record<string, unknown> = {},
     jobId: opts.jobId,
     removeOnComplete: 500,
     removeOnFail: 1000,
-    attempts: 3,
+    // sincronizar grupos não repete sozinho: insistir com o WhatsApp é o que faz ele limitar o número
+    attempts: name === "sync-groups" ? 1 : 3,
     backoff: { type: "exponential", delay: 10_000 },
   });
 }

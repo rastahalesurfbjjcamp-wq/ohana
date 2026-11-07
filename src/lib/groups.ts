@@ -15,9 +15,42 @@ async function upsertContact(phone: string, name?: string | null) {
   });
 }
 
+// Freio de segurança: o WhatsApp limita o número quando recebe muitos pedidos de grupos seguidos.
+// Sincroniza no máximo a cada 30 min (5 min se for o botão do painel) e, se o WhatsApp
+// responder "rate-overlimit", fica 2 horas sem pedir nada de grupos.
+const SYNC_KEY = "_sync_groups_guard";
+const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+async function guard(manual: boolean): Promise<string | null> {
+  const row = await db.setting.findUnique({ where: { key: SYNC_KEY } });
+  const v = (row?.value ?? {}) as { at?: number; pauseUntil?: number };
+  const now = Date.now();
+  if (v.pauseUntil && now < v.pauseUntil) return `pausado até ${new Date(v.pauseUntil).toISOString()}`;
+  if (v.at && now - v.at < (manual ? 5 : 30) * 60_000) return "sincronizado há pouco";
+  await db.setting.upsert({ where: { key: SYNC_KEY }, create: { key: SYNC_KEY, value: { at: now } }, update: { value: { ...v, at: now } } });
+  return null;
+}
+async function pauseSync(e: unknown) {
+  if (!/rate-overlimit|429|too many/i.test(String(e))) return;
+  const row = await db.setting.findUnique({ where: { key: SYNC_KEY } });
+  const v = (row?.value ?? {}) as object;
+  await db.setting.upsert({ where: { key: SYNC_KEY }, create: { key: SYNC_KEY, value: { pauseUntil: Date.now() + 2 * 3600_000 } }, update: { value: { ...v, pauseUntil: Date.now() + 2 * 3600_000 } } });
+  console.warn("[grupos] WhatsApp pediu calma (rate-overlimit). Grupos ficam 2h sem sincronizar.");
+}
+
 // Lê todos os grupos do número conectado e atualiza o banco.
 // Na primeira vez não gera eventos (só fotografa quem já está).
-export async function syncGroups() {
+export async function syncGroups(opts: { manual?: boolean } = {}) {
+  const skip = await guard(!!opts.manual);
+  if (skip) { console.log("[grupos] sincronização pulada:", skip); return { total: 0, created: 0, skipped: skip }; }
+  try {
+    return await doSync();
+  } catch (e) {
+    await pauseSync(e);
+    throw e;
+  }
+}
+
+async function doSync() {
   // Número com muitos grupos grandes: a lista completa com membros pode estourar o tempo.
   // Nesse caso busca a lista sem membros e depois os membros de cada grupo, um por um.
   let groups: EvoGroup[];
@@ -25,10 +58,19 @@ export async function syncGroups() {
     groups = await evolution.fetchAllGroups(true);
   } catch (e) {
     console.error("[grupos] lista completa falhou, buscando um por um:", String(e).slice(0, 160));
+    await pauseSync(e);
+    if (/rate-overlimit/i.test(String(e))) throw e;
     groups = await evolution.fetchAllGroups(false);
+    // membros um por um só dos grupos que o Hub cuida, com pausa entre eles
+    const cared = new Set((await db.group.findMany({ where: { isCommunity: true }, select: { jid: true } })).map((x) => x.jid));
     for (const g of groups) {
-      if (g.isCommunity) continue; // a comunidade em si não tem membros próprios
-      g.participants = await evolution.groupParticipants(g.id).catch(() => undefined);
+      if (g.isCommunity || !cared.has(g.id)) continue; // a comunidade em si não tem membros próprios
+      await wait(3000 + Math.random() * 3000);
+      try {
+        g.participants = await evolution.groupParticipants(g.id);
+      } catch (err) {
+        if (/rate-overlimit/i.test(String(err))) { await pauseSync(err); break; }
+      }
     }
   }
   const me = await evolution.ownerPhone();
@@ -69,7 +111,7 @@ export async function syncGroups() {
         }
       }
     }
-    if (g.id && !group.inviteCode) {
+    if (g.id && !group.inviteCode && group.iAmAdmin && group.isCommunity) {
       try {
         const code = await evolution.inviteCode(g.id);
         if (code) await db.group.update({ where: { id: group.id }, data: { inviteCode: code } });

@@ -40,7 +40,8 @@ export async function POST(req: NextRequest) {
     }
 
     if (ev === "groupsupsert" || ev === "groupupdate") {
-      await enqueue("sync-groups", {}, { jobId: `sync-${Math.floor(Date.now() / 60_000)}` });
+      // a sincronização tem freio próprio (no máximo a cada 30 min)
+      await enqueue("sync-groups", {}, { jobId: `sync-${Math.floor(Date.now() / 1_800_000)}` });
     }
 
     if (ev === "connectionupdate") {
