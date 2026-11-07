@@ -13,8 +13,8 @@ function Submit() {
   return <button className="btn pri lg" type="submit" disabled={pending}><Send size={16} /> {pending ? "Salvando…" : "Agendar disparo"}</button>;
 }
 
-export function BroadcastComposer({ action, testAction, audiences, defaultAudience, store, maxPerHour, owner, library = [] }: {
-  action: (f: FormData) => Promise<void>; testAction: (f: FormData) => Promise<void>; audiences: Audience[]; defaultAudience: string; store: string; maxPerHour: number; owner: string; library?: LibMsg[];
+export function BroadcastComposer({ action, testAction, audiences, defaultAudience, store, maxPerHour, owner, library = [], lite = false }: {
+  action: (f: FormData) => Promise<void>; testAction: (f: FormData) => Promise<void>; audiences: Audience[]; defaultAudience: string; store: string; maxPerHour: number; owner: string; library?: LibMsg[]; lite?: boolean;
 }) {
   const [aud, setAud] = useState(defaultAudience);
   const [text, setText] = useState("Oi {nome}, ");
@@ -33,7 +33,7 @@ export function BroadcastComposer({ action, testAction, audiences, defaultAudien
     requestAnimationFrame(() => { el.focus(); el.setSelectionRange(s + v.length, s + v.length); });
   };
   const pick = (accept: string) => { if (fileRef.current) { fileRef.current.accept = accept; fileRef.current.click(); } };
-  const rendered = text.replace(/\{nome\}/g, owner).replace(/\*([^*]+)\*/g, "<b>$1</b>");
+  const rendered = text.replace(/\{nome\}/g, owner).replace(/\{([^{}|]+)(?:\|[^{}|]*)+\}/g, "$1").replace(/\*([^*]+)\*/g, "<b>$1</b>");
   const hours = current ? Math.ceil(current.count / Math.max(1, maxPerHour)) : 0;
 
   return (
@@ -74,10 +74,11 @@ export function BroadcastComposer({ action, testAction, audiences, defaultAudien
             <button type="button" className="tbtn" onClick={() => pick("image/*")}><ImageIcon size={14} /> Imagem</button>
             <button type="button" className="tbtn" onClick={() => pick("video/*")}><Video size={14} /> Vídeo</button>
             <button type="button" className="tbtn sun" onClick={() => insert("{nome}")}><Braces size={14} /> Nome da pessoa</button>
+            <button type="button" className="tbtn" onClick={() => insert("{Oi|Olá|E aí}")}><Braces size={14} /> Variar texto</button>
             <button type="button" className="tbtn" onClick={() => insert("**")}><b>B</b> Negrito</button>
             {file && <span className="chip c-n" style={{ gap: 6 }}>{file.name.slice(0, 22)} <button type="button" onClick={() => { setFile(null); if (fileRef.current) fileRef.current.value = ""; }} style={{ background: "none", border: 0, color: "inherit", cursor: "pointer", display: "grid" }}><X size={12} /></button></span>}
           </div>
-          <p className="dim" style={{ fontSize: 12, marginTop: 8 }}>No fim vai sozinho: “Para não receber mais, responda SAIR”.</p>
+          <p className="dim" style={{ fontSize: 12, marginTop: 8 }}>Use {"{Oi|Olá|E aí}"} para cada pessoa receber uma versão diferente. No fim vai sozinho: “Para não receber mais, responda SAIR”.</p>
 
           <div className="sep" />
           <h4><span className="stepn">3</span> Quando</h4>
@@ -87,8 +88,8 @@ export function BroadcastComposer({ action, testAction, audiences, defaultAudien
           </div>
           {!now && <DateTimeField name="sendAt" />}
           <div className="stack" style={{ gap: 8, marginTop: 10 }}>
-            <ToggleCard name="skipRecent" defaultChecked title="Pular quem comprou nos últimos 7 dias" sub="Evita mandar oferta para quem acabou de comprar" />
-            <div className="tgc on tl"><div className="tgc-h"><div style={{ flex: 1 }}><b>Intervalo aleatório entre mensagens</b><small>Sempre ligado. Até {maxPerHour} por hora{current && current.count > maxPerHour ? `: esse disparo leva umas ${hours} horas` : ""}.</small></div><CheckCheck size={18} className="up" /></div></div>
+            {!lite && <ToggleCard name="skipRecent" defaultChecked title="Pular quem comprou nos últimos 7 dias" sub="Evita mandar oferta para quem acabou de comprar" />}
+            <div className="tgc on tl"><div className="tgc-h"><div style={{ flex: 1 }}><b>Modo seguro para o número</b><small>Sempre ligado. De 25 a 60 segundos entre mensagens, com &quot;digitando...&quot; antes, pausa a cada 20 e só das 8h às 21h. Agora até {maxPerHour} por hora (sobe nos primeiros dias do número){current && current.count > maxPerHour ? `: esse disparo leva umas ${hours} horas` : ""}.</small></div><CheckCheck size={18} className="up" /></div></div>
           </div>
         </section>
 
@@ -114,10 +115,10 @@ export function BroadcastComposer({ action, testAction, audiences, defaultAudien
             <span className="tile sm t-l" style={{ fontWeight: 800 }}>W</span>
             <div><b>WhatsApp · Evolution</b><small>Número conectado no Hub. Sem custo por mensagem, até {maxPerHour} por hora.</small></div>
           </div>
-          <div className="chan off">
+          {!lite && <div className="chan off">
             <span className="tile sm t-k">∞</span>
             <div><b>API Oficial · Meta <span className="chip c-n" style={{ marginLeft: 6 }}>não conectada</span></b><small>Selo de conta comercial, botões e sem risco de bloqueio. Custo por mensagem cobrado pela Meta. Conecte em Integrações.</small></div>
-          </div>
+          </div>}
           <div className="sum">
             <div className="kv"><span className="mut">Público</span><span>{current?.label}</span></div>
             <div className="kv"><span className="mut">Mensagens</span><span className="v">{(current?.count ?? 0).toLocaleString("pt-BR")}</span></div>

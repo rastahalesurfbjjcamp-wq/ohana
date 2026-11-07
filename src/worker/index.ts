@@ -181,7 +181,7 @@ async function sendScheduled(id: string, job: Job) {
       const seq = [{ text: m.text, mediaUrl: m.mediaUrl, mediaType: m.mediaType }, ...(((m.parts ?? []) as { text: string; mediaUrl?: string | null; mediaType?: string | null }[]))];
       for (const [i, part] of seq.entries()) {
         if (i > 0) await new Promise((r) => setTimeout(r, 2500));
-        const mention = i === 0 && m.mentionAll;
+        const mention = i === 0 && m.mentionAll && jid.endsWith("@g.us"); // contato no privado não tem "marcar todos"
         if (part.mediaUrl && part.mediaType) await sendMedia(jid, { url: part.mediaUrl, type: part.mediaType as "image" | "video" | "document", caption: part.text }, { mentionAll: mention });
         else if (part.text) await sendText(jid, part.text, { mentionAll: mention });
       }

@@ -68,7 +68,11 @@ export async function saveGroupSelection(formData: FormData) {
 /* Agendamentos */
 export async function createSchedule(formData: FormData) {
   const s = await auth();
-  const groupJids = formData.getAll("groups").map(String).filter(Boolean);
+  // destino: grupos escolhidos ou um contato no privado
+  const toContact = str(formData, "dest") === "contato";
+  const phone = toContact ? (await import("@/lib/segments")).normalizePhone(str(formData, "phone")) : null;
+  if (toContact && !phone) redirect("/agendamentos?erro=fone");
+  const groupJids = toContact ? [`${phone}@s.whatsapp.net`] : formData.getAll("groups").map(String).filter(Boolean);
   const when = str(formData, "sendAt");
   const now = formData.get("now") === "1";
   // sequência: várias mensagens seguidas (texto, foto, vídeo, link), na ordem
@@ -94,7 +98,7 @@ export async function createSchedule(formData: FormData) {
       text: first.text,
       groupJids,
       sendAt: now ? new Date() : localToDate(when),
-      mentionAll: on(formData, "mentionAll"),
+      mentionAll: !toContact && on(formData, "mentionAll"),
       repeat: repeat === "daily" || repeat === "weekly" ? repeat : null,
       mediaUrl: first.mediaUrl,
       mediaType: first.mediaType,

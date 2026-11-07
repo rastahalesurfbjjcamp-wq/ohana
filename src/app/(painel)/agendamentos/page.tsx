@@ -59,6 +59,8 @@ export default async function Agendamentos({ searchParams }: { searchParams: Pro
     sp.id ? db.scheduledMessage.findUnique({ where: { id: sp.id } }) : null,
   ]);
   const names = new Map(groups.map((g) => [g.jid, g.name]));
+  // contato no privado: mostra o número
+  const label = (j: string) => names.get(j) ?? (j.endsWith("@s.whatsapp.net") ? `Contato +${j.split("@")[0].replace(/^(\d{2})(\d{2})(\d{4,5})(\d{4})$/, "$1 $2 $3-$4")}` : j);
   const byDay = (d: string) => list.filter((m) => isoDayLocal(m.sendAt) === d);
   const fd = (d: string) => `${Number(d.slice(8))} de ${MONTHS[Number(d.slice(5, 7)) - 1]}`;
   const title = view === "dia" ? `${WD[new Date(`${anchor}T12:00:00`).getDay()]}, ${fd(anchor)}` : view === "semana" ? `${fd(days[0])} a ${fd(days[6])}` : `${MONTHS[Number(anchor.slice(5, 7)) - 1]} de ${anchor.slice(0, 4)}`;
@@ -77,7 +79,7 @@ export default async function Agendamentos({ searchParams }: { searchParams: Pro
         <div className="seg">{[["dia", "Dia"], ["semana", "Semana"], ["mes", "Mês"]].map(([k, l]) => <Link key={k} href={`/agendamentos?${k === "semana" ? "" : `v=${k}`}${anchor !== today ? `${k === "semana" ? "" : "&"}d=${anchor}` : ""}`} className={view === k ? "on" : ""}>{l}</Link>)}</div>
       </Header>
       {sp.ok && <div className="ok">{Number(sp.ok) > 1 ? `Sequência de ${sp.ok} mensagens agendada.` : "Mensagem agendada."}</div>}
-      {sp.erro && <div className="err">Coloque pelo menos um texto ou arquivo, a data e escolha um grupo.</div>}
+      {sp.erro && <div className="err">{sp.erro === "fone" ? "Confira o WhatsApp do contato, com DDD." : "Coloque pelo menos um texto ou arquivo, a data e escolha um grupo."}</div>}
       <div className="cols c-2-1" style={{ alignItems: "start" }}>
         <section className="pnl" style={{ padding: 20 }}>
           <div className="row" style={{ justifyContent: "space-between", marginBottom: 14 }}>
@@ -137,7 +139,7 @@ export default async function Agendamentos({ searchParams }: { searchParams: Pro
                 {sel.mediaUrl && <span className="mut"><ImageIcon size={13} /> com anexo</span>}
                 {sel.repeat && <span className="mut"><Repeat size={13} /> {sel.repeat === "daily" ? "todo dia" : "toda semana"}</span>}
               </div>
-              <div className="dim" style={{ fontSize: 12.5 }}>{sel.groupJids.map((j) => names.get(j) ?? j).join(", ")}</div>
+              <div className="dim" style={{ fontSize: 12.5 }}>{sel.groupJids.map(label).join(", ")}</div>
               {sel.error && <div className="err">{sel.error}</div>}
               <div className="row">
                 {sel.status === "FAILED" && <form action={retrySchedule}><input type="hidden" name="id" value={sel.id} /><button className="btn pri sm" type="submit">Tentar de novo</button></form>}

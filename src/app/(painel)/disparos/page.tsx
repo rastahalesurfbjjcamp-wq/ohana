@@ -37,7 +37,7 @@ export default async function Disparos({ searchParams }: { searchParams: Promise
     getSettings(),
     db.lead.findMany({ where: { status: { not: "descadastrado" } }, select: { phone: true } }),
     db.setting.findUnique({ where: { key: "_disparo_lista" } }),
-    customers().catch(() => []),
+    process.env.HUB_LITE === "1" ? Promise.resolve([]) : customers().catch(() => []),
   ]);
   const inG = new Set((await db.contact.findMany({ where: { phone: { in: leads.map((l) => l.phone) }, memberships: { some: { group: { isCommunity: true } } } }, select: { phone: true } })).map((c) => c.phone));
   const leftEv = await db.memberEvent.findMany({ where: { type: "LEAVE", createdAt: { gte: new Date(Date.now() - 30 * 864e5) }, group: { isCommunity: true } }, select: { contactId: true } });
@@ -49,7 +49,7 @@ export default async function Disparos({ searchParams }: { searchParams: Promise
     { key: "leads-nao-entrou", label: "Leads que não entraram no grupo", count: leads.filter((l) => !inG.has(l.phone)).length },
     { key: "saiu-30", label: "Saíram do grupo nos últimos 30 dias", count: new Set(leftEv.map((e) => e.contactId)).size },
     { key: "leads", label: "Todos os leads", count: leads.length },
-    ...(["vip", "recorrentes", "novos", "inativos", "todos"] as SegmentKey[]).map((k) => ({ key: `clientes-${k}`, label: `Clientes: ${SEGMENTS[k].label.toLowerCase()}`, hint: SEGMENTS[k].desc, count: seg(k) })),
+    ...(process.env.HUB_LITE === "1" ? [] : ["vip", "recorrentes", "novos", "inativos", "todos"] as SegmentKey[]).map((k) => ({ key: `clientes-${k}`, label: `Clientes: ${SEGMENTS[k].label.toLowerCase()}`, hint: SEGMENTS[k].desc, count: seg(k) })),
     { key: "comunidade", label: "Todos dos grupos da comunidade", hint: "Cada pessoa recebe no privado", count: members },
     { key: "lista", label: "Colar uma lista de números", count: 0, unit: "" },
   ];
@@ -63,7 +63,7 @@ export default async function Disparos({ searchParams }: { searchParams: Promise
       {sp.erro === "campos" && <div className="err">Escreva a mensagem e escolha o público.</div>}
       {sp.erro === "numero" && <div className="err">Não achei o número conectado. Confira o WhatsApp em Configurações.</div>}
       <BroadcastComposer action={createBroadcast} testAction={sendBroadcastTest} audiences={audiences} defaultAudience={selected && sp.lista ? "selecionados" : "leads-nao-entrou"}
-        store={env.storeName()} maxPerHour={s.sending.maxPerHour} owner={(session?.name ?? "Leonardo").split(" ")[0]} library={await libMsgs()} />
+        store={env.storeName()} maxPerHour={await (await import("@/lib/send")).broadcastCap(false)} owner={(session?.name ?? "Leonardo").split(" ")[0]} library={await libMsgs()} lite={process.env.HUB_LITE === "1"} />
         <Panel title="Disparos anteriores" sub="Andamento de cada envio" body={false}>
           {list.length ? (
             <table className="tb">

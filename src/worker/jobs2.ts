@@ -3,7 +3,7 @@ import { db } from "../lib/db";
 import { enqueue } from "../lib/queue";
 import { env } from "../lib/env";
 import { getSettings } from "../lib/settings";
-import { humanDelay, reserveSlot, sendMedia, sendText } from "../lib/send";
+import { humanDelay, quietWait, reserveBroadcastSlot, reserveSlot, sendMedia, sendText, spin } from "../lib/send";
 import { redirectLink } from "../lib/redirect";
 
 const first = (n?: string | null) => (n ?? "").trim().split(" ")[0] || "tudo bem";
@@ -17,43 +17,41 @@ export async function dueBroadcasts() {
   }
 }
 
-// Manda em lotes de até 25 e se reagenda, respeitando o limite por hora
+// Modo seguro: uma mensagem por vez, intervalo sorteado de 25 a 60s, "digitando..." antes,
+// pausa de 5 a 10 min a cada 20, só das 8h às 21h e limite por hora menor nos primeiros dias do número
+const rand = (a: number, b: number) => a + Math.random() * (b - a);
 export async function runBroadcast(id: string) {
   const b = await db.broadcast.findUnique({ where: { id } });
   if (!b || b.status !== "SENDING") return;
-  const batch = await db.broadcastRecipient.findMany({ where: { broadcastId: id, status: "pendente" }, take: 25 });
-  if (!batch.length) {
+  const again = (ms: number) => enqueue("broadcast", { id }, { delayMs: Math.round(ms), jobId: `bc-${id}-${Date.now()}` });
+  const quiet = quietWait();
+  if (quiet > 0) return void (await again(quiet));
+  const r = await db.broadcastRecipient.findFirst({ where: { broadcastId: id, status: "pendente" } });
+  if (!r) {
     await db.broadcast.update({ where: { id }, data: { status: "DONE" } });
     return;
   }
-  const opted = new Set((await db.optOut.findMany({ where: { phone: { in: batch.map((r) => r.phone) } } })).map((o) => o.phone));
-  for (const r of batch) {
-    const fresh = await db.broadcast.findUnique({ where: { id }, select: { status: true } });
-    if (fresh?.status !== "SENDING") return; // pausado ou cancelado
-    if (opted.has(r.phone)) {
-      await db.broadcastRecipient.update({ where: { id: r.id }, data: { status: "pulado" } });
-      continue;
-    }
-    const wait = await reserveSlot();
-    if (wait > 0) {
-      await enqueue("broadcast", { id }, { delayMs: wait, jobId: `bc-${id}-${Date.now()}` });
-      return;
-    }
-    // "{texto}": mensagem já pronta por pessoa (ex.: códigos do Indique e ganhe)
-    const body = b.text === "{texto}" ? r.name ?? "" : fill(b.text, r.name);
-    const text = `${body}\n\n_Para não receber mais, responda SAIR._`;
-    try {
-      if (b.mediaUrl && b.mediaType) await sendMedia(r.phone, { url: b.mediaUrl, type: b.mediaType as "image" | "video" | "document", caption: text });
-      else await sendText(r.phone, text);
-      await db.broadcastRecipient.update({ where: { id: r.id }, data: { status: "enviado", sentAt: new Date() } });
-      await db.broadcast.update({ where: { id }, data: { sent: { increment: 1 } } });
-    } catch (e) {
-      await db.broadcastRecipient.update({ where: { id: r.id }, data: { status: "falhou", error: String(e).slice(0, 200) } });
-      await db.broadcast.update({ where: { id }, data: { failed: { increment: 1 } } });
-    }
-    await humanDelay();
+  if (await db.optOut.findUnique({ where: { phone: r.phone } })) {
+    await db.broadcastRecipient.update({ where: { id: r.id }, data: { status: "pulado" } });
+    return void (await again(1000));
   }
-  await enqueue("broadcast", { id }, { jobId: `bc-${id}-${Date.now()}`, delayMs: 1000 });
+  const wait = await reserveBroadcastSlot();
+  if (wait > 0) return void (await again(wait));
+  // "{texto}": mensagem já pronta por pessoa (ex.: códigos do Indique e ganhe)
+  const body = b.text === "{texto}" ? r.name ?? "" : spin(fill(b.text, r.name));
+  const text = `${body}\n\n_Para não receber mais, responda SAIR._`;
+  const typing = Math.round(rand(2000, 5000));
+  try {
+    if (b.mediaUrl && b.mediaType) await sendMedia(r.phone, { url: b.mediaUrl, type: b.mediaType as "image" | "video" | "document", caption: text }, { delayMs: typing });
+    else await sendText(r.phone, text, { delayMs: typing });
+    await db.broadcastRecipient.update({ where: { id: r.id }, data: { status: "enviado", sentAt: new Date() } });
+    await db.broadcast.update({ where: { id }, data: { sent: { increment: 1 } } });
+  } catch (e) {
+    await db.broadcastRecipient.update({ where: { id: r.id }, data: { status: "falhou", error: String(e).slice(0, 200) } });
+    await db.broadcast.update({ where: { id }, data: { failed: { increment: 1 } } });
+  }
+  const done = b.sent + b.failed + 1;
+  await again(done % 20 === 0 ? rand(5 * 60_000, 10 * 60_000) : rand(25_000, 60_000));
 }
 
 export async function sendPollLink(pollId: string) {

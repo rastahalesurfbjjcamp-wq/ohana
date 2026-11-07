@@ -267,9 +267,11 @@ export default async function Integracoes({ searchParams }: { searchParams: Prom
     );
   };
 
+  const lite = process.env.HUB_LITE === "1";
   return (
     <>
-      <Header title="Integrações" lede="Tudo que o Hub puxa e conecta. As chaves ficam guardadas criptografadas e nunca aparecem inteiras de novo." />
+      <Header title="Integrações" lede={lite ? "Conecte o Meta Ads para ver o gasto com anúncios na Visão geral. A chave fica guardada criptografada." : "Tudo que o Hub puxa e conecta. As chaves ficam guardadas criptografadas e nunca aparecem inteiras de novo."} />
+      {!lite && (<>
       <div className="cols c-1-1">
         <section className="pnl" style={{ padding: 22 }}>
           <div className="row" style={{ gap: 12, flexWrap: "nowrap" }}>
@@ -319,15 +321,17 @@ export default async function Integracoes({ searchParams }: { searchParams: Prom
       </div>
       {(open === "shopify" || open === "appmax" || open === "pushcut") && <Detail />}
 
+      </>)}
       <h3 className="isec">Anúncios</h3>
       <div className="igrid">
         <Tile p="meta" letter={<Brand name="meta" />} tone="brand" title="Meta Ads" sub={c.meta.adAccount ? `conta ${c.meta.adAccount} · gasto e campanhas` : "gasto, campanhas e leads"} />
-        <Tile p="google" letter={<Brand name="google" />} tone="brand" title="Google Ads" sub={c.google.customerId ? `conta ${c.google.customerId} · gasto e campanhas` : "gasto, cliques e conversões"} />
-        <Tile p="tiktok" letter={<Brand name="tiktok" />} tone="brand" title="TikTok Ads" sub={c.tiktok.advertiserId ? `conta ${c.tiktok.advertiserId} · gasto e campanhas` : "gasto e campanhas"} />
+        {!lite && <Tile p="google" letter={<Brand name="google" />} tone="brand" title="Google Ads" sub={c.google.customerId ? `conta ${c.google.customerId} · gasto e campanhas` : "gasto, cliques e conversões"} />}
+        {!lite && <Tile p="tiktok" letter={<Brand name="tiktok" />} tone="brand" title="TikTok Ads" sub={c.tiktok.advertiserId ? `conta ${c.tiktok.advertiserId} · gasto e campanhas` : "gasto e campanhas"} />}
       </div>
       {(open === "meta" || open === "google" || open === "tiktok") && <Detail />}
       {(status.tiktok?.ok || status.google?.ok) && <AdsExtra />}
 
+      {!lite && (<>
       <h3 className="isec">Inteligência</h3>
       <div className="igrid">
         <Tile p="ai" letter={<Brand name="claude" />} tone="brand" title="Claude (IA)" sub="assistente, diagnóstico, comandos e dica do dia" />
@@ -346,6 +350,7 @@ export default async function Integracoes({ searchParams }: { searchParams: Prom
         ))}
         <Link href="/configuracoes" className="itile"><span className="tile t-s"><Bell size={17} /></span><div style={{ flex: 1 }}><b>Alertas no WhatsApp</b><small>atendimento passado para a equipe e relatório no grupo de resultados</small></div><span className="chip c-l">Ligado</span></Link>
       </div>
+      </>)}
     </>
   );
 }

@@ -25,7 +25,7 @@ export const ADMIN_ONLY = ["/equipe", "/integracoes"];
 const PARENT: Record<string, string> = { "/comecar": "/", "/modelos": "/modelos", "/em-breve": "/" };
 
 // Hub simples (HUB_LITE=1): para outra empresa usar só o WhatsApp. Grupos, coleta, disparos, agendamentos e mensagens.
-export const LITE_HREFS = ["/grupos", "/entradas", "/leads", "/disparos", "/agendamentos", "/votacoes", "/mensagens", "/listas", "/configuracoes", "/equipe"];
+export const LITE_HREFS = ["/", "/integracoes", "/grupos", "/entradas", "/leads", "/disparos", "/agendamentos", "/votacoes", "/mensagens", "/listas", "/configuracoes", "/equipe"];
 const serverLite = () => typeof window === "undefined" && process.env.HUB_LITE === "1";
 
 export function canSee(path: string, role: string | undefined, areas: string[] | undefined, lite = serverLite()) {
@@ -41,5 +41,5 @@ export function canSee(path: string, role: string | undefined, areas: string[] |
   return areas.includes(href);
 }
 export function firstAllowed(role: string | undefined, areas: string[] | undefined, lite = serverLite()) {
-  return ALL_HREFS.find((h) => canSee(h, role, areas, lite)) ?? (lite ? "/grupos" : "/");
+  return ALL_HREFS.find((h) => canSee(h, role, areas, lite)) ?? "/";
 }

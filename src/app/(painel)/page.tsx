@@ -24,6 +24,7 @@ import { metaLabel } from "@/lib/metaLabels";
 import { RefreshButton } from "@/components/RefreshButton";
 import { Pendencias } from "@/components/Pendencias";
 import { Suspense } from "react";
+import { LiteHome } from "./LiteHome";
 
 const CARDS: [string, string][] = [
   ["faturamento", "Faturamento"], ["pedidos", "Pedidos"], ["lucro", "Lucro"],
@@ -46,6 +47,7 @@ function ago(d: Date) {
 
 export default async function Home({ searchParams }: { searchParams: Promise<{ r?: string; p?: string; de?: string; ate?: string }> }) {
   const sp = await searchParams;
+  if (process.env.HUB_LITE === "1") return <LiteHome sp={sp} />;
   const { r } = sp;
   const period = resolvePeriod(sp.p, "hoje", sp.de, sp.ate);
   const pStart = dayRange(period.from).start;
