@@ -19,6 +19,7 @@ export function BroadcastComposer({ action, testAction, audiences, defaultAudien
   const [aud, setAud] = useState(defaultAudience);
   const [text, setText] = useState("Oi {nome}, ");
   const [file, setFile] = useState<File | null>(null);
+  const [fileErr, setFileErr] = useState("");
   const [now, setNow] = useState(false);
   const ta = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -50,7 +51,7 @@ export function BroadcastComposer({ action, testAction, audiences, defaultAudien
       </div>
       <input type="hidden" name="audience" value={aud} />
       {now && <input type="hidden" name="now" value="1" />}
-      <input ref={fileRef} type="file" name="media" hidden onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+      <input ref={fileRef} type="file" name="media" hidden onChange={(e) => { const f = e.target.files?.[0] ?? null; if (f && f.size > 45 * 1024 * 1024) { setFileErr(`Esse arquivo tem ${Math.round(f.size / 1048576)} MB. O máximo é 45 MB: comprima o vídeo e anexe de novo.`); e.target.value = ""; setFile(null); return; } setFileErr(""); setFile(f); }} />
       <div className="bc">
         <section className="pnl bc-l">
           <h4><span className="stepn">1</span> Público</h4>
@@ -64,7 +65,7 @@ export function BroadcastComposer({ action, testAction, audiences, defaultAudien
               </label>
             ))}
           </div>
-          {aud === "lista" && <textarea className="in" name="list" placeholder="Um WhatsApp por linha" style={{ minHeight: 90, marginTop: 8 }} />}
+          {aud === "lista" && <textarea className="in" name="list" required placeholder="Um WhatsApp por linha" style={{ minHeight: 90, marginTop: 8 }} />}
 
           <div className="sep" />
           <h4><span className="stepn">2</span> Mensagem</h4>
@@ -78,6 +79,7 @@ export function BroadcastComposer({ action, testAction, audiences, defaultAudien
             <button type="button" className="tbtn" onClick={() => insert("**")}><b>B</b> Negrito</button>
             {file && <span className="chip c-n" style={{ gap: 6 }}>{file.name.slice(0, 22)} <button type="button" onClick={() => { setFile(null); if (fileRef.current) fileRef.current.value = ""; }} style={{ background: "none", border: 0, color: "inherit", cursor: "pointer", display: "grid" }}><X size={12} /></button></span>}
           </div>
+          {fileErr && <div className="err" style={{ marginTop: 8 }}>{fileErr}</div>}
           <p className="dim" style={{ fontSize: 12, marginTop: 8 }}>Use {"{Oi|Olá|E aí}"} para cada pessoa receber uma versão diferente. No fim vai sozinho: “Para não receber mais, responda SAIR”.</p>
 
           <div className="sep" />

@@ -68,7 +68,10 @@ export async function createBroadcast(f: FormData) {
   const name = str(f, "name") || "Disparo";
   const text = str(f, "text");
   const audience = str(f, "audience");
-  if (!text || !audience) redirect("/disparos?erro=campos");
+  if (!audience && !text) redirect("/disparos?erro=envio"); // formulário chegou vazio (arquivo grande demais ou conexão caiu)
+  if (!text) redirect("/disparos?erro=texto");
+  if (!audience) redirect("/disparos?erro=publico");
+  if (audience === "lista" && !str(f, "list")) redirect("/disparos?erro=lista");
 
   const people = new Map<string, string | null>();
   if (audience === "leads") {
@@ -149,8 +152,32 @@ export async function broadcastAction(f: FormData) {
   if (act === "retry") {
     const r = await db.broadcastRecipient.updateMany({ where: { broadcastId: id, status: "falhou", NOT: { error: { contains: '"exists":false' } } }, data: { status: "pendente", error: null } });
     if (r.count) await db.broadcast.update({ where: { id }, data: { status: "SCHEDULED", sendAt: new Date(), failed: { decrement: r.count } } });
+    revalidatePath("/disparos");
+    redirect(r.count ? `/disparos?reenvio=${r.count}` : "/disparos?erro=reenvio");
   }
   revalidatePath("/disparos");
+}
+
+export async function updateBroadcast(f: FormData) {
+  await auth();
+  const id = str(f, "id");
+  const b = await db.broadcast.findUnique({ where: { id } });
+  if (!b || !["DRAFT", "SCHEDULED", "PAUSED"].includes(b.status)) redirect("/disparos");
+  const text = str(f, "text");
+  if (!text) redirect(`/disparos/${id}?erro=texto`);
+  const data: { text: string; sendAt?: Date; mediaUrl?: string | null; mediaType?: string | null } = { text };
+  const when = str(f, "sendAt");
+  if (when) data.sendAt = localToDate(when);
+  if (f.get("removeMedia") === "on") { data.mediaUrl = null; data.mediaType = null; }
+  const file = f.get("media");
+  if (file instanceof File && file.size > 0) {
+    const up = await saveUpload(file);
+    data.mediaUrl = up.url;
+    data.mediaType = up.type;
+  }
+  await db.broadcast.update({ where: { id }, data });
+  revalidatePath("/disparos");
+  redirect("/disparos?editado=1");
 }
 
 /* Votações */

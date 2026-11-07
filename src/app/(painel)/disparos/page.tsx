@@ -1,4 +1,5 @@
-import { Pause, Play, RotateCcw, X } from "lucide-react";
+import { Pause, Pencil, Play, RotateCcw, X } from "lucide-react";
+import Link from "next/link";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
 import { getSession } from "@/lib/auth";
@@ -29,7 +30,7 @@ const ST = {
   DRAFT: ["rascunho", "c-n"], SCHEDULED: ["agendado", "c-k"], SENDING: ["enviando", "c-s"], PAUSED: ["pausado", "c-n"], DONE: ["concluído", "c-l"], CANCELED: ["cancelado", "c-n"],
 } as const;
 
-export default async function Disparos({ searchParams }: { searchParams: Promise<{ ok?: string; erro?: string; lista?: string; teste?: string }> }) {
+export default async function Disparos({ searchParams }: { searchParams: Promise<{ ok?: string; erro?: string; lista?: string; teste?: string; reenvio?: string; editado?: string }> }) {
   const sp = await searchParams;
   const session = await getSession();
   const waOpen = (await (await import("@/lib/evolution")).evolution.connectionState().catch(() => "open")) === "open";
@@ -62,6 +63,14 @@ export default async function Disparos({ searchParams }: { searchParams: Promise
       {sp.teste && <div className="ok">Teste enviado para o número conectado. Confira no WhatsApp.</div>}
       {sp.erro === "vazio" && <div className="err">Ninguém com WhatsApp válido nesse público.</div>}
       {sp.erro === "campos" && <div className="err">Escreva a mensagem e escolha o público.</div>}
+      {sp.erro === "texto" && <div className="err">Escreva a mensagem antes de agendar.</div>}
+      {sp.erro === "publico" && <div className="err">Escolha o público do disparo.</div>}
+      {sp.erro === "lista" && <div className="err">Cole os números na caixa da lista, um por linha.</div>}
+      {sp.erro === "envio" && <div className="err">O formulário não chegou completo. Se anexou um vídeo, ele pode ser grande demais (máximo 45 MB). Tente de novo com um arquivo menor.</div>}
+      {sp.erro === "reenvio" && <div className="err">Não tinha ninguém para reenviar. Quem falhou por não ter WhatsApp fica de fora.</div>}
+      {sp.reenvio && <div className="ok">Reenvio começou para {sp.reenvio} pessoas. Acompanhe o andamento aqui embaixo.</div>}
+      {sp.editado && <div className="ok">Disparo atualizado.</div>}
+      {!waOpen && <div className="err">O WhatsApp está desconectado. Os disparos ficam parados até reconectar em Configurações.</div>}
       {sp.erro === "numero" && <div className="err">Não achei o número conectado. Confira o WhatsApp em Configurações.</div>}
       <BroadcastComposer action={createBroadcast} testAction={sendBroadcastTest} audiences={audiences} defaultAudience={selected && sp.lista ? "selecionados" : "leads-nao-entrou"}
         store={env.storeName()} maxPerHour={await (await import("@/lib/send")).broadcastCap(false)} owner={(session?.name ?? "Leonardo").split(" ")[0]} library={await libMsgs()} lite={process.env.HUB_LITE === "1"} />
@@ -83,14 +92,14 @@ export default async function Disparos({ searchParams }: { searchParams: Promise
                       </div>
                       {b.status === "SENDING" && !waOpen && <div className="dim" style={{ fontSize: 12, marginTop: 4, color: "var(--coral)" }}>Parado esperando o WhatsApp reconectar. Continua sozinho quando voltar.</div>}
                     </td>
-                    <td className="r" style={{ width: 120 }}>
-                      <form action={broadcastAction} className="row" style={{ gap: 6, justifyContent: "flex-end" }}>
-                        <input type="hidden" name="id" value={b.id} />
-                        {(b.status === "DRAFT" || b.status === "PAUSED") && <button className="btn sm" name="act" value="start" title="Começar"><Play size={14} /></button>}
-                        {b.status === "SENDING" && <button className="btn sm" name="act" value="pause" title="Pausar"><Pause size={14} /></button>}
-                        {b.failed > 0 && ["DONE", "PAUSED"].includes(b.status) && <button className="btn sm" name="act" value="retry" title="Reenviar para quem falhou"><RotateCcw size={14} /></button>}
-                        {!["DONE", "CANCELED"].includes(b.status) && <button className="btn sm danger" name="act" value="cancel" title="Cancelar"><X size={14} /></button>}
-                      </form>
+                    <td className="r" style={{ width: 220 }}>
+                      <div className="row" style={{ gap: 6, justifyContent: "flex-end" }}>
+                        {(b.status === "DRAFT" || b.status === "PAUSED") && <ActBtn id={b.id} act="start" title="Começar"><Play size={14} /></ActBtn>}
+                        {["DRAFT", "SCHEDULED", "PAUSED"].includes(b.status) && <Link className="btn sm" href={`/disparos/${b.id}`} title="Editar"><Pencil size={14} /></Link>}
+                        {b.status === "SENDING" && <ActBtn id={b.id} act="pause" title="Pausar"><Pause size={14} /></ActBtn>}
+                        {b.failed > 0 && ["DONE", "PAUSED"].includes(b.status) && <ActBtn id={b.id} act="retry" title="Reenviar para quem falhou"><RotateCcw size={14} /> Tentar de novo</ActBtn>}
+                        {!["DONE", "CANCELED"].includes(b.status) && <ActBtn id={b.id} act="cancel" title="Cancelar" danger><X size={14} /></ActBtn>}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -101,5 +110,16 @@ export default async function Disparos({ searchParams }: { searchParams: Promise
           )}
         </Panel>
     </>
+  );
+}
+
+// Um formulário por botão: o nome do botão não chega na ação do servidor
+function ActBtn({ id, act, title, danger, children }: { id: string; act: string; title: string; danger?: boolean; children: React.ReactNode }) {
+  return (
+    <form action={broadcastAction}>
+      <input type="hidden" name="id" value={id} />
+      <input type="hidden" name="act" value={act} />
+      <button className={`btn sm${danger ? " danger" : ""}`} title={title}>{children}</button>
+    </form>
   );
 }
