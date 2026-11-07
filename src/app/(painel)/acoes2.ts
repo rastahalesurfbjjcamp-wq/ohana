@@ -145,6 +145,11 @@ export async function broadcastAction(f: FormData) {
   if (act === "start") await db.broadcast.update({ where: { id }, data: { status: "SCHEDULED", sendAt: new Date() } });
   if (act === "pause") await db.broadcast.update({ where: { id }, data: { status: "PAUSED" } });
   if (act === "cancel") await db.broadcast.update({ where: { id }, data: { status: "CANCELED" } });
+  // Reenviar quem falhou por queda do WhatsApp (número que não tem WhatsApp fica de fora)
+  if (act === "retry") {
+    const r = await db.broadcastRecipient.updateMany({ where: { broadcastId: id, status: "falhou", NOT: { error: { contains: '"exists":false' } } }, data: { status: "pendente", error: null } });
+    if (r.count) await db.broadcast.update({ where: { id }, data: { status: "SCHEDULED", sendAt: new Date(), failed: { decrement: r.count } } });
+  }
   revalidatePath("/disparos");
 }
 

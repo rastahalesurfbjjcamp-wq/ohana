@@ -35,6 +35,10 @@ export async function runBroadcast(id: string) {
     await db.broadcastRecipient.update({ where: { id: r.id }, data: { status: "pulado" } });
     return void (await again(1000));
   }
+  // WhatsApp caiu: segura a fila e tenta de novo em 5 min, sem queimar a lista
+  const { evolution } = await import("../lib/evolution");
+  const state = await evolution.connectionState().catch(() => "unknown");
+  if (state !== "open") return void (await again(5 * 60_000));
   const wait = await reserveBroadcastSlot();
   if (wait > 0) return void (await again(wait));
   // "{texto}": mensagem já pronta por pessoa (ex.: códigos do Indique e ganhe)
@@ -47,6 +51,7 @@ export async function runBroadcast(id: string) {
     await db.broadcastRecipient.update({ where: { id: r.id }, data: { status: "enviado", sentAt: new Date() } });
     await db.broadcast.update({ where: { id }, data: { sent: { increment: 1 } } });
   } catch (e) {
+    if (/Connection Closed|Connection Failure|not connected/i.test(String(e))) return void (await again(5 * 60_000));
     await db.broadcastRecipient.update({ where: { id: r.id }, data: { status: "falhou", error: String(e).slice(0, 200) } });
     await db.broadcast.update({ where: { id }, data: { failed: { increment: 1 } } });
   }

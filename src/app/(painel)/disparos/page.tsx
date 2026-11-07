@@ -1,4 +1,4 @@
-import { Pause, Play, X } from "lucide-react";
+import { Pause, Play, RotateCcw, X } from "lucide-react";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
 import { getSession } from "@/lib/auth";
@@ -32,6 +32,7 @@ const ST = {
 export default async function Disparos({ searchParams }: { searchParams: Promise<{ ok?: string; erro?: string; lista?: string; teste?: string }> }) {
   const sp = await searchParams;
   const session = await getSession();
+  const waOpen = (await (await import("@/lib/evolution")).evolution.connectionState().catch(() => "open")) === "open";
   const [list, s, leads, selRow, shop] = await Promise.all([
     db.broadcast.findMany({ orderBy: { createdAt: "desc" }, take: 30 }),
     getSettings(),
@@ -80,12 +81,14 @@ export default async function Disparos({ searchParams }: { searchParams: Promise
                         <div style={{ flex: 1 }}><Bar value={b.sent + b.failed} max={b.total} /></div>
                         <span className="mut" style={{ fontSize: 12 }}>{b.sent}/{b.total}{b.failed ? `, ${b.failed} falharam` : ""}</span>
                       </div>
+                      {b.status === "SENDING" && !waOpen && <div className="dim" style={{ fontSize: 12, marginTop: 4, color: "var(--coral)" }}>Parado esperando o WhatsApp reconectar. Continua sozinho quando voltar.</div>}
                     </td>
                     <td className="r" style={{ width: 120 }}>
                       <form action={broadcastAction} className="row" style={{ gap: 6, justifyContent: "flex-end" }}>
                         <input type="hidden" name="id" value={b.id} />
                         {(b.status === "DRAFT" || b.status === "PAUSED") && <button className="btn sm" name="act" value="start" title="Começar"><Play size={14} /></button>}
                         {b.status === "SENDING" && <button className="btn sm" name="act" value="pause" title="Pausar"><Pause size={14} /></button>}
+                        {b.failed > 0 && ["DONE", "PAUSED"].includes(b.status) && <button className="btn sm" name="act" value="retry" title="Reenviar para quem falhou"><RotateCcw size={14} /></button>}
                         {!["DONE", "CANCELED"].includes(b.status) && <button className="btn sm danger" name="act" value="cancel" title="Cancelar"><X size={14} /></button>}
                       </form>
                     </td>
