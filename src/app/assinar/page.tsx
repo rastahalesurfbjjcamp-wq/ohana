@@ -50,7 +50,7 @@ export default async function Assinar({ searchParams }: { searchParams: Promise<
             <div className="sb-li"><Ic d={I.cal} /><div><b>Eventos 0800 com seus pontos</b><span>Seminários, open mats e eventos de luta.</span></div></div>
             <div className="sb-li"><Ic d={I.trophy} /><div><b>Quanto mais tempo, mais benefícios</b><span>Brinde com 3 meses, {c.t6Points} pontos por real com 6 meses e uma peça exclusiva com 12 meses. Coleções que só quem é do club há mais tempo compra.</span></div></div>
             <div className="sb-li"><Ic d={I.cake} /><div><b>{c.birthdayPct}% no mês do seu aniversário</b><span>Sorteio todo mês de peças, vídeo análise por atletas do time e aula particular.</span></div></div>
-            <div className="sb-li"><Ic d={I.users} /><div><b>Close Friends e indicação</b><span>Bastidores da marca no Close Friends do Instagram e {c.affiliatePct}% da mensalidade de cada amigo que assinar pelo seu link.</span></div></div>
+            <div className="sb-li"><Ic d={I.users} /><div><b>Indicação</b><span>{c.affiliatePct}% da mensalidade de cada amigo que assinar pelo seu link.</span></div></div>
           </div>
           <div className="sb-pts">
             <h4>O que seus pontos valem <small>{prizes.length ? "catálogo" : "exemplos"}</small></h4>

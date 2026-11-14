@@ -127,7 +127,7 @@ export default async function Clube({ searchParams }: { searchParams: Promise<{ 
             </div>
             <div className="row" style={{ gap: 12, alignItems: "flex-start" }}>
               <div className="field" style={{ flex: 2, minWidth: 260 }}><label>Prêmios do sorteio do mês (um por linha: prêmio|ganhadores)</label><textarea className="in" name="rafflePrizes" rows={3} defaultValue={c.rafflePrizes} /></div>
-              <div className="field" style={{ flex: 1, minWidth: 200 }}><label>@ do Instagram do Close Friends</label><input className="in" name="instagram" defaultValue={c.instagram} placeholder="rastahale" /></div>
+              <input type="hidden" name="instagram" value={c.instagram} />
             </div>
             <p className="dim" style={{ fontSize: 12.5 }}>Os brindes viram pedido de R$ 0 na Shopify com o endereço do membro. As coleções exclusivas são links de coleções que ficam fora do menu da loja.</p>
             <div><button className="btn pri sm" type="submit">Salvar níveis e benefícios</button></div>

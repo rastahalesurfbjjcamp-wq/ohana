@@ -183,13 +183,6 @@ export function MemberArea({ token }: { token: string }) {
         </div>
       )}
 
-      {v.storeInstagram && (
-        <div className="mc-card">
-          <div className="mc-t">Close Friends</div>
-          <p className="mc-p">{v.closeFriends ? `Você está no Close Friends do @${v.storeInstagram}: bastidores e estratégias da marca. ✓` : v.instagram ? `Vamos adicionar @${v.instagram} no Close Friends do @${v.storeInstagram} em breve.` : `Mande seu @ do Instagram no WhatsApp do club para entrar no Close Friends do @${v.storeInstagram}.`}</p>
-        </div>
-      )}
-
       {v.rewards.length > 0 && (
         <div className="mc-card">
           <div className="mc-t">Cupons de resgate para usar</div>

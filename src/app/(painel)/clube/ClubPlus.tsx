@@ -1,6 +1,6 @@
-// Rasta Hale Club no Hub: níveis, brindes, Close Friends, aniversários, sorteio, eventos, top compradores e indicação.
+// Rasta Hale Club no Hub: níveis, brindes, aniversários, sorteio, eventos, top compradores e indicação.
 import Link from "next/link";
-import { CalendarDays, Cake, Gift, Instagram, Plus, Trophy, Users, X } from "lucide-react";
+import { CalendarDays, Cake, Gift, Plus, Trophy, Users, X } from "lucide-react";
 import type { ClubMember } from "@prisma/client";
 import { db } from "@/lib/db";
 import type { Settings } from "@/lib/settings";
@@ -11,7 +11,7 @@ import { CopyButton } from "@/components/CopyButton";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { isActiveAt } from "@/lib/club";
 import { affiliateRows, monthKey, monthsIn, parsePrizes, tierName, tierOf, tierPerks, topBuyers } from "@/lib/clubPlus";
-import { courtesyNow, createMeet, markCloseFriends, payAffiliates, perkSent, raffleNow, retryPerks, savePerkAddress, toggleMeet } from "../acoes8";
+import { courtesyNow, createMeet, payAffiliates, perkSent, raffleNow, retryPerks, savePerkAddress, toggleMeet } from "../acoes8";
 
 type Club = Settings["club"];
 const fmtD = new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit" });
@@ -37,8 +37,6 @@ export async function ClubPlus({ all, c, evento, endereco }: { all: ClubMember[]
   ]);
   const bdays = active.filter((m) => m.birthDate && m.birthDate.getUTCMonth() === now.getMonth());
   const bdayThis = bdayRewards.filter((r) => r.createdAt.getMonth() === now.getMonth());
-  const cfAdd = active.filter((m) => m.instagram && !m.closeFriends);
-  const cfDel = all.filter((m) => m.closeFriends && !isActiveAt(m, now, c.graceDays));
   const usesTotal = active.reduce((a, m) => a + (m.usesMonth === month ? m.monthUses : 0), 0);
   const kits = perks.filter((p) => p.kind === "kit");
   const gifts = perks.filter((p) => p.kind !== "kit");
@@ -120,18 +118,6 @@ export async function ClubPlus({ all, c, evento, endereco }: { all: ClubMember[]
               {noAddr.length > 0 && <div>Sem endereço: {noAddr.map((p, i) => <span key={p.id}>{i ? ", " : ""}<Link href={`/clube?endereco=${p.member.id}`} style={{ textDecoration: "underline" }}>{p.member.name.split(" ")[0]}</Link></span>)}. Clique no nome para completar.</div>}
               {errs.length > 0 && <div>{errs[0].error}{errs.length > 1 ? ` (${errs.length} brindes)` : ""}</div>}
               <form action={retryPerks} style={{ marginTop: 8 }}><button className="btn sm" type="submit">Tentar de novo</button></form>
-            </div>
-          )}
-          <div className="lrow">
-            <span className="tile sm t-p"><Instagram size={16} /></span>
-            <div><div className="t">{cfAdd.length} para adicionar no Close Friends</div><div className="s">{cfAdd.length ? cfAdd.slice(0, 5).map((m) => `@${m.instagram}`).join(", ") + (cfAdd.length > 5 ? ` +${cfAdd.length - 5}` : "") : "Ninguém novo."} O Instagram não deixa adicionar por sistema.</div></div>
-            {cfAdd.length > 0 && <span className="end row" style={{ gap: 6, justifyContent: "flex-end" }}><CopyButton className="btn sm" text={cfAdd.map((m) => `@${m.instagram}`).join("\n")} label="Copiar" /><form action={markCloseFriends}><input type="hidden" name="ids" value={cfAdd.map((m) => m.id).join(",")} /><input type="hidden" name="on" value="1" /><button className="btn sm" type="submit">Já adicionei</button></form></span>}
-          </div>
-          {cfDel.length > 0 && (
-            <div className="lrow">
-              <span className="tile sm t-c"><Instagram size={16} /></span>
-              <div><div className="t">{cfDel.length} para tirar do Close Friends</div><div className="s">{cfDel.slice(0, 5).map((m) => `@${m.instagram}`).join(", ")} · saíram do club ou atrasaram</div></div>
-              <span className="end row" style={{ gap: 6, justifyContent: "flex-end" }}><CopyButton className="btn sm" text={cfDel.map((m) => `@${m.instagram}`).join("\n")} label="Copiar" /><form action={markCloseFriends}><input type="hidden" name="ids" value={cfDel.map((m) => m.id).join(",")} /><input type="hidden" name="on" value="0" /><button className="btn sm" type="submit">Já tirei</button></form></span>
             </div>
           )}
           <div className="lrow">
