@@ -24,7 +24,7 @@ const ERR: Record<string, string> = {
 export default async function Embaixador({ searchParams }: { searchParams: Promise<{ e?: string; ok?: string }> }) {
   const { e, ok } = await searchParams;
   const p = await ambProgram();
-  const first = p.levels[0];
+  
   return (
     <div className="em">
       <header className="em-top">
@@ -51,13 +51,14 @@ export default async function Embaixador({ searchParams }: { searchParams: Promi
 
       <section className="em-sec">
         <h2>Níveis</h2>
-        <p className="em-lede">Todo embaixador começa no {first.name}. Quanto mais você indica, mais sobe de nível e maior fica a sua comissão.</p>
+        <p className="em-lede">Você sobe de nível cumprindo os requisitos ou batendo as metas de pedidos no seu cupom. Toda subida passa pela nossa aprovação.</p>
         <div className="em-levels">
-          {p.levels.map((l, i) => (
-            <div key={l.key} className={`em-lv lv-${l.key}${l.soon ? " soon" : ""}`}>
+          {p.levels.filter((l) => !l.soon).map((l) => (
+            <div key={l.key} className={`em-lv lv-${l.key}${l.invite ? " inv" : ""}`}>
               <div className="em-lv-h"><i /> <b>{l.name}</b></div>
-              {l.soon ? <div className="em-lv-v">Em breve</div> : <div className="em-lv-v">{l.pct.toLocaleString("pt-BR")}%<small> de comissão</small></div>}
-              <div className="em-lv-r">{l.soon ? "Benefícios sendo preparados" : i === 0 ? "Ao ser aprovado" : `Ao acumular ${brlc(l.reachCents ?? 0)} em comissão`}</div>
+              {l.invite ? <div className="em-lv-v">Apenas convidados</div> : <div className="em-lv-v">{l.pct.toLocaleString("pt-BR")}%<small> de comissão</small></div>}
+              {!l.invite && (l.siteOff > 0 || l.perks) && <div className="em-lv-p">{[l.siteOff ? `${l.siteOff}% de desconto no site em peças avulsas` : "", l.perks].filter(Boolean).join(" · ")}</div>}
+              {!l.invite && <div className="em-lv-r"><b>Como entrar:</b> {l.how}.{l.orders ? <><br /><b>Ou meta:</b> {l.orders} pedidos no cupom em 3 meses.</> : null}</div>}
             </div>
           ))}
         </div>

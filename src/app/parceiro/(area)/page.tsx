@@ -52,20 +52,24 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
 
       <div className="grid g2">
         {amb ? (
-          <Panel title="Seu nível" sub="Quanto mais você indica, mais sobe e maior fica a comissão">
+          <Panel title="Seu nível" sub="Você sobe cumprindo os requisitos ou batendo a meta de pedidos">
             <div className="stack" style={{ gap: 12 }}>
-              <div className="row" style={{ gap: 12, alignItems: "center" }}>
+              <div className="row" style={{ gap: 12, alignItems: "center", flexWrap: "wrap" }}>
                 <span className={`pt-lv lv-${amb.level.key}`}>{amb.level.name}</span>
                 <b style={{ fontSize: 22 }}>{amb.level.pct.toLocaleString("pt-BR")}%</b><span className="dim">de comissão</span>
               </div>
-              {amb.level.perks && <div className="dim" style={{ fontSize: 13.5 }}>{amb.level.perks}</div>}
-              {amb.next && !amb.next.soon && amb.next.reachCents != null ? (
+              {(amb.level.siteOff > 0 || amb.level.perks) && <div style={{ fontSize: 13.5 }}>{[amb.level.siteOff ? `${amb.level.siteOff}% de desconto no site em peças avulsas` : "", amb.level.perks].filter(Boolean).join(" · ")}</div>}
+              {amb.eligible ? (
+                <div className="ok" style={{ margin: 0 }}>Você bateu a meta do <b>{amb.eligible.name}</b>. A equipe vai analisar e confirmar a sua subida.</div>
+              ) : amb.next && amb.next.orders ? (
                 <>
-                  <div style={{ fontSize: 15, lineHeight: 1.5 }}>Acumule <b>{brlc(amb.next.reachCents)}</b> em comissão e suba para o <b>{amb.next.name}</b>, com <b className="pt-g">{amb.next.pct.toLocaleString("pt-BR")}%</b> em cada venda.</div>
-                  <div className="pt-bar"><i style={{ width: `${Math.min(100, (b.lifetimeCents / amb.next.reachCents) * 100)}%` }} /></div>
-                  <div className="dim" style={{ fontSize: 12.5 }}>{brlc(b.lifetimeCents)} de {brlc(amb.next.reachCents)}</div>
+                  <div style={{ fontSize: 15, lineHeight: 1.5 }}>Chegue a <b>{amb.next.orders} pedidos</b> no seu cupom em 3 meses para pedir o <b>{amb.next.name}</b>, com <b className="pt-g">{amb.next.pct.toLocaleString("pt-BR")}%</b> de comissão{amb.next.siteOff ? <> e <b>{amb.next.siteOff}%</b> de desconto no site</> : null}{amb.next.perks ? <> e {amb.next.perks.toLowerCase()}</> : null}.</div>
+                  <div className="pt-bar"><i style={{ width: `${Math.min(100, (amb.orders / amb.next.orders) * 100)}%` }} /></div>
+                  <div className="dim" style={{ fontSize: 12.5 }}>{amb.orders} de {amb.next.orders} pedidos nos últimos 3 meses</div>
+                  <div className="dim" style={{ fontSize: 12.5, lineHeight: 1.5 }}>Ou pelos requisitos: {amb.next.how.charAt(0).toLowerCase() + amb.next.how.slice(1)}.</div>
                 </>
-              ) : amb.next ? <div className="dim" style={{ fontSize: 13.5 }}>Próximo nível: {amb.next.name}. Os benefícios estão sendo preparados.</div> : null}
+              ) : null}
+              <small className="dim">Toda subida de nível passa pela aprovação da equipe Rasta Hale.</small>
             </div>
           </Panel>
         ) : (

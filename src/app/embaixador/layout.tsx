@@ -29,8 +29,9 @@ const CSS = `
 .em-lv-v{font-family:Brico,system-ui;font-weight:700;font-size:30px;color:#fff}.em-lv-v small{font-family:Geist,system-ui;font-weight:400;font-size:12.5px;color:var(--ink2)}
 .em-lv-r{font-size:12.5px;color:var(--ink2);line-height:1.5}
 .em-lv.soon{opacity:.55}.em-lv.soon .em-lv-v{font-size:18px;color:var(--ink2)}
-.lv-bronze{--c:#c47a3d}.lv-prata{--c:#c9d1d6}.lv-ouro{--c:#f2c200}.lv-diamante{--c:#7dd3fc}.lv-esmeralda{--c:#34d399}
-.lv-bronze{border-top:3px solid var(--c)}.lv-prata{border-top:3px solid var(--c)}.lv-ouro{border-top:3px solid var(--c)}.lv-diamante{border-top:3px solid var(--c)}.lv-esmeralda{border-top:3px solid var(--c)}
+.lv-bronze{--c:#c47a3d}.lv-prata{--c:#c9d1d6}.lv-ouro{--c:#f2c200}.lv-diamante{--c:#7dd3fc}.lv-esmeralda{--c:#34d399}.lv-premium{--c:#7dd3fc}.lv-team{--c:#f97316}
+.lv-bronze{border-top:3px solid var(--c)}.lv-prata{border-top:3px solid var(--c)}.lv-ouro{border-top:3px solid var(--c)}.lv-diamante{border-top:3px solid var(--c)}.lv-esmeralda{border-top:3px solid var(--c)}.lv-premium{border-top:3px solid var(--c)}.lv-team{border-top:3px solid var(--c)}
+.em-lv-p{font-size:13px;color:#fff;line-height:1.45}.em-lv.inv{background:linear-gradient(160deg,#1a1410,var(--sf))}.em-lv.inv .em-lv-v{font-size:18px;color:var(--c)}
 .em-rules{list-style:none;display:flex;flex-direction:column;gap:10px;margin-top:16px}
 .em-rules li{display:flex;gap:10px;align-items:flex-start;color:#d5dbd8;font-size:14.5px;line-height:1.5}.em-rules svg{color:var(--lagoon);margin-top:3px;flex:none}
 .em-form,.em-done{max-width:480px;margin:0 auto;padding:26px 24px;display:flex;flex-direction:column;gap:12px;border:1px solid var(--line);border-radius:18px;background:rgba(255,255,255,.015)}

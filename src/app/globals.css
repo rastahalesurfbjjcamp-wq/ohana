@@ -1652,7 +1652,7 @@ a.itile:hover { border-color: #34403b; transform: translateY(-1px); }
 .pt-tb td, .pt-tb th { white-space: nowrap; }
 
 /* níveis de embaixador */
-.chip.lvl-bronze{background:rgba(196,122,61,.14);color:#e0a06a}.chip.lvl-prata{background:rgba(201,209,214,.12);color:#d9e0e4}.chip.lvl-ouro{background:rgba(242,194,0,.12);color:#f2c200}.chip.lvl-diamante{background:rgba(125,211,252,.12);color:#7dd3fc}.chip.lvl-esmeralda{background:rgba(52,211,153,.12);color:#34d399}
+.chip.lvl-bronze{background:rgba(196,122,61,.14);color:#e0a06a}.chip.lvl-prata{background:rgba(201,209,214,.12);color:#d9e0e4}.chip.lvl-ouro{background:rgba(242,194,0,.12);color:#f2c200}.chip.lvl-diamante{background:rgba(125,211,252,.12);color:#7dd3fc}.chip.lvl-esmeralda{background:rgba(52,211,153,.12);color:#34d399}.chip.lvl-premium{background:rgba(125,211,252,.12);color:#7dd3fc}.chip.lvl-team{background:rgba(249,115,22,.14);color:#fb923c}
 
 /* criação de enquete: uma caixa por opção e prévia do WhatsApp */
 .pbl{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:22px;align-items:start}
