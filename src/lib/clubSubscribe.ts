@@ -38,6 +38,8 @@ export function validate(i: StartInput): string | null {
 }
 
 export async function startCheckout(i: StartInput) {
+  // assinatura só no cartão quando o Pix está desligado no Hub
+  if (i.method === "pix" && !(await (await import("./settings")).getSettings()).club.acceptPix) return { error: "No momento a assinatura é só no cartão de crédito." };
   const s = (await getSettings()).club;
   const cpf = digits(i.cpf);
   const phone = normalizePhone(i.phone)!;

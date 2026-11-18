@@ -76,6 +76,7 @@ export const DEFAULTS = {
     eventPoints: 0,
     minRedeem: 100,
     graceDays: 5,
+    acceptPix: false, // assinatura só no cartão: renova sozinho todo mês
     earlyHours: 48,
     autoDiscountId: "", // desconto automático no checkout para quem tem a marcação "clube"
     segmentId: "",
@@ -174,7 +175,7 @@ export type Settings = {
     repurchaseText: string;
     storeUrl: string;
   };
-  club: { enabled: boolean; name: string; fee: number; discountPct: number; pointsPerReal: number; valuePer100: number; monthlyPoints: number; eventPoints: number; minRedeem: number; graceDays: number; earlyHours: number; autoDiscountId: string; segmentId: string; msgWelcome: boolean; msgPoints: boolean; msgBirthday: boolean; msgTier: boolean; usesPerMonth: number; birthdayPct: number; affiliatePct: number; kitTitle: string; t3Gift: string; t6Points: number; t12Gift: string; t3Link: string; t6Link: string; t12Link: string; earlyLink: string; rafflePrizes: string; instagram: string };
+  club: { enabled: boolean; name: string; fee: number; discountPct: number; pointsPerReal: number; valuePer100: number; monthlyPoints: number; eventPoints: number; minRedeem: number; graceDays: number; earlyHours: number; autoDiscountId: string; segmentId: string; msgWelcome: boolean; msgPoints: boolean; msgBirthday: boolean; msgTier: boolean; usesPerMonth: number; birthdayPct: number; affiliatePct: number; kitTitle: string; t3Gift: string; t6Points: number; t12Gift: string; t3Link: string; t6Link: string; t12Link: string; earlyLink: string; rafflePrizes: string; instagram: string; acceptPix: boolean };
   referral: { enabled: boolean; percent: number; discountType: string; fixedAmount: number; minSubtotal: number; commission: number; releaseDays: number; shareText: string };
   assistant: { enabled: boolean; instructions: string; useOrders: boolean; useStock: boolean; useSizes: boolean; sizeTable: string; useExchange: boolean; exchangeText: string; handoff: boolean };
 };

@@ -60,7 +60,7 @@ export default async function Assinar({ searchParams }: { searchParams: Promise<
         <aside className="sb-box">
           <div className="sb-sum"><div className="sb-n">{c.name}<small>Cobrança mensal · cancele quando quiser</small></div><div className="sb-v"><b>{money(c.fee)}</b><small>por mês</small></div></div>
           <div className="sb-body">
-            <SubscribeBox fee={c.fee} ready={ready} storeUrl={postsale.storeUrl} clubName={c.name} />
+            <SubscribeBox fee={c.fee} ready={ready} storeUrl={postsale.storeUrl} clubName={c.name} acceptPix={!!c.acceptPix} />
           </div>
         </aside>
       </div>

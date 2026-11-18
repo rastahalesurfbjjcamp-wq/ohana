@@ -101,6 +101,7 @@ export default async function Clube({ searchParams }: { searchParams: Promise<{ 
               <div className="rule"><span>Mínimo para resgatar</span><NumberInput name="minRedeem" defaultValue={c.minRedeem} step={50} suffix="pts" /><small>vale {brl((c.minRedeem / 100) * c.valuePer100)} de desconto</small></div>
               <div className="rule"><span>Entrada em evento</span><NumberInput name="eventPoints" defaultValue={c.eventPoints} step={50} suffix="pts" /><small>0 = grátis para membro em dia</small></div>
               <div className="rule"><span>Tolerância no atraso</span><NumberInput name="graceDays" defaultValue={c.graceDays} suffix="dias" /><small>depois disso o cupom desliga</small></div>
+              <div className="rule"><span>Aceitar Pix na assinatura</span><label className="row" style={{ gap: 8 }}><input type="checkbox" name="acceptPix" defaultChecked={!!c.acceptPix} /> Pix</label><small>desligado: só cartão, que renova sozinho</small></div>
               <div className="rule"><span>Acesso antecipado</span><NumberInput name="earlyHours" defaultValue={c.earlyHours ?? 48} step={12} suffix="horas" /><small>antes de abrir para todo mundo</small></div>
             </div>
             <p className="dim" style={{ fontSize: 12.5 }}>Passou da tolerância, o cupom de membro é desligado sozinho e volta quando a mensalidade for registrada. Mudar o desconto vale para os próximos membros.</p>

@@ -15,7 +15,7 @@ const Lock = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" s
 
 type Pix = { emv: string; qr: string | null; expires: string };
 
-export function SubscribeBox({ fee, ready, storeUrl, clubName }: { fee: number; ready: boolean; storeUrl: string; clubName: string }) {
+export function SubscribeBox({ fee, ready, storeUrl, clubName, acceptPix = false }: { fee: number; ready: boolean; storeUrl: string; clubName: string; acceptPix?: boolean }) {
   const [method, setMethod] = useState<"pix" | "cartao">("cartao");
   const [f, setF] = useState({ name: "", cpf: "", phone: "", email: "", card: "", exp: "", cvv: "", holder: "" });
   const [x, setX] = useState({ birth: "", instagram: "", size: "", zip: "", street: "", number: "", extra: "", district: "", city: "", state: "" });
@@ -186,16 +186,18 @@ export function SubscribeBox({ fee, ready, storeUrl, clubName }: { fee: number; 
         {ref && <div className="sb-note"><span>Você veio pela indicação de um membro do club.</span></div>}
 
         <div className="sb-st" style={{ marginTop: 8 }}>Pagamento</div>
+        {acceptPix ? (
         <div className="sb-tabs" role="tablist">
-          <button type="button" role="tab" aria-selected={method === "cartao"} className={`sb-tab${method === "cartao" ? " sb-on" : ""}`} onClick={() => setMethod("cartao")}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" /></svg>
-            <div>Cartão<small>crédito, renova sozinho</small></div>
-          </button>
-          <button type="button" role="tab" aria-selected={method === "pix"} className={`sb-tab${method === "pix" ? " sb-on" : ""}`} onClick={() => setMethod("pix")}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="m12 3 4 4-4 4-4-4zM12 13l4 4-4 4-4-4zM3 12l4-4 4 4-4 4zM13 12l4-4 4 4-4 4z" /></svg>
-            <div>Pix<small>todo mês</small></div>
-          </button>
-        </div>
+            <button type="button" role="tab" aria-selected={method === "cartao"} className={`sb-tab${method === "cartao" ? " sb-on" : ""}`} onClick={() => setMethod("cartao")}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" /></svg>
+              <div>Cartão<small>crédito, renova sozinho</small></div>
+            </button>
+            <button type="button" role="tab" aria-selected={method === "pix"} className={`sb-tab${method === "pix" ? " sb-on" : ""}`} onClick={() => setMethod("pix")}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="m12 3 4 4-4 4-4-4zM12 13l4 4-4 4-4-4zM3 12l4-4 4 4-4 4zM13 12l4-4 4 4-4 4z" /></svg>
+              <div>Pix<small>todo mês</small></div>
+            </button>
+          </div>
+        ) : <div className="sb-note"><span>Pagamento no cartão de crédito. A mensalidade renova sozinha todo mês.</span></div>}
         {method === "pix" ? (
           <div className="sb-note"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#545a56" strokeWidth="2" style={{ flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="9" /><path d="M12 8v4M12 16h.01" /></svg><span>Você paga o primeiro mês agora com um QR Code. Nos próximos meses a cobrança chega pelo Pix.</span></div>
         ) : (

@@ -131,6 +131,7 @@ export async function saveClubRules(f: FormData) {
     fee: n("fee", c.fee), discountPct: Math.min(50, n("discountPct", c.discountPct)), pointsPerReal: n("pointsPerReal", c.pointsPerReal),
     valuePer100: n("valuePer100", c.valuePer100), monthlyPoints: Math.round(n("monthlyPoints", c.monthlyPoints)), eventPoints: Math.round(n("eventPoints", c.eventPoints)),
     minRedeem: Math.round(n("minRedeem", c.minRedeem)), graceDays: Math.round(n("graceDays", c.graceDays)), earlyHours: Math.round(n("earlyHours", c.earlyHours)),
+    acceptPix: f.get("acceptPix") === "on",
   });
   // porcentagem ou nome mudou: atualiza o desconto automático da loja
   if (c.autoDiscountId && (Math.min(50, n("discountPct", c.discountPct)) !== c.discountPct || (str(f, "name") && str(f, "name") !== c.name))) {
