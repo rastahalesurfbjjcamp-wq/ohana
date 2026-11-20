@@ -7,6 +7,8 @@ export type Portal = {
   club: string;
   logo: string;
   discountPct: number;
+  benefits: [string, string][];
+  tenure: { m: number; t: string }[];
   members: { img: string; cat: string; ig: string }[];
   shop: { title: string; tag: string; img: string }[];
 };
@@ -144,6 +146,19 @@ export function MemberArea({ token, portal }: { token: string; portal: Portal })
 
       {v.kit && v.kit.status !== "enviado" && (
         <div className="rc-box rc-note">Seu kit de boas-vindas {v.kit.orderName ? `(pedido ${v.kit.orderName}) já está na expedição.` : "está sendo separado para envio."}</div>
+      )}
+
+      <h2 className="rc-h2">Seus benefícios</h2>
+      <ol className="rc-perks">
+        {portal.benefits.map(([t, s], i) => <li key={i}><span>{i + 1}</span><div><b>{t}</b><small>{s}</small></div></li>)}
+      </ol>
+      {portal.tenure.length > 0 && (
+        <div className="rc-ten">
+          {portal.tenure.map((x) => {
+            const got = v.months >= x.m;
+            return <div key={x.m} className={got ? "is-got" : ""}><b>{x.m} meses</b><small>{x.t}</small><em>{got ? "Liberado" : `Faltam ${x.m - v.months}`}</em></div>;
+          })}
+        </div>
       )}
 
       <h2 className="rc-h2">Seu desconto</h2>
