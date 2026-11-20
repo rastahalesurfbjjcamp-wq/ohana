@@ -230,3 +230,17 @@ export async function launchClubMsg(f: FormData) {
   await enqueue("club-launch", { ids, text }, { jobId: `cl-${Date.now()}` });
   redirect(`/clube?msgs=1&ok=aviso&n=${ids.length}`);
 }
+
+// Portal do membro: logo do club, integrantes e vitrine da Loja do Club
+export async function savePortal(f: FormData) {
+  await admin();
+  const { saveUpload } = await import("@/lib/uploads");
+  const c = (await getSettings()).club;
+  let portalLogo = str(f, "portalLogo") || c.portalLogo;
+  const file = f.get("logoFile");
+  if (file instanceof File && file.size > 0) portalLogo = (await saveUpload(file)).url.replace(/^https?:\/\/[^/]+/, "");
+  const lines = (k: string) => str(f, k).split("\n").map((l) => l.trim()).filter(Boolean).slice(0, 12).join("\n");
+  await saveSetting("club", { portalLogo, portalMembers: lines("portalMembers"), portalShop: lines("portalShop") });
+  revalidatePath("/clube");
+  redirect("/clube?ok=1");
+}

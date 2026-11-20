@@ -1,0 +1,107 @@
+/* Portal do membro do Rasta Hale Club */
+@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@800;900&display=swap");
+@font-face { font-family: "SEl"; src: url("/fonts/SpecialElite-Regular.ttf") format("truetype"); font-display: swap; }
+
+.rcp { --ink:#111; --ink2:#4b4f4c; --ink3:#8b8f8c; --line:#e3e1db; --ok:#2e7d3c; --okbg:#e3f1e3; min-height:100vh; background:#eeece7; color:var(--ink); font:15px/1.45 Geist,Inter,system-ui,sans-serif; -webkit-font-smoothing:antialiased; padding:24px 16px 48px; }
+.rcp * { box-sizing:border-box }
+.rcp a { color:inherit; text-decoration:none }
+.rc-card { max-width:400px; margin:0 auto; background:#fff; border-radius:32px; padding:28px 22px 30px; box-shadow:0 18px 50px -20px rgba(0,0,0,.18) }
+
+.rc-brand { display:flex; align-items:center; justify-content:center; gap:16px; margin-bottom:10px }
+.rc-rh { display:flex; flex-direction:column; align-items:center; width:92px }
+.rc-rh small { font:700 9.5px/1 Montserrat,Arial,sans-serif; letter-spacing:.06em }
+.rc-rh img { width:74px; filter:brightness(0); margin:2px 0 }
+.rc-rh b { font:900 13.5px/1 Montserrat,Arial,sans-serif; letter-spacing:.01em }
+.rc-x { font-size:30px; font-weight:300; color:#222 }
+.rc-flag { width:148px; height:auto; display:block }
+
+.rc-kick { text-align:center; font:14px/1 SEl,"Courier New",monospace; color:#333; margin:6px 0 2px }
+.rc-h { text-align:center; font:900 34px/1.02 Montserrat,"Arial Black",sans-serif; text-transform:uppercase; letter-spacing:-.01em; margin:4px 0 8px }
+.rc-sub { text-align:center; color:#333; margin:0 0 18px; font-size:15.5px }
+.rc-h2 { font:900 19px/1.1 Montserrat,"Arial Black",sans-serif; text-transform:uppercase; margin:26px 0 4px }
+.rc-h3 { font:800 15.5px/1.2 Montserrat,Arial,sans-serif; margin:22px 0 10px }
+.rc-s2 { font:12.5px/1.45 SEl,"Courier New",monospace; color:#444; margin:0 0 12px }
+.rc-p { margin:0 0 10px; color:#333; font-size:14px }
+.rc-tiny { font:12px/1.4 SEl,"Courier New",monospace; color:#444; margin:8px 0 0 }
+
+.rc-form { display:flex; flex-direction:column }
+.rc-form label { font-size:13.5px; color:#333; margin:6px 0 6px }
+.rc-in { height:46px; border:1px solid #d6d4cf; border-radius:12px; padding:0 14px; font:16px Geist,Inter,system-ui,sans-serif; margin-bottom:10px; outline:none; background:#fff }
+.rc-in:focus { border-color:#111 }
+.rc-btn { display:flex; align-items:center; justify-content:center; height:48px; border-radius:12px; background:#111; color:#fff !important; font-weight:700; font-size:15.5px; border:2px solid #111; cursor:pointer; width:100%; margin-top:6px; font-family:inherit }
+.rc-btn:disabled { opacity:.6 }
+.rc-ghost { background:#fff; color:#111 !important; margin-top:22px }
+.rc-hint { text-align:center; font:11.5px/1.4 SEl,"Courier New",monospace; color:#555; margin:10px 0 0 }
+.rc-err { background:#fdecea; color:#a3261d; border-radius:10px; padding:9px 12px; font-size:13.5px; margin:4px 0 6px }
+.rc-sep { height:1px; background:var(--line); margin:22px 0 4px }
+
+.rc-perks { list-style:none; padding:0; margin:8px 0 0 }
+.rc-perks li { display:flex; gap:18px; padding:11px 0; border-bottom:1px solid var(--line) }
+.rc-perks li span { font:800 13px/1.6 Montserrat,Arial,sans-serif; width:12px }
+.rc-perks b { display:block; font-weight:600; font-size:15px }
+.rc-perks small { color:#555; font-size:13px }
+
+.rc-strip { display:flex; gap:10px; overflow-x:auto; scroll-snap-type:x mandatory; margin:0 -22px; padding:0 22px; scrollbar-width:none }
+.rc-strip::-webkit-scrollbar { display:none }
+.rc-mem { flex:0 0 131px; scroll-snap-align:start; display:flex; flex-direction:column }
+.rc-mem img { width:131px; height:218px; object-fit:cover; display:block; background:#ddd }
+.rc-mem small { font:700 10.5px/1 Geist,Inter,sans-serif; letter-spacing:.12em; color:#555; margin-top:10px }
+.rc-mem b { font:15px/1.3 SEl,"Courier New",monospace; font-weight:400; margin-top:4px }
+.rc-dots { display:flex; justify-content:center; gap:7px; margin-top:12px }
+.rc-dots i { width:6px; height:6px; border-radius:50%; background:#d6d4cf }
+.rc-dots i.on { background:#555 }
+
+.rc-box { border:1px solid var(--line); border-radius:16px; padding:14px }
+.rc-me { display:flex; gap:14px; align-items:center; padding:16px 14px }
+.rc-me img { width:68px; height:44px; object-fit:cover; object-position:center 62%; border-radius:6px }
+.rc-me b { display:block; font-size:16px; font-weight:600 }
+.rc-me small { display:block; font:12px/1.4 SEl,"Courier New",monospace; color:#444; margin:2px 0 6px }
+.rc-chip { display:inline-flex; align-items:center; font:600 12px/1 Geist,Inter,sans-serif; padding:6px 10px; border-radius:99px; background:#f0efeb; color:#333; border:0; cursor:pointer; white-space:nowrap }
+.rc-chip.is-ok { background:var(--okbg); color:var(--ok) }
+.rc-chip.is-bad { background:#fdecea; color:#a3261d }
+.rc-chip:disabled { opacity:.55; cursor:default }
+
+.rc-stats { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin-top:10px }
+.rc-stats div { border:1px solid var(--line); border-radius:16px; padding:16px 6px 14px; text-align:center }
+.rc-stats b { display:block; font:900 21px/1 Montserrat,"Arial Black",sans-serif }
+.rc-stats span { display:block; font-size:12.5px; color:#444; margin-top:8px; line-height:1.3 }
+.rc-note { margin-top:10px; font-size:13.5px; color:#333 }
+
+.rc-code { display:flex; align-items:center; justify-content:space-between; border:1.5px dashed #cfcdc7; border-radius:12px; padding:10px 14px }
+.rc-code code { font:700 15px/1 "SFMono-Regular",Menlo,monospace; letter-spacing:.06em }
+.rc-code button { background:none; border:0; color:var(--ok); font-weight:600; font-size:13.5px; cursor:pointer }
+.rc-bday { margin-top:10px; background:#fffaf0 }
+
+.rc-shop { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; margin-bottom:10px }
+.rc-prod { position:relative; aspect-ratio:.76; background:#f1f0ec; border-radius:6px; overflow:hidden; display:flex; flex-direction:column; justify-content:flex-end; padding:8px }
+.rc-prod img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover }
+.rc-prod span { position:absolute; top:7px; left:7px; background:#111; color:#fff; font:600 10.5px/1 Geist,Inter,sans-serif; padding:5px 7px; border-radius:4px }
+.rc-prod b { position:relative; font-size:12px; font-weight:600 }
+.rc-links { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px }
+.rc-links a { font-size:13px; text-decoration:underline }
+
+.rc-pts { display:flex; align-items:baseline; gap:10px; margin-bottom:12px }
+.rc-pts b { font:900 38px/1 Montserrat,"Arial Black",sans-serif }
+.rc-pts span { font-size:13.5px; color:#444 }
+.rc-bar { height:6px; border-radius:99px; background:#eceae5; overflow:hidden }
+.rc-bar i { display:block; height:100%; background:linear-gradient(90deg,#b5452b 0 33.3%,#e1a83c 33.3% 66.6%,#3d7a3a 66.6%); background-size:var(--w,100%) 100%; border-radius:99px }
+.rc-opts { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin-top:14px }
+.rc-opts button { border:1px solid #dedcd6; background:#fff; border-radius:12px; padding:12px 4px; cursor:pointer; font-family:inherit }
+.rc-opts button:disabled { opacity:.5; cursor:default }
+.rc-opts b { display:block; font-size:15px; font-weight:700 }
+.rc-opts span { font-size:12px; color:#555 }
+.rc-new { margin-top:12px; background:#f6f5f1; border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:8px }
+.rc-new small { font-size:12px; color:#555 }
+.rc-new a { font-size:13.5px; font-weight:600; text-decoration:underline }
+.rc-prize { display:flex; align-items:center; gap:10px; margin-top:12px }
+.rc-prize img, .rc-prize i { width:44px; height:44px; border-radius:8px; object-fit:cover; background:#eee; flex-shrink:0 }
+.rc-prize div { flex:1; min-width:0 }
+.rc-prize b { display:block; font-size:13.5px; font-weight:600 }
+.rc-prize small { font-size:12px; color:#555 }
+.rc-prize button { border:1px solid #111; background:#111; color:#fff; border-radius:10px; padding:7px 10px; font:600 12px Geist,Inter,sans-serif; cursor:pointer }
+.rc-prize button:disabled { opacity:.45 }
+
+.rc-evs { display:flex; flex-direction:column }
+.rc-ev { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:14px 0; border-bottom:1px solid var(--line) }
+.rc-ev b { display:block; font-size:15px; font-weight:600 }
+.rc-ev small { font:12px/1.4 SEl,"Courier New",monospace; color:#444 }

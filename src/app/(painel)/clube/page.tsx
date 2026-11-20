@@ -11,7 +11,7 @@ import { ConfirmButton } from "@/components/ConfirmButton";
 import { clubMessage, digits, findMembers, findShopifyCustomer, fmtCpf, maskCpf, memberState } from "@/lib/club";
 import { waLink } from "@/lib/partners";
 import { normalizePhone } from "@/lib/segments";
-import { addMember, adjustPoints, cancelMember, cancelSubscription, eventCheckin, launchClubMsg, payMember, redeemPoints, redeemPrize, saveClubRules, savePrize, scanClubNow, toggleClubMsg, togglePrize, updateMember } from "../acoes6";
+import { addMember, adjustPoints, cancelMember, cancelSubscription, eventCheckin, launchClubMsg, payMember, redeemPoints, redeemPrize, saveClubRules, savePortal, savePrize, scanClubNow, toggleClubMsg, togglePrize, updateMember } from "../acoes6";
 import { AutoToggle } from "@/components/AutoToggle";
 import { LAUNCH_DEFAULT, clubText } from "@/lib/clubMsg";
 import { env } from "@/lib/env";
@@ -132,6 +132,18 @@ export default async function Clube({ searchParams }: { searchParams: Promise<{ 
             </div>
             <p className="dim" style={{ fontSize: 12.5 }}>Os brindes viram pedido de R$ 0 na Shopify com o endereço do membro. As coleções exclusivas são links de coleções que ficam fora do menu da loja.</p>
             <div><button className="btn pri sm" type="submit">Salvar níveis e benefícios</button></div>
+          </form>
+          <form action={savePortal} className="stack" style={{ gap: 8, marginTop: 22, paddingTop: 18, borderTop: "1px solid var(--line2)" }}>
+            <b style={{ fontSize: 14 }}>Portal do membro</b>
+            <p className="dim" style={{ fontSize: 12.5, marginTop: -4 }}>A página que o membro abre em rastahale.tech/assinar/meu.</p>
+            <div className="row" style={{ gap: 12, alignItems: "flex-end" }}>
+              <div className="field" style={{ flex: 2, minWidth: 260 }}><label>Logo do club (link da imagem)</label><input className="in" name="portalLogo" defaultValue={c.portalLogo} /></div>
+              <div className="field" style={{ flex: 1, minWidth: 200 }}><label>Ou suba a imagem</label><input className="in" type="file" name="logoFile" accept="image/*" /></div>
+            </div>
+            <div className="field"><label>Integrantes (um por linha: link da foto | modalidade | @instagram)</label><textarea className="in" name="portalMembers" rows={4} defaultValue={c.portalMembers} /></div>
+            <div className="field"><label>Loja do Club (um por linha: nome | selo | link da foto)</label><textarea className="in" name="portalShop" rows={3} defaultValue={c.portalShop} /></div>
+            <p className="dim" style={{ fontSize: 12.5 }}>Para ter o link de uma foto, suba em Shopify, Conteúdo, Arquivos e copie o link. O botão Abrir a Loja do Club usa o link do acesso antecipado.</p>
+            <div><button className="btn pri sm" type="submit">Salvar portal</button></div>
           </form>
         </Panel>
       )}

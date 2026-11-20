@@ -70,6 +70,7 @@ export async function memberView(memberId: string) {
     closeFriends: m.closeFriends, instagram: m.instagram, storeInstagram: c.instagram, links, earlyLink: c.earlyLink || null, kit: await db.clubPerk.findUnique({ where: { memberId_kind: { memberId: m.id, kind: "kit" } }, select: { status: true, orderName: true } }),
     token: memberToken(m.id),
     first: m.name.split(" ")[0],
+    name: m.name.split(" ").filter(Boolean).slice(0, 2).join(" "),
     status: st.label,
     ok: st.k === "em_dia" || st.k === "vencendo",
     paidUntil: m.paidUntil?.toISOString() ?? null,
