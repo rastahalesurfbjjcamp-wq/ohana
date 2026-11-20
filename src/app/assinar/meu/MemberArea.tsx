@@ -19,12 +19,8 @@ const dt = (s: string) => new Date(s).toLocaleDateString("pt-BR", { day: "2-digi
 function Brand({ logo, club }: { logo: string; club: string }) {
   return (
     <div className="rc-brand">
-      <div className="rc-rh">
-        <small>SURF &amp; BJJ</small>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/brand/lion.png" alt="" />
-        <b>RASTA HALE</b>
-      </div>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img className="rc-rh" src="/brand/rasta-logo.png" alt="Rasta Hale" />
       <span className="rc-x">×</span>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img className="rc-flag" src={logo} alt={club} />
