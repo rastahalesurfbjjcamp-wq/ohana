@@ -7,7 +7,7 @@ import {
   ArrowLeftRight, Bot, Box, CalendarClock, CalendarHeart, ChartNoAxesCombined, ChevronDown, ChevronRight, Contact,
   Gift, HeartHandshake, LayoutDashboard, LogOut, MessageCircle, MessagesSquare, Package, Percent, ReceiptText,
   RefreshCcw, Rocket, Route, UserCog, Send, Settings, ShoppingBag, Sparkles, SquareCheckBig, Truck, UserPlus, Users, Vote,
-  Wallet, Warehouse, Workflow, Coins, Plug, LayoutTemplate, Medal, Award, Crown, Calculator, Menu, X, RefreshCw, type LucideIcon,
+  Wallet, Warehouse, Workflow, Coins, Plug, LayoutTemplate, Medal, Award, Crown, Calculator, Menu, X, RefreshCw, LayoutGrid, CreditCard, Bell, type LucideIcon,
   History, Library, Megaphone,
 } from "lucide-react";
 
@@ -42,6 +42,7 @@ export function Sidebar({ name, store, connected, leaves, logout, role = "ADMIN"
       label: "Vendas",
       icon: ShoppingBag,
       items: [
+        { href: "/vendas", icon: ShoppingBag, label: "Vendas" },
         { href: "/historico", icon: History, label: "Histórico de vendas" },
         { href: "/financeiro", icon: Wallet, label: "Financeiro" },
         { href: "/produtos", icon: Box, label: "Produtos e lucro" },
@@ -88,6 +89,23 @@ export function Sidebar({ name, store, connected, leaves, logout, role = "ADMIN"
     Object.fromEntries(groups.map((g) => [g.label, g.items.some((i) => active(i.href)) || g.label === "Comunidade"])),
   );
   const [nav, setNav] = useState(false);
+  const [all, setAll] = useState(false);
+  useEffect(() => { setAll(false); }, [path]);
+  const gi = (l: string) => groups.find((g) => g.label === l)?.items.map((i) => i.href) ?? [];
+  const TOP = [
+    { label: "Visão geral", href: "/", match: ["/", "/tarefas"] },
+    { label: "Comunidade", href: "/entradas", match: gi("Comunidade") },
+    { label: "Vendas", href: "/vendas", match: gi("Vendas").filter((h) => h !== "/clube" && h !== "/embaixadores" && h !== "/atletas" && h !== "/indique") },
+    { label: "Clientes", href: "/clientes", match: [...gi("Clientes"), "/embaixadores", "/atletas", "/indique"] },
+    { label: "Clube", href: "/clube", match: ["/clube"] },
+    { label: "Inteligência", href: "/campanhas", match: gi("Inteligência") },
+  ];
+  const SHORT: Item[] = [
+    { href: "/disparos", icon: Send, label: "Disparos" },
+    { href: "/leads", icon: UserPlus, label: "Leads" },
+    { href: "/pedidos", icon: ShoppingBag, label: "Pedidos" },
+    { href: "/agendamentos", icon: CalendarClock, label: "Agendamentos" },
+  ];
   const router = useRouter();
   const [refreshing, startRefresh] = useTransition();
   useEffect(() => { setNav(false); }, [path]);
@@ -118,40 +136,42 @@ export function Sidebar({ name, store, connected, leaves, logout, role = "ADMIN"
         <img src={lite ? "/demo/mark.png" : "/brand/lion.png"} alt="" width={30} height={32} />
         <b>{store} Hub</b>
       </Link>
+      <div className="tn-allw">
+        <button type="button" className={`tn-ic${all ? " on" : ""}`} onClick={() => setAll((v) => !v)} aria-label="Todas as telas"><LayoutGrid size={17} /></button>
+        {all && (
+          <>
+            <div className="tn-ov" onClick={() => setAll(false)} />
+            <div className="tn-all">
+              {[{ label: "Início", icon: LayoutDashboard, items: pinned }, ...groups, { label: "Sistema", icon: Settings, items: [{ href: "/integracoes", icon: Plug, label: "Integrações" }, { href: "/equipe", icon: UserCog, label: "Equipe e acessos" }, { href: "/configuracoes", icon: Settings, label: "Configurações" }] }]
+                .map((g) => ({ ...g, items: g.items.filter((i) => ok(i.href)) })).filter((g) => g.items.length).map((g) => (
+                <div key={g.label}>
+                  <h5>{g.label}</h5>
+                  {g.items.map((it) => <Link key={it.href} href={it.href} className={active(it.href) ? "on" : ""} onClick={() => setAll(false)}><it.icon size={15} strokeWidth={1.9} />{it.label}{it.badge ? <span>{it.badge}</span> : null}</Link>)}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
       <nav className="tn-pills">
-        {pinned.filter((it) => ok(it.href) && it.href === "/").map((it) => (
-          <Link key={it.href} href={it.href} className={active(it.href) ? "on" : ""}>{it.label}</Link>
-        ))}
-        {groups.filter((g) => g.items.length).map((g) => {
-          const on = g.items.some((i) => active(i.href));
-          return <Link key={g.label} href={g.items[0].href} className={on ? "on" : ""}>{g.label}</Link>;
+        <span className="tn-h"><CreditCard size={15} /></span>
+        {TOP.filter((t) => ok(t.href)).map((t) => {
+          const on = t.match.some((h) => active(h));
+          return <Link key={t.label} href={t.href} className={on ? "on" : ""}>{t.label}</Link>;
         })}
       </nav>
       <div className="tn-icons">
-        {ok("/tarefas") && <Link href="/tarefas" title="Tarefas" className={active("/tarefas") ? "on" : ""}><SquareCheckBig size={17} /></Link>}
-        {ok("/integracoes") && <Link href="/integracoes" title="Integrações" className={active("/integracoes") ? "on" : ""}><Plug size={17} /></Link>}
-        {ok("/equipe") && <Link href="/equipe" title="Equipe e acessos" className={active("/equipe") ? "on" : ""}><UserCog size={17} /></Link>}
-        {ok("/configuracoes") && <Link href="/configuracoes" title="Configurações" className={active("/configuracoes") ? "on" : ""}><Settings size={17} /></Link>}
+        {SHORT.filter((t) => ok(t.href)).map((t) => <Link key={t.href} href={t.href} title={t.label} className={active(t.href) ? "on" : ""}><t.icon size={17} /></Link>)}
       </div>
+      <div className="nx-sp" />
       <div className="tn-me" title={connected ? "WhatsApp conectado" : "WhatsApp desconectado"}>
         <i className={`live${connected ? "" : " off"}`} />
-        <div className="av">{initials}</div>
-        <form action={logout}><button type="submit" title="Sair"><LogOut size={16} /></button></form>
+        {ok("/atendimento") && <Link href="/atendimento" className="tn-ic" title="Atendimento"><Bell size={17} /></Link>}
+        {ok("/configuracoes") && <Link href="/configuracoes" className="tn-ic" title="Configurações"><Settings size={17} /></Link>}
+        <div className="av" title={name}>{initials}</div>
+        <form action={logout}><button type="submit" className="tn-ic" title="Sair"><LogOut size={16} /></button></form>
       </div>
     </header>
-    {(() => {
-      const g = groups.find((x) => x.items.some((i) => active(i.href)));
-      if (!g) return null;
-      return (
-        <nav className="tn-sub">
-          {g.items.map((it) => (
-            <Link key={it.href} href={it.href} className={active(it.href) ? "on" : ""}>
-              <it.icon size={15} strokeWidth={1.9} />{it.label}{it.badge ? <span>{it.badge}</span> : null}
-            </Link>
-          ))}
-        </nav>
-      );
-    })()}
     <header className="mtop">
       <button type="button" className="mtop-b" onClick={() => setNav(true)} aria-label="Abrir menu"><Menu size={20} /></button>
       <Link href="/" className="mtop-brand">

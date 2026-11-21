@@ -30,7 +30,7 @@ function niceTicks(min: number, max: number, n = 3) {
 }
 
 export function AreaChart({
-  data, compare, markers = [], height = 240, format = (v) => v.toLocaleString("pt-BR"), color = "#b8f53c", id = "a", zeroBase = false,
+  data, compare, markers = [], height = 240, format = (v) => v.toLocaleString("pt-BR"), color = "#c6f432", id = "a", zeroBase = false,
 }: {
   data: Pt[];
   compare?: number[];
@@ -168,7 +168,7 @@ export function GoalBars({ items, goal, format, height = 230 }: { items: Pt[]; g
   );
 }
 
-export function Bars({ items, format, color = "#b8f53c", height = 200, highlightLast = false }: { items: Pt[]; format: (v: number) => string; color?: string; height?: number; highlightLast?: boolean }) {
+export function Bars({ items, format, color = "#c6f432", height = 200, highlightLast = false }: { items: Pt[]; format: (v: number) => string; color?: string; height?: number; highlightLast?: boolean }) {
   const W = 1000, H = height, padT = 26, padB = 24;
   const max = Math.max(1, ...items.map((i) => i.value));
   const slot = W / Math.max(1, items.length);

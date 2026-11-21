@@ -25,6 +25,7 @@ import { RefreshButton } from "@/components/RefreshButton";
 import { Pendencias } from "@/components/Pendencias";
 import { Suspense } from "react";
 import { LiteHome } from "./LiteHome";
+import { NxHead, NxRow2, NxHero, NxStat, NxBars, NxNote, NxTabsCard, NxFilters, NxPill, NxPanel, NxItem, NxEmpty, NxDHead, NxDNum, NxDText, NxWho, NxDCards, NxDFoot, NxBtn, NxQuote } from "@/components/nx";
 
 const CARDS: [string, string][] = [
   ["faturamento", "Faturamento"], ["pedidos", "Pedidos"], ["lucro", "Lucro"],
@@ -45,7 +46,7 @@ function ago(d: Date) {
   return `${Math.round(s / 86400)} d`;
 }
 
-export default async function Home({ searchParams }: { searchParams: Promise<{ r?: string; p?: string; de?: string; ate?: string }> }) {
+export default async function Home({ searchParams }: { searchParams: Promise<{ r?: string; p?: string; de?: string; ate?: string; v?: string; sel?: string }> }) {
   const sp = await searchParams;
   if (process.env.HUB_LITE === "1") return <LiteHome sp={sp} />;
   const { r } = sp;
@@ -207,35 +208,25 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
   const teamCom = team.reduce((a, r) => a + r.commission, 0);
   const plab = period.label.toLowerCase();
 
-  type Live = { at: Date; icon: typeof LogIn; tone: string; t: string; s: string; href: string; v?: string };
+  type Live = { at: Date; icon: typeof LogIn; tone: string; t: string; s: string; href: string; v?: string; who?: string; st?: string; ok?: boolean; order?: Order; kind?: string };
   const live: Live[] = [
-    ...latest.map((o) => ({ at: new Date(o.createdAt), icon: o.cancelled ? PackageX : isPaid(o) ? ShoppingBag : Hourglass, tone: o.cancelled ? "t-c" : isPaid(o) ? "t-l" : "t-s", t: `Pedido ${o.name}${o.cancelled ? " cancelado" : isPaid(o) ? " pago" : " aguardando pagamento"}`, s: `${o.customer || "Cliente"} · ${kindOf(o) === "pix" ? "Pix" : kindOf(o) === "boleto" ? "Boleto" : "Cartão"}${o.codes[0] ? ` · cupom ${o.codes[0]}` : ""}`, href: "/pedidos", v: brl(o.total, 0) })),
-    ...leadsFeed.map((l) => ({ at: l.createdAt, icon: FileText, tone: "t-p", t: `${l.name || "Alguém"} preencheu o formulário`, s: `virou lead · ${l.source}${l.utmSource ? ` · ${l.utmSource}` : ""}`, href: "/leads" })),
-    ...liveEv.map((e) => { const info = evInfo[e.type] ?? evInfo.JOIN; return { at: e.createdAt, icon: info.icon, tone: info.tone, t: e.contact.name || `+${e.contact.phone}`, s: `${info.verb} ${e.group.name}`, href: "/entradas" }; }),
-    ...cartFeed.map((c) => ({ at: c.recoveredAt ?? c.createdAt, icon: c.recoveredAt ? BadgeDollarSign : ShoppingCart, tone: c.recoveredAt ? "t-l" : "t-s", t: c.recoveredAt ? `Venda recuperada de ${c.name || "cliente"}` : c.kind === "pix" ? `Pix gerado e não pago: ${c.name || "cliente"}` : `Carrinho abandonado: ${c.name || "cliente"}`, s: c.product ?? "", href: "/recuperacao", v: brl(c.recoveredValue ?? c.value, 0) })),
-    ...chatFeed.map((c) => ({ at: c.createdAt, icon: MessageCircle, tone: "t-k", t: "Mensagem no atendimento", s: c.text.slice(0, 70), href: `/atendimento?tel=${c.phone}` })),
+    ...latest.map((o) => ({ at: new Date(o.createdAt), icon: o.cancelled ? PackageX : isPaid(o) ? ShoppingBag : Hourglass, tone: o.cancelled ? "t-c" : isPaid(o) ? "t-l" : "t-s", t: `Pedido ${o.name}${o.cancelled ? " cancelado" : isPaid(o) ? " pago" : " aguardando pagamento"}`, s: `${o.customer || "Cliente"} · ${kindOf(o) === "pix" ? "Pix" : kindOf(o) === "boleto" ? "Boleto" : "Cartão"}${o.codes[0] ? ` · cupom ${o.codes[0]}` : ""}`, href: "/pedidos", v: brl(o.total, 0), who: o.customer || "Cliente", st: o.cancelled ? "Cancelado" : isPaid(o) ? "Pago" : "Aguardando", ok: !o.cancelled && isPaid(o), order: o, kind: "pedido" })),
+    ...leadsFeed.map((l) => ({ at: l.createdAt, icon: FileText, tone: "t-p", t: `${l.name || "Alguém"} preencheu o formulário`, s: `virou lead · ${l.source}${l.utmSource ? ` · ${l.utmSource}` : ""}`, href: "/leads", who: l.name || "Lead", st: "Lead", kind: "lead" })),
+    ...liveEv.map((e) => { const info = evInfo[e.type] ?? evInfo.JOIN; return { at: e.createdAt, icon: info.icon, tone: info.tone, t: e.contact.name || `+${e.contact.phone}`, s: `${info.verb} ${e.group.name}`, href: "/entradas", who: e.contact.name || e.contact.phone, st: e.type === "LEAVE" ? "Saiu" : e.type === "RETURN" ? "Voltou" : "Entrou", ok: e.type !== "LEAVE", kind: "grupo" }; }),
+    ...cartFeed.map((c) => ({ at: c.recoveredAt ?? c.createdAt, icon: c.recoveredAt ? BadgeDollarSign : ShoppingCart, tone: c.recoveredAt ? "t-l" : "t-s", t: c.recoveredAt ? `Venda recuperada de ${c.name || "cliente"}` : c.kind === "pix" ? `Pix gerado e não pago: ${c.name || "cliente"}` : `Carrinho abandonado: ${c.name || "cliente"}`, s: c.product ?? "", href: "/recuperacao", v: brl(c.recoveredValue ?? c.value, 0), who: c.name || "Cliente", st: c.recoveredAt ? "Recuperada" : c.kind === "pix" ? "Pix gerado" : "Carrinho", ok: !!c.recoveredAt, kind: "carrinho" })),
+    ...chatFeed.map((c) => ({ at: c.createdAt, icon: MessageCircle, tone: "t-k", t: "Mensagem no atendimento", s: c.text.slice(0, 70), href: `/atendimento?tel=${c.phone}`, who: c.phone, st: "Responder", kind: "chat" })),
   ].sort((a, b) => b.at.getTime() - a.at.getTime()).slice(0, 16);
 
   return (
     <>
       <AutoRefresh seconds={45} />
-      <div className="hd row" style={{ justifyContent: "space-between", marginBottom: 22 }}>
-        <div>
-          <h1 style={{ fontSize: 30, letterSpacing: "-.03em" }}>{hello}, {session?.name.split(" ")[0]}</h1>
-          <p className="mut" style={{ marginTop: 6 }}>
-            {new Intl.DateTimeFormat("pt-BR", { timeZone: tz, weekday: "long", day: "numeric", month: "long" }).format(new Date())}
-            <span className="live-dot" style={{ marginLeft: 12 }} /> ao vivo
-          </p>
-        </div>
-        <div className="row acts">
-          <DateRange current={period.key} from={period.from} to={period.to} label={period.label} presets={["hoje", "ontem", "7d", "30d", "60d", "mes", "mes-passado", "6m", "ano"]} />
-          <RefreshButton bar />
-          <CardPicker cards={CARDS} on={cardOn} action={saveDashCards} />
-          <Link className="btn" href="/agendamentos"><CalendarClock size={16} /> Agendar</Link>
-          <Link className="btn pri" href="/disparos"><Megaphone size={16} /> Novo disparo</Link>
-        </div>
-      </div>
-
+      <NxHead title={<>{hello}, {session?.name.split(" ")[0]}</>}>
+        <DateRange current={period.key} from={period.from} to={period.to} label={period.label} presets={["hoje", "ontem", "7d", "30d", "60d", "mes", "mes-passado", "6m", "ano"]} />
+        <RefreshButton bar />
+        <CardPicker cards={CARDS} on={cardOn} action={saveDashCards} />
+        <Link className="btn" href="/agendamentos"><CalendarClock size={16} /> Agendar</Link>
+        <Link className="btn pri" href="/disparos"><Megaphone size={16} /> Novo disparo</Link>
+      </NxHead>
       {obDone < ob.length && process.env.DEMO_MODE !== "1" && (
         <Link href="/comecar" className="callout lagoon" style={{ alignItems: "center" }}>
           <b>Falta pouco para a loja ficar pronta: {obDone} de {ob.length} passos.</b>
@@ -243,104 +234,69 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
           <span className="act">Continuar <ArrowRight size={14} /></span>
         </Link>
       )}
+      <NxRow2>
+        <NxHero stats={<>
+          <NxStat label={`Faturamento · ${plab}`} pre="R$" value={m ? Math.round(m.net).toLocaleString("pt-BR") : "–"} sub={m ? `${nOrders} pedido(s) pagos` : "sem dados da loja"} />
+          <NxStat label="Pedidos pagos" value={nOrders.toLocaleString("pt-BR")} sub={`ticket ${old ? (m?.orders ? brl(m.aov, 0) : "–") : valid.length ? brl(valid.reduce((a, o) => a + o.subtotal, 0) / valid.length, 0) : "–"}`} tone="up" />
+          <NxStat label="Lucro" pre="R$" value={m ? Math.round(m.profitBeforeFixed).toLocaleString("pt-BR") : "–"} sub="antes dos custos fixos" tone={m && m.profitBeforeFixed < 0 ? "dn" : "mut"} />
+        </>}>
+          {nOrders ? <NxBars items={salesBars} fmt={(v) => brl(v, 0)} /> : <NxNote>Nenhuma venda {oneDay && period.from === today ? "hoje ainda" : "no período"}.</NxNote>}
+        </NxHero>
+        <NxTabsCard title={`Comunidade · ${plab}`} value={`${pc("JOIN") + pc("RETURN") - pc("LEAVE") >= 0 ? "+" : ""}${(pc("JOIN") + pc("RETURN") - pc("LEAVE")).toLocaleString("pt-BR")}`} chip={`${members.toLocaleString("pt-BR")} pessoas`}
+          tabs={[{ top: pc("JOIN"), label: "Entraram", href: "/entradas" }, { top: pc("LEAVE"), label: "Saíram", href: "/entradas?t=LEAVE", on: true }, { top: pc("RETURN"), label: "Voltaram", href: "/entradas" }]}
+          button={{ label: "Ver comunidade", href: "/entradas" }} />
+      </NxRow2>
+
+      <NxFilters>
+        <NxPill href="/pedidos">Pagamentos: {pay.map((x) => `${x.label} ${brl(x.v, 0)}`).join(" · ") || "–"}</NxPill>
+        <NxPill href="/pedidos">Aguardando {brl(pendTotal, 0)}</NxPill>
+        <NxPill href="/recuperacao">Recuperado {brl(recV, 0)}</NxPill>
+        <NxPill href="/atendimento" on={waiting.length > 0}>{waiting.length} esperando resposta</NxPill>
+      </NxFilters>
+
+      {(() => {
+        const fil = sp.v ?? "tudo";
+        const list = live.filter((x) => fil === "tudo" || (fil === "pedidos" ? x.kind === "pedido" : x.kind !== "pedido" && x.kind !== "lead"));
+        const selI = Math.min(Math.max(0, Number(sp.sel ?? 0) || 0), Math.max(0, list.length - 1));
+        const cur = list[selI];
+        const qs = (k: Record<string, string>) => { const u = new URLSearchParams(); if (sp.p) u.set("p", sp.p); if (sp.de) u.set("de", sp.de); if (sp.ate) u.set("ate", sp.ate); for (const [a, b] of Object.entries(k)) if (b) u.set(a, b); const t = u.toString(); return t ? `/?${t}` : "/"; };
+        const o = cur?.order;
+        return (
+          <NxPanel title="Ao vivo"
+            tabs={[
+              { label: "Tudo", href: qs({}), on: fil === "tudo" },
+              { label: "Pedidos", count: live.filter((x) => x.kind === "pedido").length, href: qs({ v: "pedidos" }), on: fil === "pedidos" },
+              { label: "Comunidade e atendimento", count: live.filter((x) => x.kind !== "pedido" && x.kind !== "lead").length, href: qs({ v: "outros" }), on: fil === "outros" },
+            ]}
+            list={list.length ? list.slice(0, 8).map((x, i) => (
+              <NxItem key={i} href={qs({ v: fil === "tudo" ? "" : fil, sel: String(i) })} name={x.who ?? x.t} title={x.t} sub={`${x.s ? `${x.s} · ` : ""}${ago(x.at)}`} status={x.st} ok={x.ok} value={x.v} on={i === selI} />
+            )) : <NxEmpty>Nada aconteceu ainda.</NxEmpty>}
+            detail={!cur ? <NxEmpty>Escolha um item da lista.</NxEmpty> : o ? (<>
+              <NxDHead cols={[
+                { label: "Pedido", node: <NxDNum chip={cur.st}>{o.name}</NxDNum> },
+                { label: "Pagamento", node: <NxDText>{kindOf(o) === "pix" ? "Pix" : kindOf(o) === "boleto" ? "Boleto" : "Cartão"}{o.codes[0] ? ` · cupom ${o.codes[0]}` : ""}</NxDText> },
+                { label: "Cliente", node: <NxWho name={o.customer || "Cliente"} sub={[o.city, o.state].filter(Boolean).join(" · ") || o.phone || ""} /> },
+              ]} />
+              <NxDCards items={o.lines.slice(0, 4).map((l) => ({ v: brl(l.revenue, 2), d: `${l.quantity > 1 ? `${l.quantity}x ` : ""}${l.title}${l.variant ? ` · ${l.variant}` : ""}` }))} />
+              <NxDFoot vals={[{ l: "Subtotal", v: brl(o.subtotal, 2) }, { l: "Frete", v: brl(Math.max(0, o.total - o.subtotal), 2) }, { l: "Total", v: brl(o.total, 2) }]}>
+                {o.phone && <NxBtn href={`https://wa.me/${o.phone.replace(/\D/g, "")}`} target="_blank"><MessageCircle size={16} /></NxBtn>}
+                <NxBtn href="/pedidos" lime>Abrir pedido</NxBtn>
+              </NxDFoot>
+            </>) : (<>
+              <NxDHead cols={[
+                { label: "O que aconteceu", node: <NxDNum chip={cur.st}>{null}</NxDNum> },
+                { label: "Quando", node: <NxDText>{ago(cur.at)}</NxDText> },
+                { label: "Quem", node: <NxWho name={cur.who ?? cur.t} /> },
+              ]} />
+              <NxQuote>{cur.t}{cur.s ? `\n${cur.s}` : ""}</NxQuote>
+              <NxDFoot vals={cur.v ? [{ l: "Valor", v: cur.v }] : []}><NxBtn href={cur.href} lime>Abrir</NxBtn></NxDFoot>
+            </>)} />
+        );
+      })()}
+
       <Suspense fallback={null}><Pendencias /></Suspense>
-      <div className="kstrip dyn" style={{ marginBottom: 16, ["--kc" as string]: Math.min(shown.length, 7) }}>
+      <div className="kstrip dyn" style={{ marginTop: 8, ["--kc" as string]: Math.min(shown.length, 7) }}>
         {shown.map((k) => ks[k])}
-      </div>
-
-      <div className="cols c-2-1">
-        <section className="pnl" style={{ padding: 22 }}>
-          <div className="row" style={{ justifyContent: "space-between", marginBottom: 8 }}>
-            <h3 style={{ fontSize: 15, fontWeight: 600 }}>Vendas {oneDay ? "por hora" : "por dia"}</h3>
-            <span className="dim" style={{ fontSize: 12.5 }}>{plab} · sem frete</span>
-          </div>
-          {nOrders ? <Bars items={salesBars} format={(v) => brl(v, 0)} height={200} highlightLast={period.to === today} /> : <div className="empty">Nenhuma venda {oneDay && period.from === today ? "hoje ainda" : "no período"}.</div>}
-        </section>
-        <section className="pnl" style={{ padding: 22 }}>
-          <div className="row" style={{ justifyContent: "space-between", marginBottom: 4 }}>
-            <h3 style={{ fontSize: 15, fontWeight: 600 }}>Pagamentos</h3>
-            <Link className="btn sm ghost" href="/pedidos">Pedidos <ArrowRight size={14} /></Link>
-          </div>
-          {old && <p className="dim" style={{ fontSize: 12.5, margin: "6px 0 4px" }}>A Shopify só mostra a forma de pagamento dos pedidos dos últimos 60 dias. O faturamento do período está no Histórico de vendas.</p>}
-          {!old && pay.map((x) => (
-            <div className="lrow" key={x.k}>
-              <span className={`tile sm ${x.k === "pix" ? "t-l" : x.k === "cartao" ? "t-k" : "t-n"}`}>{x.k === "cartao" ? <CreditCard size={15} /> : <Wallet size={15} />}</span>
-              <div><div className="t">{x.label}</div><div className="s">{x.n} pago(s){x.pn ? ` · ${x.pn} pendente(s) ${brl(x.pv, 0)}` : ""}</div></div>
-              <div className="end mid-num" style={{ fontSize: 20 }}>{brl(x.v, 0)}</div>
-            </div>
-          ))}
-          {!old && (
-          <div className="lrow">
-            <span className="tile sm t-s"><Hourglass size={15} /></span>
-            <div><div className="t">Aguardando pagamento</div><div className="s">Ainda não aprovado, fica fora do faturamento</div></div>
-            <div className="end mid-num" style={{ fontSize: 20, color: "var(--sun)" }}>{brl(pendTotal, 0)}</div>
-          </div>
-          )}
-          {!old && lost.length > 0 && (
-            <div className="lrow">
-              <span className="tile sm t-c"><PackageX size={15} /></span>
-              <div><div className="t">Cancelados ou estornados</div><div className="s">{lost.length} pedido(s)</div></div>
-              <div className="end mid-num dn" style={{ fontSize: 20 }}>{brl(lost.reduce((a, o) => a + o.total, 0), 0)}</div>
-            </div>
-          )}
-          {!old && paidTotal + pendTotal > 0 && (
-            <div className="hbar" style={{ marginTop: 10, display: "flex" }}>
-              {pay.map((x) => <i key={x.k} className={x.k === "pix" ? "" : x.k === "cartao" ? "k" : "s"} style={{ width: `${(x.v / (paidTotal + pendTotal)) * 100}%`, borderRadius: 0 }} />)}
-            </div>
-          )}
-        </section>
-      </div>
-
-      <div className="cols c-2-1">
-        <section className="pnl" style={{ padding: 22 }}>
-          <div className="row" style={{ justifyContent: "space-between", marginBottom: 4 }}>
-            <h3 style={{ fontSize: 15, fontWeight: 600 }}>Ao vivo</h3>
-            <span className="row dim" style={{ gap: 8, fontSize: 12 }}><span className="live-dot" /> pedidos, formulários, comunidade, carrinhos e atendimento</span>
-          </div>
-          {live.length ? live.map((x, i) => (
-            <Link href={x.href} className="lrow" key={i} style={{ color: "inherit" }}>
-              <span className={`tile sm ${x.tone}`}><x.icon size={15} /></span>
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <div className="t" style={{ fontSize: 13.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{x.t}</div>
-                <div className="s" style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{x.s}</div>
-              </div>
-              <span className="end" style={{ minWidth: 60 }}>{x.v && <b style={{ fontSize: 13.5, display: "block" }}>{x.v}</b>}<span className="dim" style={{ fontSize: 12 }}>{ago(x.at)}</span></span>
-            </Link>
-          )) : <div className="empty">Nada aconteceu ainda.</div>}
-        </section>
-        <div className="stack">
-          <section className="pnl" style={{ padding: 22 }}>
-            <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 6 }}>Do clique à venda</h3>
-            <p className="dim" style={{ fontSize: 12.5, marginBottom: 8 }}>{plab}</p>
-            {[
-              { l: "Visitas na loja", v: sessions, icon: MousePointerClick, tone: "t-n" },
-              { l: "Preencheram o formulário", v: leadsN, icon: FileText, tone: "t-p" },
-              { l: "Entraram na comunidade", v: pc("JOIN") + pc("RETURN"), icon: LogIn, tone: "t-l" },
-              { l: "Compraram", v: nOrders, icon: ShoppingBag, tone: "t-s" },
-            ].map((x) => (
-              <div className="lrow" key={x.l}>
-                <span className={`tile sm ${x.tone}`}><x.icon size={15} /></span>
-                <div className="t" style={{ fontSize: 13.5 }}>{x.l}</div>
-                <div className="end mid-num" style={{ fontSize: 22 }}>{x.v == null ? "–" : x.v.toLocaleString("pt-BR")}</div>
-              </div>
-            ))}
-          </section>
-          <section className="pnl" style={{ padding: 22 }}>
-            <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 6 }}>Comunidade · {plab}</h3>
-            {[
-              { l: "Entraram", v: pc("JOIN"), icon: LogIn, tone: "t-l", href: "/entradas" },
-              { l: "Voltaram", v: pc("RETURN"), icon: RotateCcw, tone: "t-k", href: "/entradas" },
-              { l: "Saíram", v: pc("LEAVE"), icon: LogOut, tone: "t-c", href: "/entradas?t=LEAVE" },
-            ].map((x) => (
-              <Link href={x.href} className="lrow" key={x.l} style={{ color: "inherit" }}>
-                <span className={`tile sm ${x.tone}`}><x.icon size={15} /></span>
-                <div className="t" style={{ fontSize: 13.5 }}>{x.l}</div>
-                <div className="end mid-num" style={{ fontSize: 22 }}>{x.v}</div>
-              </Link>
-            ))}
-            <div className="dim" style={{ fontSize: 12.5, marginTop: 6 }}>Saldo {pc("JOIN") + pc("RETURN") - pc("LEAVE") >= 0 ? "+" : ""}{pc("JOIN") + pc("RETURN") - pc("LEAVE")} pessoas</div>
-          </section>
-        </div>
       </div>
 
       <div className="cols c-1-1-1">
