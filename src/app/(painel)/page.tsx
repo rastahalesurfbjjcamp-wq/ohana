@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import Link from "next/link";
 import { AlertTriangle, ArrowRight, BadgeDollarSign, CalendarClock, ClipboardList, CreditCard, Crown, FileText, Hourglass, LogIn, LogOut, Medal, Megaphone, MessageCircle, MousePointerClick, PackageX, Receipt, RotateCcw, ShoppingBag, ShoppingCart, Target, TrendingUp, Users, Wallet } from "lucide-react";
 import { db } from "@/lib/db";
@@ -45,6 +46,9 @@ function ago(d: Date) {
   if (s < 86400) return `${Math.round(s / 3600)} h`;
   return `${Math.round(s / 86400)} d`;
 }
+
+const BLOCKS: [string, string][] = [["numeros", "Cartões de números"], ["resumo", "Faturamento e comunidade"], ["atalhos", "Pagamentos e atalhos"], ["aovivo", "Ao vivo"], ["pendencias", "Pendências e sugestões"], ["atletas", "Atletas, recuperação e atenção"], ["grupos", "Grupos e conversas"], ["envios", "Próximos envios"]];
+const DEFAULT_BLOCKS = BLOCKS.map(([k]) => k);
 
 export default async function Home({ searchParams }: { searchParams: Promise<{ r?: string; p?: string; de?: string; ate?: string; v?: string; sel?: string }> }) {
   const sp = await searchParams;
@@ -186,6 +190,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
   const per = (a: number, b: number) => (b ? brl(a / b) : "–");
   const n0 = (v: number) => v.toLocaleString("pt-BR");
   const cardOn = settings.ads.cards;
+  const blockOrder = (settings.ads.blocks?.length ? settings.ads.blocks : DEFAULT_BLOCKS).filter((k) => BLOCKS.some(([b]) => b === k));
   const ks: Record<string, React.ReactNode> = {
     faturamento: <Link key="faturamento" href="/historico" className="ks hl"><small><Wallet size={14} /> Faturamento</small><b>{m ? brl(m.net, 0) : "–"}</b><span>{period.label.toLowerCase()}</span></Link>,
     pedidos: <Link key="pedidos" href="/pedidos" className="ks"><small><Receipt size={14} /> Pedidos</small><b>{nOrders}</b><span>ticket {old ? (m?.orders ? brl(m.aov, 0) : "–") : valid.length ? brl(valid.reduce((a, o) => a + o.subtotal, 0) / valid.length, 0) : "–"}</span></Link>,
@@ -217,23 +222,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
     ...chatFeed.map((c) => ({ at: c.createdAt, icon: MessageCircle, tone: "t-k", t: "Mensagem no atendimento", s: c.text.slice(0, 70), href: `/atendimento?tel=${c.phone}`, who: c.phone, st: "Responder", kind: "chat" })),
   ].sort((a, b) => b.at.getTime() - a.at.getTime()).slice(0, 16);
 
-  return (
-    <>
-      <AutoRefresh seconds={45} />
-      <NxHead title={<>{hello}, {session?.name.split(" ")[0]}</>}>
-        <DateRange current={period.key} from={period.from} to={period.to} label={period.label} presets={["hoje", "ontem", "7d", "30d", "60d", "mes", "mes-passado", "6m", "ano"]} />
-        <RefreshButton bar />
-        <CardPicker cards={CARDS} on={cardOn} action={saveDashCards} />
-        <Link className="btn" href="/agendamentos"><CalendarClock size={16} /> Agendar</Link>
-        <Link className="btn pri" href="/disparos"><Megaphone size={16} /> Novo disparo</Link>
-      </NxHead>
-      {obDone < ob.length && process.env.DEMO_MODE !== "1" && (
-        <Link href="/comecar" className="callout lagoon" style={{ alignItems: "center" }}>
-          <b>Falta pouco para a loja ficar pronta: {obDone} de {ob.length} passos.</b>
-          <span className="dim">Próximo: {ob.find((x) => !x.done)?.title}</span>
-          <span className="act">Continuar <ArrowRight size={14} /></span>
-        </Link>
-      )}
+  const B: Record<string, React.ReactNode> = {
+    resumo: (<>
       <NxRow2>
         <NxHero stats={<>
           <NxStat label={`Faturamento · ${plab}`} pre="R$" value={m ? Math.round(m.net).toLocaleString("pt-BR") : "–"} sub={m ? `${nOrders} pedido(s) pagos` : "sem dados da loja"} />
@@ -247,6 +237,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
           button={{ label: "Ver comunidade", href: "/entradas" }} />
       </NxRow2>
 
+</>),
+    atalhos: (<>
       <NxFilters>
         <NxPill href="/pedidos">Pagamentos: {pay.map((x) => `${x.label} ${brl(x.v, 0)}`).join(" · ") || "–"}</NxPill>
         <NxPill href="/pedidos">Aguardando {brl(pendTotal, 0)}</NxPill>
@@ -254,6 +246,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
         <NxPill href="/atendimento" on={waiting.length > 0}>{waiting.length} esperando resposta</NxPill>
       </NxFilters>
 
+</>),
+    aovivo: (<>
       {(() => {
         const fil = sp.v ?? "tudo";
         const list = live.filter((x) => fil === "tudo" || (fil === "pedidos" ? x.kind === "pedido" : x.kind !== "pedido" && x.kind !== "lead"));
@@ -294,11 +288,17 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
         );
       })()}
 
+</>),
+    pendencias: (<>
       <Suspense fallback={null}><Pendencias /></Suspense>
+</>),
+    numeros: (<>
       <div className="kstrip dyn" style={{ marginTop: 8, ["--kc" as string]: Math.min(shown.length, 7) }}>
         {shown.map((k) => ks[k])}
       </div>
 
+</>),
+    atletas: (<>
       <div className="cols c-1-1-1">
         <section className="pnl" style={{ padding: 22 }}>
           <div className="row" style={{ justifyContent: "space-between", marginBottom: 4 }}>
@@ -341,6 +341,10 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
         </section>
       </div>
 
+</>),
+    grupos: (<>
+</>),
+    envios: (<>
       <div className="cols c-2-1">
         <section className="pnl" style={{ padding: 26 }}>
           <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -421,6 +425,26 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
           )}
         </section>
       </div>
+</>),
+  };
+  return (
+    <>
+      <AutoRefresh seconds={45} />
+      <NxHead title={<>{hello}, {session?.name.split(" ")[0]}</>}>
+        <DateRange current={period.key} from={period.from} to={period.to} label={period.label} presets={["hoje", "ontem", "7d", "30d", "60d", "mes", "mes-passado", "6m", "ano"]} />
+        <RefreshButton bar />
+        <CardPicker cards={CARDS} on={cardOn} blocks={BLOCKS} blocksOn={blockOrder} action={saveDashCards} />
+        <Link className="btn" href="/agendamentos"><CalendarClock size={16} /> Agendar</Link>
+        <Link className="btn pri" href="/disparos"><Megaphone size={16} /> Novo disparo</Link>
+      </NxHead>
+      {obDone < ob.length && process.env.DEMO_MODE !== "1" && (
+        <Link href="/comecar" className="callout lagoon" style={{ alignItems: "center" }}>
+          <b>Falta pouco para a loja ficar pronta: {obDone} de {ob.length} passos.</b>
+          <span className="dim">Próximo: {ob.find((x) => !x.done)?.title}</span>
+          <span className="act">Continuar <ArrowRight size={14} /></span>
+        </Link>
+      )}
+      {blockOrder.map((k) => <Fragment key={k}>{B[k]}</Fragment>)}
     </>
   );
 }

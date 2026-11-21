@@ -137,7 +137,7 @@ export function Sidebar({ name, store, connected, leaves, logout, role = "ADMIN"
         <b>{store} Hub</b>
       </Link>
       <div className="tn-allw">
-        <button type="button" className={`tn-ic${all ? " on" : ""}`} onClick={() => setAll((v) => !v)} aria-label="Todas as telas"><LayoutGrid size={17} /></button>
+        <button type="button" className={`tn-menu${all ? " on" : ""}`} onClick={() => setAll((v) => !v)} aria-label="Todas as telas"><LayoutGrid size={17} /> Menu</button>
         {all && (
           <>
             <div className="tn-ov" onClick={() => setAll(false)} />

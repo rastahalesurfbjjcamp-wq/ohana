@@ -1860,3 +1860,8 @@ body:has(.app) { background: #171a20; }
   .nx-tabs3 { flex-wrap: wrap; }
   .nx-tbtn { width: 100%; margin: 8px 0 0; }
 }
+@media (min-width: 861px) {
+  .tn-menu { height: 40px; padding: 0 16px 0 13px; border-radius: 999px; display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 650; cursor: pointer; background: #c6f432; color: #0d1400; border: 0; box-shadow: 0 0 0 4px rgba(198,244,50,.16), 0 8px 22px rgba(198,244,50,.22); }
+  .tn-menu:hover { filter: brightness(1.06); }
+  .tn-menu.on { background: #fff; box-shadow: 0 0 0 4px rgba(255,255,255,.14); }
+}

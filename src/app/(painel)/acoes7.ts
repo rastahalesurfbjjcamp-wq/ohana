@@ -41,7 +41,8 @@ export async function saveCampGroup(f: FormData) {
 export async function saveDashCards(f: FormData) {
   await admin();
   const cards = f.getAll("card").map(String).slice(0, 12);
-  await saveSetting("ads", { cards: cards.length ? cards : ["faturamento"] });
+  const blocks = f.get("_blocks") ? f.getAll("block").map(String).slice(0, 20) : null;
+  await saveSetting("ads", { cards: cards.length ? cards : ["faturamento"], ...(blocks ? { blocks: blocks.length ? blocks : ["resumo"] } : {}) });
   revalidatePath("/");
 }
 

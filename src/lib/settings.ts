@@ -125,6 +125,7 @@ export const DEFAULTS = {
     accounts: [] as AdAccountCfg[], // contas que aparecem no Hub (vazio = só a conta da integração)
     camp: {} as Record<string, AdGroup>, // campanha -> tipo escolhido à mão
     cards: ["faturamento", "pedidos", "lucro", "vendas", "leads", "perfil", "conversao"] as string[],
+    blocks: [] as string[], // blocos da visão geral na ordem escolhida (vazio = ordem padrão)
     followMetric: "", // métrica do Meta que conta como seguidor (vazio = automático)
     perfilCoupons: ["BEMVINDOIG"] as string[], // cupons que o tráfego do perfil entrega (ManyChat)
   },
@@ -144,7 +145,7 @@ export type AdGroup = "vendas" | "leads" | "perfil" | "fora";
 export type AdAccountCfg = { id: string; name: string; on: boolean; kind: "auto" | "vendas" | "leads" | "perfil" };
 
 export type Settings = {
-  ads: { accounts: AdAccountCfg[]; camp: Record<string, AdGroup>; cards: string[]; followMetric: string; perfilCoupons: string[] };
+  ads: { accounts: AdAccountCfg[]; camp: Record<string, AdGroup>; cards: string[]; followMetric: string; perfilCoupons: string[]; blocks: string[] };
   winback: { enabled: boolean; delayMinutes: number; text: string; onlyIfNotRemovedByAdmin: boolean };
   report: {
     enabled: boolean;
