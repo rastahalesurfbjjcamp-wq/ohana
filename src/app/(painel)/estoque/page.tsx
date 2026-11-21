@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
-import { BellRing, Coins, Hourglass, PackageX, Send, Tag } from "lucide-react";
+import { BellRing, Send } from "lucide-react";
 import { db } from "@/lib/db";
 import { enqueue } from "@/lib/queue";
 import { costResolver } from "@/lib/report";
 import { ordersBetween, products, type Product } from "@/lib/store";
 import { addDays, brl, dayRange, isoDayLocal } from "@/lib/time";
-import { ErrorNote, Header, Kpi, Panel } from "@/components/ui";
+import { ErrorNote, Panel } from "@/components/ui";
+import { NxHead, NxRow2, NxHero, NxStat, NxTracks, NxTrack, NxTabsCard, NxFilters, NxPill, NxPanel, NxItem, NxEmpty, NxDHead, NxDNum, NxDText, NxDCards, NxDFoot, NxBtn } from "@/components/nx";
 import { ConfirmButton } from "@/components/ConfirmButton";
 
 export const dynamic = "force-dynamic";
@@ -35,8 +36,9 @@ async function notifyWaiting() {
   revalidatePath("/estoque");
 }
 
-export default async function Estoque({ searchParams }: { searchParams: Promise<{ f?: string; t?: string }> }) {
-  const { f = "alertas", t = "top" } = await searchParams;
+export default async function Estoque({ searchParams }: { searchParams: Promise<{ f?: string; t?: string; v?: string; sel?: string }> }) {
+  const sp = await searchParams;
+  const { f = "alertas", t = "top" } = sp;
   const rows: Row[] = [];
   let error: unknown = null;
   let costValue = 0, saleValue = 0, pieces = 0, missingCost = 0, bundles = 0, products_ = 0;
@@ -110,22 +112,69 @@ export default async function Estoque({ searchParams }: { searchParams: Promise<
 
   return (
     <>
-      <Header title="Estoque" lede="Quanto tem de cada tamanho, quanto vale o estoque, quando vai acabar e quem está esperando a reposição.">
+      <NxHead title="Estoque" back="/">
+        <Link className="btn" href="/produtos">Produtos e lucro</Link>
         <form action={notifyWaiting}>
           <ConfirmButton className="btn pri" disabled={!waitingTotal} message={`Mandar WhatsApp para quem está esperando um tamanho que já voltou? (${waitingTotal} na lista)`}>
             <BellRing size={16} /> Avisar quem está esperando
           </ConfirmButton>
         </form>
-      </Header>
+      </NxHead>
       {error ? <ErrorNote error={error} /> : null}
-      <div className="grid g4">
-        <Kpi icon={<Coins size={15} />} label="Valor em estoque (custo)" value={brl(costValue, 0)} sub={missingCost ? <span style={{ color: "var(--sun)" }}>{missingCost.toLocaleString("pt-BR")} peças sem custo cadastrado ficaram de fora</span> : `${pieces.toLocaleString("pt-BR")} peças de ${products_} produtos à venda`} />
-        <Kpi icon={<Tag size={15} />} tone="k" label="Valor em estoque (venda)" value={brl(saleValue, 0)} sub={`a preço de venda${bundles ? ` · ${bundles} kits não entram (usam as mesmas peças)` : ""}`} />
-        <Kpi icon={<PackageX size={15} />} tone="c" label="Tamanhos zerados que vendem" value={<span className={zeroSelling.length ? "dn" : ""}>{zeroSelling.length}</span>} sub={zeroSelling.length ? `uns ${brl(lost, 0)} por semana sem vender` : "nenhum"} />
-        <Kpi icon={<Hourglass size={15} />} tone="s" label="Acaba em menos de 7 dias" value={<span style={ending.length ? { color: "var(--sun)" } : undefined}>{ending.length}</span>} sub={waitingTotal ? `${waitingTotal} pessoas esperando reposição` : "no ritmo atual de venda"} />
-      </div>
+      <NxRow2>
+        <NxHero stats={<>
+          <NxStat label="Peças em estoque" value={pieces.toLocaleString("pt-BR")} sub={`em ${products_} produtos à venda`} />
+          <NxStat label="Valor em estoque" pre="R$" value={Math.round(costValue).toLocaleString("pt-BR")} sub={missingCost ? `${missingCost.toLocaleString("pt-BR")} peças sem custo` : `pelo custo · ${brl(saleValue, 0)} na venda`} />
+          <NxStat label="Zerados que vendem" value={zeroSelling.length} sub={zeroSelling.length ? `uns ${brl(lost, 0)} por semana sem vender` : "nenhum"} tone={zeroSelling.length ? "dn" : "mut"} />
+        </>}>
+          <NxTracks>
+            {[...rows].sort((x, y) => y.stock - x.stock).slice(0, 3).map((r) => <NxTrack key={r.key} l={r.product.title} r={`${r.stock} peças`} pct={pieces ? (r.stock / Math.max(1, [...rows].sort((x, y) => y.stock - x.stock)[0]?.stock ?? 1)) * 100 : 0} />)}
+          </NxTracks>
+        </NxHero>
+        {(() => {
+          const top = [...rows].sort((x, y) => y.sold30 - x.sold30)[0];
+          const cells = top ? [...top.cells].sort((x, y) => y.sold30 - x.sold30).slice(0, 3) : [];
+          return <NxTabsCard title="Mais vendido em 30 dias" value={top ? top.product.title.replace(/^(rashguard|fight short|boardshort|short|camiseta|t-shirt)\s+/i, "") : "–"} chip={top ? `${top.sold30} vendidas` : ""}
+            tabs={cells.map((c, i) => ({ top: `${Math.max(0, c.stock)} em estoque`, label: c.size, on: i === 0 }))} button={top ? { label: "Ver produto", href: `/estoque?sel=${encodeURIComponent(top.key)}` } : undefined} />;
+        })()}
+      </NxRow2>
+      <NxFilters>
+        <NxPill href={`/estoque?f=alertas&t=${t}`} on={f === "alertas"}>Precisa de atenção</NxPill>
+        <NxPill href={`/estoque?f=parados&t=${t}`} on={f === "parados"}>Parados</NxPill>
+        <NxPill href={`/estoque?f=todos&t=${t}`} on={f === "todos"}>Todos os tamanhos</NxPill>
+        <NxPill href="#grade">Grade por tamanho</NxPill>
+        <NxPill href="#repor">Sugestão de reposição</NxPill>
+      </NxFilters>
+      {(() => {
+        const low = (r: Row) => r.stock > 0 && (r.days != null && r.days < 15 || r.cells.some((c) => c.stock > 0 && c.stock <= 2 && c.sold30 > 0));
+        const v = sp.v === "baixo" ? "baixo" : sp.v === "zerado" ? "zerado" : "todos";
+        const plist = [...rows].filter((r) => v === "todos" || (v === "baixo" ? low(r) : r.stock <= 0)).sort((x, y) => y.sold30 - x.sold30 || y.stock - x.stock);
+        const cur = plist.find((r) => r.key === sp.sel) ?? plist[0];
+        const href = (k: Record<string, string | undefined>) => { const u = new URLSearchParams(); const vals = { f, t, v: sp.v, ...k }; for (const [a2, b2] of Object.entries(vals)) if (b2) u.set(a2, b2); return `/estoque?${u}`; };
+        const cost = cur?.cells.find((c) => c.cost != null)?.cost ?? null;
+        const price = cur?.cells[0]?.price ?? 0;
+        return (
+          <NxPanel title="Produtos"
+            tabs={[{ label: "Todos", href: href({ v: undefined, sel: undefined }), on: v === "todos" }, { label: "Estoque baixo", count: rows.filter(low).length, href: href({ v: "baixo", sel: undefined }), on: v === "baixo" }, { label: "Zerados", count: rows.filter((r) => r.stock <= 0).length, href: href({ v: "zerado", sel: undefined }), on: v === "zerado" }]}
+            list={plist.length ? plist.slice(0, 9).map((r) => (
+              <NxItem key={r.key} href={href({ sel: r.key })} name={r.product.title} title={`${r.product.title}${r.label ? ` · ${r.label}` : ""}`} sub={`${r.sold30} vendidas em 30 dias · ${brl(r.cells[0]?.price ?? 0, 0)}`} status={r.stock <= 0 ? "Zerado" : low(r) ? "Baixo" : "Ok"} ok={r.stock > 0 && !low(r)} value={r.stock} on={cur?.key === r.key} />
+            )) : <NxEmpty>Nenhum produto aqui.</NxEmpty>}
+            detail={cur ? (<>
+              <NxDHead cols={[
+                { label: "Produto", node: <NxDNum chip={cur.stock <= 0 ? "Zerado" : low(cur) ? "Estoque baixo" : "Em estoque"}>{null}</NxDNum> },
+                { label: "Preço", node: <NxDText>{brl(price)}</NxDText> },
+                { label: "Custo e margem", node: <NxDText>{cost != null && price ? `${brl(cost, 0)} · ${Math.round((1 - cost / price) * 100)}%` : "sem custo"}</NxDText> },
+              ]} />
+              <div className="nx-dnum" style={{ marginTop: -6 }}>{cur.product.title}{cur.label ? ` · ${cur.label}` : ""}</div>
+              <NxDCards cols={Math.min(5, Math.max(3, cur.cells.length))} items={[...cur.cells].sort((x, y) => (SIZE_ORDER.indexOf(x.size.toUpperCase()) + 999) % 999 - (SIZE_ORDER.indexOf(y.size.toUpperCase()) + 999) % 999).slice(0, 10).map((c) => ({ v: Math.max(0, c.stock), d: `Tamanho ${c.size}${c.waiting ? ` · ${c.waiting} esperando` : c.sold30 ? ` · ${c.sold30} vend.` : ""}` }))} />
+              <NxDFoot vals={[{ l: "Em estoque", v: cur.stock }, { l: "Vendidas 30 dias", v: cur.sold30 }, { l: "Dura", v: cur.days == null ? "sem venda" : `${Math.round(cur.days)} dias` }]}>
+                <NxBtn href="#repor" lime>Repor estoque</NxBtn>
+              </NxDFoot>
+            </>) : <NxEmpty>Escolha um produto da lista.</NxEmpty>} />
+        );
+      })()}
 
-      <div className="cols c-3-1">
+      <div className="cols c-3-1" id="grade">
         <Panel title="Grade por tamanho" sub={waitingTotal ? "Estoque real da Shopify. Em vermelho, os zerados, com quantas pessoas esperam cada um." : "Estoque real da Shopify. Em vermelho os zerados, em amarelo os que estão acabando."} body={false}
           right={<div className="seg"><Link href={`/estoque?f=${f}`} className={t !== "todos" ? "on" : ""}>Mais vendidos</Link><Link href={`/estoque?f=${f}&t=todos`} className={t === "todos" ? "on" : ""}>Todos</Link></div>}>
           <div style={{ overflowX: "auto", padding: "0 10px 14px" }}>
@@ -176,6 +225,7 @@ export default async function Estoque({ searchParams }: { searchParams: Promise<
         </Panel>
 
         <div className="stack">
+          <div id="repor" />
           <Panel title="Sugestão de reposição" sub="Pelo ritmo de venda dos últimos 30 dias e pela lista de espera">
             {suggestion.length ? (
               <>
@@ -201,11 +251,6 @@ export default async function Estoque({ searchParams }: { searchParams: Promise<
         </div>
       </div>
 
-      <div><div className="seg">
-        <Link href={`/estoque?f=alertas&t=${t}`} className={f === "alertas" ? "on" : ""}>Precisa de atenção</Link>
-        <Link href={`/estoque?f=parados&t=${t}`} className={f === "parados" ? "on" : ""}>Parados</Link>
-        <Link href={`/estoque?f=todos&t=${t}`} className={f === "todos" ? "on" : ""}>Todos os tamanhos</Link>
-      </div></div>
       <Panel title={f === "todos" ? "Todos os tamanhos" : f === "parados" ? "Parados há 30 dias" : "Precisa de atenção"} sub={`${detail.length} tamanho(s)`} body={false}>
         {detail.length ? (
           <div style={{ overflowX: "auto" }}>

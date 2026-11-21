@@ -6,7 +6,8 @@ import { formatPhone } from "@/lib/phone";
 import { getSettings } from "@/lib/settings";
 import { customers } from "@/lib/store";
 import { normalizePhone } from "@/lib/segments";
-import { Header, Panel } from "@/components/ui";
+import { Panel } from "@/components/ui";
+import { NxHead, NxRow2, NxHero, NxStat, NxTracks, NxTrack, NxAvs, NxNote, NxTabsCard, NxFilters, NxPill, NxPanel, NxItem, NxEmpty, NxDHead, NxDNum, NxDText, NxWho, NxDCards, NxDFoot, NxBtn } from "@/components/nx";
 import { LeadsTable, type LeadRow } from "@/components/LeadsTable";
 import { addLeadManual, leadsToBroadcast, saveLeadSettings } from "../acoes2";
 
@@ -23,19 +24,7 @@ function originOf(l: { source: string; utmSource: string | null; utmMedium: stri
   return ["Página Grupo VIP", "direto"];
 }
 
-function Ring({ value, color }: { value: number; color: string }) {
-  const r = 21, c = 2 * Math.PI * r;
-  return (
-    <div className="ring">
-      <svg width="52" height="52" viewBox="0 0 52 52">
-        <circle cx="26" cy="26" r={r} fill="none" stroke="#1f2523" strokeWidth="6" />
-        <circle cx="26" cy="26" r={r} fill="none" stroke={color} strokeWidth="6" strokeLinecap="round" strokeDasharray={`${c * Math.min(1, value)} ${c}`} />
-      </svg>
-    </div>
-  );
-}
-
-export default async function Leads({ searchParams }: { searchParams: Promise<{ erro?: string; f?: string; q?: string; o?: string; dias?: string; cfg?: string }> }) {
+export default async function Leads({ searchParams }: { searchParams: Promise<{ erro?: string; f?: string; q?: string; o?: string; dias?: string; cfg?: string; sel?: string }> }) {
   const sp = await searchParams;
   const s = await getSettings();
   const all = await db.lead.findMany({ orderBy: { createdAt: "desc" } });
@@ -84,6 +73,7 @@ export default async function Leads({ searchParams }: { searchParams: Promise<{ 
     const b = buyers.get(l.phone);
     return { id: l.id, name: l.name ?? "Sem nome", phone: l.phone, phoneFmt: formatPhone(l.phone), email: l.email, origin: o, originSub: os, when: when(l.createdAt), group: groupOf(l.phone), spent: b?.spent ?? 0, orders: b?.orders ?? 0 };
   });
+  const cur = list.find((l) => l.id === sp.sel) ?? list[0];
   const href = (k: string, v?: string) => {
     const p = new URLSearchParams();
     const vals: Record<string, string | undefined> = { f: sp.f, q: sp.q, o: sp.o, dias: sp.dias, [k]: v };
@@ -113,51 +103,62 @@ document.getElementById("hub-vip").addEventListener("submit", async function (e)
 
   return (
     <>
-      <Header title="Leads" lede="Captados pela página do Grupo VIP e salvos direto no Hub.">
-        <form className="srch" action="/leads">
-          <Search size={15} className="dim" />
-          <input name="q" defaultValue={sp.q} placeholder="Buscar nome, número ou e-mail" />
-          {sp.f && <input type="hidden" name="f" value={sp.f} />}
-        </form>
+      <NxHead title="Leads" back="/">
         <a className="btn" href="/api/export/leads"><Download size={16} /> Exportar</a>
+        <Link className={`btn${sp.cfg ? " on" : ""}`} href={sp.cfg ? href("cfg") : href("cfg", "1")}><Settings2 size={15} /> Configurar</Link>
         <Link className="btn pri" href="/disparos"><Send size={16} /> Novo disparo</Link>
-      </Header>
+      </NxHead>
       {sp.erro && <div className="err">WhatsApp inválido.</div>}
-      <div className="grid g4">
-        <div className="pnl kpi">
-          <div className="row" style={{ justifyContent: "space-between" }}><small>Leads hoje</small>{vsY != null && <span className={`chip ${vsY >= 0 ? "c-l" : "c-c"}`}>{vsY >= 0 ? "+" : ""}{vsY}% vs ontem</span>}</div>
-          <span className="num">{today}</span>
-          <div className="sub">{all.length.toLocaleString("pt-BR")} no total</div>
-        </div>
-        <div className="pnl kpi row" style={{ justifyContent: "space-between" }}>
-          <div><small>Entraram no grupo</small><span className="num">{Math.round(rateGroup * 100)}%</span></div>
-          <Ring value={rateGroup} color="#34c26a" />
-        </div>
-        <div className="pnl kpi row" style={{ justifyContent: "space-between" }}>
-          <div><small>Viraram clientes</small><span className="num">{Math.round(rateBuy * 100)}%</span></div>
-          <Ring value={rateBuy} color="#f7c928" />
-        </div>
-        <div className="pnl kpi">
-          <div className="row" style={{ justifyContent: "space-between" }}><small>Origem principal</small>{topOrigin && <span className="chip c-s">{Math.round((topOrigin[1] / Math.max(1, all.length)) * 100)}%</span>}</div>
-          <span className="num" style={{ fontSize: 22, marginTop: 14 }}>{topOrigin?.[0] ?? "–"}</span>
-        </div>
-      </div>
-      <div className="row" style={{ justifyContent: "space-between" }}>
-        <div className="chips">
-          {([["todos", "Todos"], ["no_grupo", "No grupo"], ["nao_entrou", "Não entrou"], ["comprou", "Comprou"], ["saiu", "Saiu do grupo"]] as const).map(([k, l]) => (
-            <Link key={k} href={href("f", k === "todos" ? undefined : k)} className={f === k ? "on" : ""}>{l}<b>{counts[k].toLocaleString("pt-BR")}</b></Link>
-          ))}
-        </div>
-        <div className="row" style={{ gap: 8 }}>
-          <div className="seg">
-            {[["", "Todas"], ...[...origins.keys()].slice(0, 4).map((o) => [o, o])].map(([k, l]) => <Link key={l} href={href("o", k || undefined)} className={(sp.o ?? "") === k ? "on" : ""}>{l}</Link>)}
-          </div>
-          <div className="seg">
-            {[["7", "7 dias"], ["30", "30 dias"], ["90", "90 dias"], ["todos", "Tudo"]].map(([k, l]) => <Link key={k} href={href("dias", k === "30" ? undefined : k)} className={dias === k ? "on" : ""}>{l}</Link>)}
-          </div>
-          <Link className={`btn${sp.cfg ? " on" : ""}`} href={sp.cfg ? href("cfg") : href("cfg", "1")}><Settings2 size={15} /> Configurar</Link>
-        </div>
-      </div>
+      <NxRow2>
+        <NxHero stats={<>
+          <NxStat label="Leads hoje" value={today} sub={vsY == null ? `${all.length.toLocaleString("pt-BR")} no total` : `${vsY >= 0 ? "↑" : "↓"} ${Math.abs(vsY)}% vs ontem`} tone={vsY == null ? "mut" : vsY >= 0 ? "up" : "dn"} />
+          <NxStat label="Entraram no grupo" value={`${Math.round(rateGroup * 100)}%`} sub={`${all.filter((l) => inG.has(l.phone)).length.toLocaleString("pt-BR")} de ${all.length.toLocaleString("pt-BR")}`} />
+          <NxStat label="Viraram clientes" value={`${Math.round(rateBuy * 100)}%`} sub={`${all.filter((l) => buyers.has(l.phone)).length.toLocaleString("pt-BR")} compraram`} />
+        </>}>
+          <NxTracks>
+            <NxTrack l="Formulário" r="Grupo" pct={rateGroup * 100}><NxAvs names={all.filter((l) => inG.has(l.phone)).slice(0, 5).map((l) => l.name ?? l.phone)} /></NxTrack>
+            <NxTrack l="Grupo" r="Compra" pct={rateBuy * 100}><NxAvs names={all.filter((l) => buyers.has(l.phone)).slice(0, 4).map((l) => l.name ?? l.phone)} /></NxTrack>
+            <NxTrack l="Leads em 30 dias" r={all.filter((l) => l.createdAt >= new Date(Date.now() - 30 * 864e5)).length.toLocaleString("pt-BR")} pct={all.length ? (all.filter((l) => l.createdAt >= new Date(Date.now() - 30 * 864e5)).length / all.length) * 100 : 0}><NxNote>{all.length.toLocaleString("pt-BR")} no total</NxNote></NxTrack>
+          </NxTracks>
+        </NxHero>
+        <NxTabsCard title="Origem principal" value={topOrigin?.[0] ?? "–"} chip={topOrigin ? `${Math.round((topOrigin[1] / Math.max(1, all.length)) * 100)}%` : ""}
+          tabs={[...origins.entries()].sort((x, y) => y[1] - x[1]).slice(0, 3).map(([o, n]) => ({ top: n.toLocaleString("pt-BR"), label: o, href: href("o", sp.o === o ? undefined : o), on: sp.o === o }))}
+          button={{ label: "Ver campanhas", href: "/campanhas" }} />
+      </NxRow2>
+      <NxFilters count={[sp.o, sp.q, sp.dias].filter(Boolean).length}>
+        {[["7", "7 dias"], ["30", "30 dias"], ["90", "90 dias"], ["todos", "Tudo"]].map(([k, l]) => <NxPill key={k} href={href("dias", k === "30" ? undefined : k)} on={dias === k}>{l}</NxPill>)}
+        <NxPill href={href("o", undefined)} on={!sp.o}>Todas as origens</NxPill>
+        <form action="/leads" className="row" style={{ flex: 1, minWidth: 220, gap: 8 }}>
+          {sp.f && <input type="hidden" name="f" value={sp.f} />}
+          <input className="in" name="q" defaultValue={sp.q} placeholder="Buscar nome, número ou e-mail" style={{ flex: 1 }} />
+          <button className="nx-ic" type="submit" aria-label="Buscar"><Search size={16} /></button>
+        </form>
+      </NxFilters>
+      <NxPanel title="Leads"
+        tabs={([["todos", "Todos"], ["nao_entrou", "Não entrou"], ["no_grupo", "No grupo"], ["comprou", "Compraram"]] as const).map(([k, l]) => ({ label: l, count: k === "todos" ? undefined : counts[k], href: href("f", k === "todos" ? undefined : k), on: f === k }))}
+        list={list.length ? list.slice(0, 9).map((l) => {
+          const [o] = originOf(l);
+          const g = groupOf(l.phone);
+          const b = buyers.get(l.phone);
+          return <NxItem key={l.id} href={`${href("sel", l.id)}`} name={l.name ?? l.phone} title={l.name ?? "Sem nome"} sub={`${o} · ${when(l.createdAt)}`} status={b ? "Comprou" : g === "no_grupo" ? "No grupo" : g === "saiu" ? "Saiu do grupo" : "Não entrou"} ok={!!b || g === "no_grupo"} on={cur?.id === l.id} />;
+        }) : <NxEmpty>Nenhum lead aqui.</NxEmpty>}
+        detail={cur ? (() => {
+          const [o, os] = originOf(cur);
+          const g = groupOf(cur.phone);
+          const b = buyers.get(cur.phone);
+          return (<>
+            <NxDHead cols={[
+              { label: "Lead", node: <NxWho name={cur.name ?? cur.phone} sub={formatPhone(cur.phone)} /> },
+              { label: "Origem", node: <NxDText>{o} · {os}</NxDText> },
+              { label: "Situação", node: <NxDNum chip={b ? "Comprou" : g === "no_grupo" ? "No grupo" : g === "saiu" ? "Saiu do grupo" : "Não entrou no grupo"}>{null}</NxDNum> },
+            ]} />
+            <NxDCards cols={3} items={[{ v: cur.email ?? "–", d: "E-mail" }, { v: cur.birthday ?? "–", d: "Aniversário" }, { v: cur.source, d: "Página do cadastro" }]} />
+            <NxDFoot vals={[{ l: "Captado", v: fmtD.format(cur.createdAt) }, { l: "Compras", v: b?.orders ?? 0 }, { l: "Gastou", v: b ? `R$ ${Math.round(b.spent).toLocaleString("pt-BR")}` : "R$ 0" }]}>
+              <NxBtn href={`/atendimento?tel=${cur.phone}`}>↗</NxBtn>
+              <NxBtn href={`https://wa.me/${cur.phone}`} target="_blank" lime>Chamar no WhatsApp</NxBtn>
+            </NxDFoot>
+          </>);
+        })() : <NxEmpty>Escolha um lead da lista.</NxEmpty>} />
       {sp.cfg && (
         <div className="cols c-1-1-1" style={{ alignItems: "start" }}>
           <Panel title="Mensagem de boas-vindas">
@@ -181,6 +182,7 @@ document.getElementById("hub-vip").addEventListener("submit", async function (e)
         </div>
       )}
       <section className="pnl" style={{ paddingTop: 6 }}>
+        <div className="ph"><h3>Selecionar leads para um disparo</h3></div>
         <LeadsTable rows={rows} action={leadsToBroadcast} />
         {list.length > 300 && <div className="dim" style={{ fontSize: 12.5, padding: "0 22px 16px" }}>Mostrando 300 de {list.length.toLocaleString("pt-BR")}. Use a busca ou os filtros.</div>}
       </section>

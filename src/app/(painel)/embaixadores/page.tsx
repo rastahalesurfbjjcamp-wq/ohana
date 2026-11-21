@@ -1,5 +1,6 @@
-import { Award, Clock, Users, Wallet } from "lucide-react";
-import { Header, Kpi, Panel } from "@/components/ui";
+import { MessageCircle } from "lucide-react";
+import { Panel } from "@/components/ui";
+import { NxHead, NxRow2, NxHero, NxStat, NxTracks, NxTrack, NxAvs, NxTabsCard, NxFilters, NxPill, NxPanel, NxItem, NxEmpty, NxDHead, NxDNum, NxWho, NxDCards, NxDFoot, NxBtn } from "@/components/nx";
 import { CopyButton } from "@/components/CopyButton";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { db } from "@/lib/db";
@@ -14,7 +15,7 @@ const age = (d: Date | null) => { if (!d) return null; const n = new Date(); let
 const bday = (d: Date | null) => (d ? `${d.toISOString().slice(8, 10)}/${d.toISOString().slice(5, 7)}` : "");
 const fmt = (d: Date) => d.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 
-export default async function Embaixadores({ searchParams }: { searchParams: Promise<{ aprovado?: string; salvo?: string; erro?: string }> }) {
+export default async function Embaixadores({ searchParams }: { searchParams: Promise<{ aprovado?: string; salvo?: string; erro?: string; v?: string; sel?: string }> }) {
   const sp = await searchParams;
   const [p, list] = await Promise.all([ambProgram(), db.referral.findMany({ where: { kind: "embaixador" }, orderBy: { createdAt: "desc" } })]);
   const pending = list.filter((r) => r.pendingAt);
@@ -30,9 +31,10 @@ export default async function Embaixadores({ searchParams }: { searchParams: Pro
 
   return (
     <>
-      <Header title="Embaixadores" lede="Pessoas que indicam a loja pelo programa de embaixadores. Cadastro em embaixador.rastahale.tech, com aprovação aqui.">
+      <NxHead title="Embaixadores" back="/">
         <CopyButton text={link} label="Copiar link da página" className="btn" />
-      </Header>
+        <a className="btn pri" href="#regras">Regras</a>
+      </NxHead>
       {sp.erro === "admin" && <div className="err">Só o administrador pode aprovar e mudar as regras.</div>}
       {sp.salvo && <div className="ok">Regras salvas.</div>}
       {approved && (
@@ -42,13 +44,61 @@ export default async function Embaixadores({ searchParams }: { searchParams: Pro
         </div>
       )}
 
-      <div className="grid g4">
-        <Kpi label="Pedidos para aprovar" value={pending.length} icon={<Clock size={15} />} tone="s" />
-        <Kpi label="Embaixadores ativos" value={active.filter((r) => r.active).length} icon={<Users size={15} />} tone="l" />
-        <Kpi label="Comissão gerada" value={brlc([...earned.values()].reduce((a, b) => a + b, 0))} icon={<Wallet size={15} />} tone="c" />
-        <Kpi label="Bateram a meta para subir" value={canUp.length} sub="esperando sua aprovação" icon={<Award size={15} />} tone="p" />
-      </div>
+      <NxRow2>
+        <NxHero stats={<>
+          <NxStat label="Embaixadores ativos" value={active.filter((r) => r.active).length} sub={`${active.filter((r) => r.createdAt.getTime() > Date.now() - 30 * 864e5).length} novo(s) em 30 dias`} tone="up" />
+          <NxStat label="Pedidos por indicação" value={[...orders.values()].reduce((x, y) => x + y, 0).toLocaleString("pt-BR")} sub={`${[...o90.values()].reduce((x, y) => x + y, 0)} nos últimos 3 meses`} />
+          <NxStat label="Comissão gerada" pre="R$" value={Math.round([...earned.values()].reduce((x, y) => x + y, 0) / 100).toLocaleString("pt-BR")} sub="desde o começo" />
+        </>}>
+          <NxTracks>
+            {[[p.levels.slice(0, 2), "Bronze e Prata"], [p.levels.slice(2, 4), "Ouro e Premium"], [p.levels.slice(4), "Professional Team"]].map(([lv, l]) => {
+              const keys = (lv as typeof p.levels).map((x) => x.key);
+              const g = active.filter((r) => keys.includes(levelOf(p, r.level).key));
+              return <NxTrack key={l as string} l={l as string} r={g.length} pct={active.length ? (g.length / active.length) * 100 : 0}><NxAvs names={g.slice(0, 4).map((r) => r.name ?? "?")} more={Math.max(0, g.length - 4)} /></NxTrack>;
+            })}
+          </NxTracks>
+        </NxHero>
+        <NxTabsCard title="Esperando sua aprovação" value={pending.length + canUp.length} chip={pending.length ? `${pending.length} cadastro(s)` : ""}
+          tabs={p.levels.slice(1, 4).map((l, i) => ({ top: canUp.filter((x) => x.to?.key === l.key).length, label: l.name, on: i === 1 }))}
+          button={{ label: "Revisar", href: pending.length ? "#cadastros" : "/embaixadores?v=subir" }} />
+      </NxRow2>
+      <NxFilters>
+        <NxPill href="/embaixadores" on={!sp.v}>Todos {active.length}</NxPill>
+        <NxPill href="/embaixadores?v=subir" on={sp.v === "subir"}>Pode subir {canUp.length}</NxPill>
+        <NxPill href="#cadastros">Cadastros {pending.length}</NxPill>
+        {p.levels.map((l) => <NxPill key={l.key} href={`/embaixadores?v=${l.key}`} on={sp.v === l.key}>{l.key === "team" ? "Pro Team" : l.name}</NxPill>)}
+      </NxFilters>
+      {(() => {
+        const v = sp.v ?? "";
+        const plist = active.filter((r) => !v || (v === "subir" ? canUp.some((x) => x.r.id === r.id) : levelOf(p, r.level).key === v)).sort((x, y) => (o90.get(y.id) ?? 0) - (o90.get(x.id) ?? 0));
+        const cur = plist.find((r) => r.id === sp.sel) ?? plist[0];
+        const to = cur ? canUp.find((x) => x.r.id === cur.id)?.to : null;
+        const lv = cur ? levelOf(p, cur.level) : null;
+        return (
+          <NxPanel title="Embaixadores"
+            tabs={[{ label: "Todos", href: "/embaixadores", on: !v }, { label: "Pode subir", count: canUp.length, href: "/embaixadores?v=subir", on: v === "subir" }, { label: "Cadastros", count: pending.length, href: "#cadastros" }]}
+            list={plist.length ? plist.slice(0, 9).map((r) => {
+              const t2 = canUp.find((x) => x.r.id === r.id)?.to;
+              return <NxItem key={r.id} href={`/embaixadores?${v ? `v=${v}&` : ""}sel=${r.id}`} name={r.name ?? "?"} title={r.name} sub={`${r.teacher ? "Professor" : r.belt ?? "Aluno"} · ${o90.get(r.id) ?? 0} pedidos em 3 meses`} status={t2 ? `Pode subir para ${t2.name}` : lvName(r.level)} ok={!!t2} on={cur?.id === r.id} />;
+            }) : <NxEmpty>Ninguém aqui.</NxEmpty>}
+            detail={cur && lv ? (<>
+              <NxDHead cols={[
+                { label: "Embaixador", node: <NxWho name={cur.name ?? "?"} sub={`${cur.instagram ?? ""}${cur.teacher ? " · professor" : ""}`} /> },
+                { label: "Nível hoje", node: <NxDNum>{lv.key === "team" ? "Pro Team" : lv.name}</NxDNum> },
+                { label: to ? "Pode subir para" : "Comissão", node: <NxDNum chip={to ? to.name : `${lv.pct}%`}>{null}</NxDNum> },
+              ]} />
+              <NxDCards cols={3} items={[{ v: o90.get(cur.id) ?? 0, d: "Pedidos em 3 meses" }, { v: orders.get(cur.id) ?? 0, d: "Pedidos no total" }, { v: brlc(earned.get(cur.id) ?? 0), d: "Comissão" }]} />
+              <NxDFoot vals={[{ l: "Cupom", v: cur.code ?? "–" }, { l: "Aniversário", v: cur.birthDate ? bday(cur.birthDate) : "–" }]}>
+                {cur.phone && <NxBtn href={waLink(cur.phone, `Oi, ${(cur.name ?? "").split(" ")[0]}!`)} target="_blank"><MessageCircle size={15} /></NxBtn>}
+                {to ? (
+                  <form action={mudarNivel}><input type="hidden" name="id" value={cur.id} /><input type="hidden" name="level" value={to.key} /><button className="nx-lime" type="submit">Aprovar subida</button></form>
+                ) : <NxBtn href="#lista" lime>Mudar nível</NxBtn>}
+              </NxDFoot>
+            </>) : <NxEmpty>Escolha um embaixador da lista.</NxEmpty>} />
+        );
+      })()}
 
+      <div id="cadastros" />
       <Panel title="Pedidos de cadastro" sub={pending.length ? "Confira o @ antes de aprovar. Ao aprovar, o cupom é criado na Shopify." : "Nenhum pedido esperando."} body={!pending.length}>
         {pending.length ? (
           <table className="tb" data-nosort>
@@ -80,7 +130,8 @@ export default async function Embaixadores({ searchParams }: { searchParams: Pro
         ) : <div className="mut">Quando alguém se cadastrar, aparece aqui.</div>}
       </Panel>
 
-      <Panel title="Embaixadores" sub={`${active.length} aprovados`} body={!active.length}>
+      <div id="lista" />
+      <Panel title="Todos os embaixadores" sub={`${active.length} aprovados`} body={!active.length}>
         {active.length ? (
           <table className="tb">
             <thead><tr><th>Pessoa</th><th>Cupom</th><th>Faixa</th><th>Aniversário</th><th>Pedidos (3 meses)</th><th>Comissão</th><th>Nível</th></tr></thead>
@@ -109,6 +160,7 @@ export default async function Embaixadores({ searchParams }: { searchParams: Pro
         ) : <div className="mut">Nenhum embaixador aprovado ainda.</div>}
       </Panel>
 
+      <div id="regras" />
       <Panel title="Níveis e regras" sub="Vale para todos os embaixadores. Mude os números e textos e salve.">
         <form action={salvarNiveis} className="stack" style={{ gap: 14 }}>
           <div className="row" style={{ gap: 14, flexWrap: "wrap" }}>

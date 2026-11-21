@@ -1853,3 +1853,10 @@ a.nx-pc:hover { border-color: #565e6b; }
 .app .ks { background: linear-gradient(180deg, #2c313b, #252931); border-color: #363c47; border-radius: 22px; }
 .app .ks.hl { background: linear-gradient(160deg, rgba(198,244,50,.16), #252931 60%); border-color: rgba(198,244,50,.4); }
 body:has(.app) { background: #171a20; }
+@media (max-width: 860px) {
+  .app .mtop { background: rgba(31,35,44,.94); border-bottom-color: #363c47; }
+  .app .mtabs { background: rgba(31,35,44,.96); border-top-color: #363c47; }
+  .app .mtabs .on { color: #c6f432; }
+  .nx-tabs3 { flex-wrap: wrap; }
+  .nx-tbtn { width: 100%; margin: 8px 0 0; }
+}

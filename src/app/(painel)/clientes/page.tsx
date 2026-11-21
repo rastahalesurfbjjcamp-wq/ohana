@@ -2,15 +2,17 @@ import { customers, type Customer } from "@/lib/store";
 import { SEGMENTS, inSegment, type SegmentKey } from "@/lib/segments";
 import { brl } from "@/lib/time";
 import Link from "next/link";
-import { Crown, MessageCircle, Repeat, Send, Users } from "lucide-react";
-import { ErrorNote, Header, Kpi, Panel } from "@/components/ui";
+import { Send } from "lucide-react";
+import { ErrorNote, Panel } from "@/components/ui";
+import { NxHead, NxRow2, NxHero, NxStat, NxTracks, NxTrack, NxAvs, NxTabsCard, NxFilters, NxPill, NxPanel, NxItem, NxEmpty, NxDHead, NxDNum, NxDText, NxWho, NxDCards, NxDFoot, NxBtn } from "@/components/nx";
 import { RFM_SEGMENTS, rfmOf } from "@/lib/audience";
 import { createRfmList } from "../acoes12";
 
 export const dynamic = "force-dynamic";
 
-export default async function Clientes({ searchParams }: { searchParams: Promise<{ s?: string; uf?: string }> }) {
-  const { s = "todos", uf = "" } = await searchParams;
+export default async function Clientes({ searchParams }: { searchParams: Promise<{ s?: string; uf?: string; sel?: string; n?: string }> }) {
+  const sp = await searchParams;
+  const { s = "todos", uf = "" } = sp;
   const seg = (s in SEGMENTS ? s : "todos") as SegmentKey;
   let all: Customer[] = [];
   let error: unknown = null;
@@ -35,14 +37,63 @@ export default async function Clientes({ searchParams }: { searchParams: Promise
 
   return (
     <>
-      <Header title="Clientes" lede="Todo mundo que já comprou, separado em grupos para campanhas e disparos. Os grupos atualizam sozinhos com as compras da Shopify." />
+      <NxHead title="Clientes" back="/">
+        <Link className="btn" href="/listas">Listas</Link>
+        <Link className="btn pri" href="/disparos"><Send size={15} /> Disparar para clientes</Link>
+      </NxHead>
       {error ? <ErrorNote error={error} /> : null}
-      <div className="grid g4">
-        <Kpi icon={<Users size={15} />} label="Clientes" value={all.length.toLocaleString("pt-BR")} />
-        <Kpi icon={<Crown size={15} />} tone="s" label="Gasto médio por cliente (LTV)" value={brl(ltv, 0)} />
-        <Kpi icon={<Repeat size={15} />} tone="k" label="Compraram mais de uma vez" value={`${Math.round(repeat * 100)}%`} />
-        <Kpi icon={<MessageCircle size={15} />} tone="p" label="Com WhatsApp" value={all.filter((c) => c.phone).length.toLocaleString("pt-BR")} sub="podem receber disparos" />
-      </div>
+      <NxRow2>
+        <NxHero stats={<>
+          <NxStat label="Clientes" value={all.length.toLocaleString("pt-BR")} sub={`${all.filter((c) => Date.now() - new Date(c.createdAt).getTime() < 30 * 864e5).length.toLocaleString("pt-BR")} novos em 30 dias`} tone="up" />
+          <NxStat label="Compraram de novo" value={`${Math.round(repeat * 100)}%`} sub={`${all.filter((c) => c.orders >= 2).length.toLocaleString("pt-BR")} clientes`} />
+          <NxStat label="Valor por cliente" pre="R$" value={Math.round(ltv).toLocaleString("pt-BR")} sub="média de tudo que gastou" />
+        </>}>
+          <NxTracks>
+            {([["1 compra", (c: Customer) => c.orders <= 1], ["2 a 3 compras", (c: Customer) => c.orders >= 2 && c.orders <= 3], ["4 ou mais", (c: Customer) => c.orders >= 4]] as const).map(([l, fn]) => {
+              const g = all.filter(fn).sort((x, y) => y.spent - x.spent);
+              return <NxTrack key={l} l={l} r={g.length.toLocaleString("pt-BR")} pct={all.length ? (g.length / all.length) * 100 : 0}><NxAvs names={g.slice(0, 5).map((c) => c.name)} more={Math.max(0, g.length - 5)} /></NxTrack>;
+            })}
+          </NxTracks>
+        </NxHero>
+        {(() => {
+          const since = (c: Customer) => (c.lastOrderAt ? (Date.now() - new Date(c.lastOrderAt).getTime()) / 864e5 : 9999);
+          const gone = all.filter((c) => since(c) >= 60);
+          return <NxTabsCard title="Sumidos há 60 dias ou mais" value={gone.length.toLocaleString("pt-BR")} chip={`gastaram ${brl(gone.reduce((x, c) => x + c.spent, 0), 0)}`}
+            tabs={[{ top: all.filter((c) => since(c) >= 60 && since(c) < 90).length.toLocaleString("pt-BR"), label: "60 dias", on: true }, { top: all.filter((c) => since(c) >= 90 && since(c) < 180).length.toLocaleString("pt-BR"), label: "90 dias" }, { top: all.filter((c) => since(c) >= 180).length.toLocaleString("pt-BR"), label: "180 dias" }]}
+            button={{ label: "Criar disparo", href: "/disparos" }} />;
+        })()}
+      </NxRow2>
+      <NxFilters count={[seg !== "todos" ? seg : "", uf].filter(Boolean).length}>
+        {Object.entries(SEGMENTS).map(([k, v]) => <NxPill key={k} href={q("s", k)} on={seg === k}>{v.label} {(counts[k] ?? 0).toLocaleString("pt-BR")}</NxPill>)}
+        {uf && <NxPill href={q("uf", "")} on>{uf} ✕</NxPill>}
+        {!uf && ufs.slice(0, 4).map(([k]) => <NxPill key={k} href={q("uf", k)}>{k}</NxPill>)}
+      </NxFilters>
+      {(() => {
+        const lim = Math.min(200, Math.max(9, Number(sp.n) || 9));
+        const cur = list.find((c) => c.id === sp.sel) ?? list[0];
+        const link = (extra: string) => `${q("s", seg)}${extra}`;
+        const tag = (c: Customer) => (c.orders >= 3 || c.spent >= 1000 ? "VIP" : c.orders >= 2 ? "Recorrente" : c.lastOrderAt && Date.now() - new Date(c.lastOrderAt).getTime() > 120 * 864e5 ? "Sumido" : "Novo");
+        return (
+          <NxPanel title={`${SEGMENTS[seg].label}${uf ? ` em ${uf}` : ""}`}
+            tabs={[{ label: "Todos", href: q("s", "todos"), on: seg === "todos" }, { label: "Recorrentes", count: counts.recorrentes, href: q("s", "recorrentes"), on: seg === "recorrentes" }, { label: "Sumidos", count: counts.inativos, href: q("s", "inativos"), on: seg === "inativos" }]}
+            list={list.length ? (<>
+              {list.slice(0, lim).map((c) => <NxItem key={c.id} href={link(`&sel=${c.id}${lim > 9 ? `&n=${lim}` : ""}`)} name={c.name} title={c.name} sub={`${[c.city, c.state].filter(Boolean).join(" / ") || "–"} · ${c.orders} pedido(s)`} status={tag(c)} ok={tag(c) !== "Sumido"} value={brl(c.spent, 0)} on={cur?.id === c.id} />)}
+              {list.length > lim && <Link href={link(`&n=${lim + 20}`)} className="nx-it" style={{ justifyContent: "center", color: "#555", fontSize: 12.5 }}>Mostrar mais ({(list.length - lim).toLocaleString("pt-BR")})</Link>}
+            </>) : <NxEmpty>Ninguém neste grupo.</NxEmpty>}
+            detail={cur ? (<>
+              <NxDHead cols={[
+                { label: "Cliente", node: <NxWho name={cur.name} sub={cur.phone ?? cur.email ?? ""} /> },
+                { label: "Desde", node: <NxDText>{new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(new Date(cur.createdAt))}</NxDText> },
+                { label: "Grupo", node: <NxDNum chip={tag(cur)}>{null}</NxDNum> },
+              ]} />
+              <NxDCards cols={3} items={[{ v: cur.orders, d: "Pedidos" }, { v: brl(cur.spent, 0), d: "Gastou na loja" }, { v: cur.lastOrderAt ? fmt.format(new Date(cur.lastOrderAt)) : "–", d: "Última compra" }]} />
+              <NxDFoot vals={[{ l: "Ticket", v: cur.orders ? brl(cur.spent / cur.orders, 0) : "–" }, { l: "Cidade", v: [cur.city, cur.state].filter(Boolean).join(" / ") || "–" }]}>
+                <NxBtn href={`/pedidos?q=${encodeURIComponent(cur.email ?? cur.name)}`}>↗</NxBtn>
+                {cur.phone ? <NxBtn href={`https://wa.me/${cur.phone.replace(/\D/g, "")}`} target="_blank" lime>Chamar no WhatsApp</NxBtn> : <NxBtn href={`/pedidos?q=${encodeURIComponent(cur.email ?? cur.name)}`} lime>Ver pedidos</NxBtn>}
+              </NxDFoot>
+            </>) : <NxEmpty>Escolha um cliente da lista.</NxEmpty>} />
+        );
+      })()}
       <Panel title="Matriz RFM" sub="Clientes separados por quando compraram pela última vez, quantas vezes e quanto gastaram. Clique para virar lista ou campanha.">
         <div className="rfm">
           {RFM_SEGMENTS.map((sg) => {
@@ -62,57 +113,7 @@ export default async function Clientes({ searchParams }: { searchParams: Promise
           })}
         </div>
       </Panel>
-      <div className="segs">
-        {Object.entries(SEGMENTS).map(([k, v]) => (
-          <Link key={k} href={q("s", k)} className={`segc${seg === k ? " on" : ""}`} title={v.desc}>
-            <span className="l">{v.label}</span>
-            <b>{(counts[k] ?? 0).toLocaleString("pt-BR")}</b>
-            <span className="d">{v.desc}</span>
-          </Link>
-        ))}
-      </div>
-      <div className="grid" style={{ gridTemplateColumns: "minmax(0,3fr) minmax(220px,1fr)", alignItems: "start" }}>
-        <Panel title={`${SEGMENTS[seg].label}${uf ? ` em ${uf}` : ""}`} sub={`${list.length.toLocaleString("pt-BR")} pessoas · ${SEGMENTS[seg].desc}`} body={false}
-          right={list.length ? <Link className="btn pri sm" href="/disparos"><Send size={14} /> Disparar para este grupo</Link> : undefined}>
-          {list.length ? (
-            <div style={{ overflowX: "auto" }}>
-              <table className="tb">
-                <thead>
-                  <tr>
-                    <th>Cliente</th>
-                    <th>Cidade</th>
-                    <th className="r">Pedidos</th>
-                    <th className="r">Gastou</th>
-                    <th className="r">Última compra</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {list.slice(0, 200).map((c) => (
-                    <tr key={c.id}>
-                      <td>
-                        <div className="row" style={{ gap: 10, flexWrap: "nowrap" }}>
-                          <span className="av-s">{(c.name || "?").split(" ").map((x) => x[0]).slice(0, 2).join("").toUpperCase()}</span>
-                          <div>
-                            {c.name}
-                            <div className="dim" style={{ fontSize: 12 }}>{c.phone ?? c.email ?? ""}</div>
-                          </div>
-                          {c.orders >= 3 && <span className="chip c-s" style={{ marginLeft: 4 }}><Crown size={11} /> VIP</span>}
-                        </div>
-                      </td>
-                      <td className="mut">{[c.city, c.state].filter(Boolean).join(" / ")}</td>
-                      <td className="r">{c.orders}</td>
-                      <td className="r"><b>{brl(c.spent, 0)}</b></td>
-                      <td className="r mut">{c.lastOrderAt ? fmt.format(new Date(c.lastOrderAt)) : "–"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {list.length > 200 && <div className="empty">Mostrando 200 de {list.length.toLocaleString("pt-BR")}.</div>}
-            </div>
-          ) : (
-            !error && <div className="empty">Ninguém neste grupo.</div>
-          )}
-        </Panel>
+      <div className="grid" style={{ gridTemplateColumns: "minmax(0,1fr)", alignItems: "start" }}>
         <Panel title="Por estado" sub="Clique para filtrar">
           {uf && <Link className="chip c-k" href={q("uf", "")} style={{ marginBottom: 8 }}>ver todos os estados</Link>}
           {ufs.slice(0, 14).map(([k, n]) => (

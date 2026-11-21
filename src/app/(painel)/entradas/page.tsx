@@ -1,15 +1,15 @@
 import { NumberInput } from "@/components/NumberInput";
 import Link from "next/link";
-import { Download, RotateCcw, TrendingUp, UserMinus, UserPlus } from "lucide-react";
+import { Download, RotateCcw, UserMinus, UserPlus } from "lucide-react";
 import { db } from "@/lib/db";
 import { getSettings } from "@/lib/settings";
 import { formatPhone } from "@/lib/phone";
 import { addDays, isoDayLocal } from "@/lib/time";
 import { daysBetween } from "@/lib/periods";
-import { Header, Kpi, Panel } from "@/components/ui";
-import { UpDownBars } from "@/components/charts";
+import { Panel } from "@/components/ui";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { saveWinback } from "../actions";
+import { NxHead, NxRow2, NxHero, NxStat, NxBars, NxTabsCard, NxFilters, NxPill, NxPanel, NxItem, NxEmpty, NxDHead, NxDNum, NxDText, NxWho, NxDCards, NxDFoot, NxBtn, NxQuote } from "@/components/nx";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +29,7 @@ function ago(d: Date) {
 }
 const pctDelta = (a: number, b: number) => (b ? Math.round(((a - b) / b) * 100) : null);
 
-export default async function Entradas({ searchParams }: { searchParams: Promise<{ r?: string; g?: string; t?: string }> }) {
+export default async function Entradas({ searchParams }: { searchParams: Promise<{ r?: string; g?: string; t?: string; sel?: string }> }) {
   const sp = await searchParams;
   const range = RANGES.find((x) => x[0] === sp.r) ?? RANGES[1];
   const today = isoDayLocal();
@@ -76,56 +76,72 @@ export default async function Entradas({ searchParams }: { searchParams: Promise
   const dj = pctDelta(joins, pj);
   const q = (k: string, v: string | null) => {
     const p = new URLSearchParams();
-    const vals: Record<string, string | undefined> = { r: sp.r, g: sp.g, t: sp.t, [k]: v ?? undefined };
+    const vals: Record<string, string | undefined> = { r: sp.r, g: sp.g, t: sp.t, ...(k === "sel" ? {} : {}), [k]: v ?? undefined };
     for (const [kk, vv] of Object.entries(vals)) if (vv) p.set(kk, vv);
     return `/entradas${p.toString() ? `?${p}` : ""}`;
   };
 
+  const sel = events.find((e) => e.id === sp.sel) ?? events[0];
+  const [selGroups, selHist] = sel ? await Promise.all([
+    db.membership.findMany({ where: { contactId: sel.contactId }, include: { group: true } }).catch(() => []),
+    db.memberEvent.findMany({ where: { contactId: sel.contactId }, orderBy: { createdAt: "desc" }, take: 20 }).catch(() => []),
+  ]) : [[], []];
+  const dfmt = new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit" });
+  const lastOf = (t: string) => selHist.find((h) => h.type === t)?.createdAt;
+  const topGroups = [...chosen].sort((x, y) => y.size - x.size).slice(0, 3);
+  const members = chosen.reduce((a2, g2) => a2 + g2.size, 0);
+  const VERB: Record<string, string> = { JOIN: "Entrou", LEAVE: "Saiu", RETURN: "Voltou" };
+
   return (
     <>
       <AutoRefresh seconds={30} />
-      <Header title="Entradas e saídas" lede={group ? `Movimentos do grupo ${group.name}.` : "Cada pessoa que entra ou sai dos grupos, na hora. Quem sai recebe a mensagem de volta."}>
-        <div className="seg">{RANGES.map(([k, l]) => <Link key={k} href={q("r", k === "7" ? null : k)} className={range[0] === k ? "on" : ""}>{l}</Link>)}</div>
+      <NxHead title="Entradas e saídas" back="/">
         <a className="btn" href={`/api/export/entradas?dias=${Math.max(range[2], 30)}`}><Download size={16} /> Exportar</a>
-      </Header>
-      {chosen.length > 0 ? (
-        <div className="chips" style={{ alignSelf: "flex-start" }}>
-          <Link href={q("g", null)} className={!gSel ? "on" : ""}>Todos os selecionados<b>{chosen.length}</b></Link>
-          {chosen.map((x) => <Link key={x.id} href={q("g", x.id)} className={gSel === x.id ? "on" : ""}>{x.name}{x.isResults ? " (resultados)" : ""}</Link>)}
-        </div>
-      ) : (
-        <div className="note">Nenhum grupo selecionado ainda. Marque os grupos da comunidade em <Link href="/grupos?v=escolher" style={{ textDecoration: "underline" }}>Grupos</Link> e só eles aparecem aqui.</div>
-      )}
-      <div className="grid g4">
-        <Kpi icon={<UserPlus size={15} />} label="Entraram" value={joins.toLocaleString("pt-BR")} sub={dj == null ? "sem período anterior" : <><span className={dj >= 0 ? "up" : "dn"}>{dj >= 0 ? "+" : ""}{dj}%</span> que no período anterior</>} />
-        <Kpi icon={<UserMinus size={15} />} tone="c" label="Saíram" value={leaves.toLocaleString("pt-BR")} sub={joins ? `${((leaves / joins) * 100).toFixed(1).replace(".", ",")}% de quem entrou` : "–"} />
-        <Kpi icon={<RotateCcw size={15} />} tone="s" label="Voltaram" value={returns.toLocaleString("pt-BR")} sub={winbacks ? `${winbacks} receberam a mensagem de volta` : "saíram e entraram de novo"} />
-        <Kpi icon={<TrendingUp size={15} />} tone="k" label={range[2] === 1 ? "Saldo de hoje" : `Saldo em ${range[1]}`} value={<span className={net >= 0 ? "up" : "dn"}>{net >= 0 ? "+" : ""}{net.toLocaleString("pt-BR")}</span>} sub={`antes: ${pnet >= 0 ? "+" : ""}${pnet}`} />
-      </div>
-      <div className="cols c-1-1">
-        <Panel title="Por dia" sub="Verde entrou, vermelho saiu">
-          <UpDownBars items={bars} />
-        </Panel>
-        <Panel title="Agora" sub="Atualiza sozinho" right={<div className="row" style={{ gap: 10 }}>
-          <div className="seg">{[["", "Tudo"], ["JOIN", "Entradas"], ["LEAVE", "Saídas"]].map(([k, l]) => <Link key={l} href={q("t", k || null)} className={(sp.t ?? "") === k ? "on" : ""}>{l}</Link>)}</div>
-          <span className="row" style={{ gap: 6, fontSize: 13 }}><span className="live-dot" /> Ao vivo</span></div>}>
-          {events.length ? events.slice(0, 12).map((e) => {
-            const I = INFO[e.type];
-            const sub = e.type === "LEAVE" ? [stay(e.groupId, e.contactId, e.createdAt), e.byAdmin ? "removido por admin" : null].filter(Boolean).join(" · ") : e.type === "RETURN" ? "voltou depois de sair" : formatPhone(e.contact.phone);
-            return (
-              <div className="lrow" key={e.id}>
-                <span className={`tile sm ${I.tone}`}><I.icon size={16} /></span>
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={{ fontSize: 13.5 }}><b style={{ fontWeight: 650 }}>{e.contact.name ?? formatPhone(e.contact.phone)}</b> <span className="mut">{I.verb} {e.group.name}</span></div>
-                  <div className="s">{sub}</div>
-                </div>
-                {e.winbackSent && <span className="chip c-s">Mensagem de volta enviada</span>}
-                <span className="dim" style={{ fontSize: 12, minWidth: 44, textAlign: "right" }}>{ago(e.createdAt)}</span>
-              </div>
-            );
-          }) : <div className="empty">Os movimentos aparecem aqui assim que o WhatsApp estiver conectado e os grupos marcados.</div>}
-        </Panel>
-      </div>
+        <Link className="btn pri" href="/disparos">Novo disparo</Link>
+      </NxHead>
+      {chosen.length === 0 && <div className="note">Nenhum grupo selecionado ainda. Marque os grupos da comunidade em <Link href="/grupos?v=escolher" style={{ textDecoration: "underline" }}>Grupos</Link> e só eles aparecem aqui.</div>}
+      <NxRow2>
+        <NxHero stats={<>
+          <NxStat label="Entraram" value={joins.toLocaleString("pt-BR")} sub={dj == null ? "sem período anterior" : `${dj >= 0 ? "↑" : "↓"} ${Math.abs(dj)}% vs período anterior`} tone={dj == null ? "mut" : dj >= 0 ? "up" : "dn"} />
+          <NxStat label="Saíram" value={leaves.toLocaleString("pt-BR")} sub={joins ? `${Math.round((leaves / joins) * 100)}% de quem entrou` : "–"} />
+          <NxStat label="Voltaram" value={returns.toLocaleString("pt-BR")} sub={winbacks ? `${winbacks} receberam a mensagem de volta` : "saíram e entraram de novo"} />
+        </>}>
+          <NxBars items={bars.flatMap((x) => [{ label: x.label, value: x.up }, { label: "", value: x.down, neg: true }])} ticks={7} />
+        </NxHero>
+        <NxTabsCard title={range[2] === 1 ? "Saldo de hoje" : `Saldo em ${range[1]}`} value={`${net >= 0 ? "+" : ""}${net.toLocaleString("pt-BR")}`} chip={`${members.toLocaleString("pt-BR")} pessoas`}
+          tabs={topGroups.map((g2) => ({ top: g2.size.toLocaleString("pt-BR"), label: g2.name.replace(/^.*?·\s*/, ""), href: q("g", gSel === g2.id ? null : g2.id), on: gSel === g2.id }))}
+          button={{ label: "Ver grupos", href: "/grupos" }} />
+      </NxRow2>
+      <NxFilters count={[sp.r, gSel].filter(Boolean).length}>
+        {RANGES.map(([k, l]) => <NxPill key={k} href={q("r", k === "7" ? null : k)} on={range[0] === k}>{l}</NxPill>)}
+        <NxPill href={q("g", null)} on={!gSel}>Todos os grupos</NxPill>
+        {chosen.filter((x) => !topGroups.includes(x)).slice(0, 6).map((x) => <NxPill key={x.id} href={q("g", x.id)} on={gSel === x.id}>{x.name.replace(/^.*?·\s*/, "")}</NxPill>)}
+      </NxFilters>
+      <NxPanel title="Agora"
+        tabs={[{ label: "Tudo", href: q("t", null), on: !sp.t }, { label: "Entradas", count: joins, href: q("t", "JOIN"), on: sp.t === "JOIN" }, { label: "Saídas", count: leaves, href: q("t", "LEAVE"), on: sp.t === "LEAVE" }]}
+        tools={<span className="row" style={{ gap: 6, fontSize: 12, color: "#555" }}><span className="live-dot" /> Ao vivo</span>}
+        list={events.length ? events.slice(0, 9).map((e) => {
+          const I = INFO[e.type];
+          const sub = e.type === "LEAVE" ? [stay(e.groupId, e.contactId, e.createdAt), e.byAdmin ? "removido por admin" : null].filter(Boolean).join(" · ") : e.type === "RETURN" ? "voltou depois de sair" : formatPhone(e.contact.phone);
+          return <NxItem key={e.id} href={q("sel", e.id)} name={e.contact.name ?? e.contact.phone} title={e.contact.name ?? formatPhone(e.contact.phone)} sub={`${I.verb} ${e.group.name} · ${ago(e.createdAt)}${sub ? ` · ${sub}` : ""}`} status={e.winbackSent ? "Mensagem enviada" : VERB[e.type]} ok={e.type !== "LEAVE" || e.winbackSent} on={sel?.id === e.id} />;
+        }) : <NxEmpty>Os movimentos aparecem aqui assim que o WhatsApp estiver conectado e os grupos marcados.</NxEmpty>}
+        detail={sel ? (<>
+          <NxDHead cols={[
+            { label: "Pessoa", node: <NxWho name={sel.contact.name ?? formatPhone(sel.contact.phone)} sub={formatPhone(sel.contact.phone)} /> },
+            { label: "Grupo", node: <NxDText>{sel.group.name}</NxDText> },
+            { label: "Situação", node: <NxDNum chip={sel.type === "LEAVE" ? (selHist[0]?.type === "RETURN" ? "Voltou ao grupo" : sel.winbackSent ? "Mensagem de volta enviada" : "Saiu") : VERB[sel.type]}>{null}</NxDNum> },
+          ]} />
+          <NxDCards cols={3} items={[
+            { v: selGroups.length, d: "Grupos em que está" },
+            { v: selHist.filter((h) => h.type === "LEAVE").length, d: "Vezes que saiu" },
+            { v: sel.type === "LEAVE" ? stay(sel.groupId, sel.contactId, sel.createdAt) ?? "–" : ago(sel.createdAt), d: sel.type === "LEAVE" ? "Tempo no grupo" : "Desde o movimento" },
+          ]} />
+          {sel.type === "LEAVE" && <NxQuote>{sel.winbackSent ? "Mensagem de volta enviada: " : "Mensagem de volta configurada: "}{s.winback.text}</NxQuote>}
+          <NxDFoot vals={[{ l: "Entrou", v: lastOf("JOIN") ? dfmt.format(lastOf("JOIN")!) : "–" }, { l: "Saiu", v: lastOf("LEAVE") ? dfmt.format(lastOf("LEAVE")!) : "–" }, { l: "Voltou", v: lastOf("RETURN") ? dfmt.format(lastOf("RETURN")!) : "–" }]}>
+            <NxBtn href={`/atendimento?tel=${sel.contact.phone}`}>↗</NxBtn>
+            <NxBtn href={`https://wa.me/${sel.contact.phone.replace(/\D/g, "")}`} target="_blank" lime>Chamar no WhatsApp</NxBtn>
+          </NxDFoot>
+        </>) : <NxEmpty>Escolha uma pessoa da lista.</NxEmpty>} />
         <Panel title="Mensagem de volta" sub="Enviada no privado para quem sai de um grupo da comunidade.">
           <form action={saveWinback} className="stack">
             <label className="check">

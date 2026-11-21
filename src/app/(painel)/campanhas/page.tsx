@@ -15,7 +15,8 @@ import { saveFollowMetric, savePerfilCoupons } from "../acoes7";
 import { resolvePeriod } from "@/lib/periods";
 import { funnelByDay, ordersBetween, type Order } from "@/lib/store";
 import { brl, dayRange } from "@/lib/time";
-import { Header, Panel } from "@/components/ui";
+import { Panel } from "@/components/ui";
+import { NxHead, NxRow2, NxHero, NxStat, NxTracks, NxTrack, NxNote, NxTabsCard, NxFilters, NxPill, NxPanel, NxItem, NxEmpty, NxDHead, NxDNum, NxDText, NxDCards, NxDFoot, NxBtn } from "@/components/nx";
 
 export const dynamic = "force-dynamic";
 
@@ -23,8 +24,9 @@ const LABEL: Record<string, string> = { vendas: "venda", leads: "lead", perfil: 
 
 const UTM = "?utm_source=meta&utm_medium=paid&utm_campaign={{campaign.id}}&utm_term={{adset.id}}&utm_content={{ad.id}}";
 
-export default async function Campanhas({ searchParams }: { searchParams: Promise<{ p?: string; de?: string; ate?: string }> }) {
-  const { p, de, ate } = await searchParams;
+export default async function Campanhas({ searchParams }: { searchParams: Promise<{ p?: string; de?: string; ate?: string; g?: string; sel?: string }> }) {
+  const sp = await searchParams;
+  const { p, de, ate } = sp;
   const period = resolvePeriod(p, "30d", de, ate);
   const start = dayRange(period.from).start, end = dayRange(period.to).end;
   let ads: AdRow[] | null = null;
@@ -123,35 +125,75 @@ export default async function Campanhas({ searchParams }: { searchParams: Promis
   const metaSales = paidOrders.filter((o) => channelOf(o).channel === "Meta Ads");
   const metaRevenue = metaSales.reduce((a, o) => a + o.subtotal, 0);
   const pctOf = (a: number, b: number) => (b ? `${Math.round((a / b) * 100)}%` : "–");
-  const steps = [
-    { icon: Wallet, l: "Investido", v: ads ? brl(spend, 0) : "–", sub: ads ? "Meta Ads" : "conecte o Meta", bar: 100, color: "#60a5fa" },
-    { icon: MousePointerClick, l: "Cliques no link", v: ads ? clicks.toLocaleString("pt-BR") : "–", sub: clicks ? `CPC ${brl(spend / clicks)}` : "–", bar: 100, color: "#60a5fa", conv: null },
-    { icon: Globe, l: "Visitas na loja", v: visits.toLocaleString("pt-BR"), sub: "Shopify · todas as origens", bar: clicks ? Math.min(100, (visits / clicks) * 100) : 60, color: "#a78bfa", conv: clicks ? pctOf(visits, clicks) : null },
-    { icon: PenLine, l: "Preencheram", v: paidLeads.toLocaleString("pt-BR"), sub: paidLeads && spend ? `CPL real ${brl(spend / paidLeads)}` : `${leads.length} leads no total`, bar: 35, color: "#f7c928", conv: null },
-    { icon: Users, l: "Entraram no grupo", v: inGroup.toLocaleString("pt-BR"), sub: inGroup && spend ? `${brl(spend / inGroup)} por membro` : "dos leads de anúncio", bar: 25, color: "#34c26a", conv: pctOf(inGroup, paidLeads) },
-    { icon: ShoppingCart, l: "Compraram", v: metaSales.length.toLocaleString("pt-BR"), sub: `${brl(metaRevenue, 0)}${spend ? ` · ROAS ${(metaRevenue / spend).toFixed(1).replace(".", ",")}` : ""}`, bar: 8, color: "#34c26a", conv: null },
-  ];
   const bestAd = nodes.flatMap((c) => c.children.flatMap((s) => s.children)).filter((a) => a.spend && a.inGroup >= 3).sort((a, b) => a.spend! / a.inGroup - b.spend! / b.inGroup)[0];
   const barMax = Math.max(1, metaLeads, paidLeads, inGroup);
 
   return (
     <>
-      <Header title="Campanhas" lede={ads ? "Meta Ads conectado. Cada campanha, conjunto e anúncio com o que gastou, quem preencheu de verdade, quem entrou no grupo e quem comprou." : "Leads, grupo e vendas por campanha, pelo link do anúncio. Conecte o Meta Ads para ver o investimento junto."}>
+      <NxHead title="Campanhas" back="/">
         <DateRange current={period.key} from={period.from} to={period.to} label={period.label} />
         {!ads && <Link className="btn pri" href="/integracoes">Conectar Meta Ads</Link>}
-      </Header>
+        {ads && <a className="btn pri" href="https://adsmanager.facebook.com/" target="_blank" rel="noreferrer">Ver no Meta</a>}
+      </NxHead>
       {metaError && <div className="err">{metaError}</div>}
-      <div className="fstrip">
-        {steps.map((s, i) => (
-          <div key={s.l} className="fs">
-            {s.conv && i > 0 && <span className="fs-conv">{s.conv}</span>}
-            <small><s.icon size={14} /> {s.l}</small>
-            <b>{s.v}</b>
-            <span>{s.sub}</span>
-            <div className="hbar" style={{ height: 5, marginTop: 10 }}><i style={{ width: `${s.bar}%`, background: s.color }} /></div>
-          </div>
-        ))}
-      </div>
+      {(() => {
+        const vs = grp?.vendas.spend ?? 0;
+        const roas = vs ? metaRevenue / vs : null;
+        const sales = (cstats ?? []).filter((c) => c.group === "vendas" && c.spend > 0);
+        const best = [...sales].sort((x, y) => (y.value / (y.spend || 1)) - (x.value / (x.spend || 1)))[0];
+        const g = sp.g === "leads" || sp.g === "perfil" ? sp.g : sp.g === "todas" ? "todas" : "vendas";
+        const clist = (cstats ?? []).filter((c) => g === "todas" || c.group === g).sort((x, y) => y.spend - x.spend);
+        const cur = clist.find((c) => c.id === sp.sel) ?? clist[0];
+        const qs = (k: Record<string, string | undefined>) => { const u = new URLSearchParams(); const vals = { p, de, ate, g: sp.g, ...k }; for (const [a2, b2] of Object.entries(vals)) if (b2) u.set(a2, b2); return `/campanhas?${u}`; };
+        const resOf = (c: CampStat): [number, string] => (c.group === "leads" ? [c.leads, "leads"] : c.group === "perfil" ? (c.follows ? [c.follows, "seguidores"] : [c.visits, "visitas no perfil"]) : [c.purchases, "compras"]);
+        return (<>
+          <NxRow2>
+            <NxHero stats={<>
+              <NxStat label="Gasto em vendas" pre="R$" value={Math.round(vs).toLocaleString("pt-BR")} sub={ads ? `total ${brl(spend, 0)} no Meta` : "conecte o Meta Ads"} />
+              <NxStat label="Retorno (ROAS)" value={roas ? roas.toFixed(1).replace(".", ",") : "–"} sub={`${brl(metaRevenue, 0)} vendidos pelo Meta`} tone={roas && roas >= 2 ? "up" : "mut"} />
+              <NxStat label="Custo por venda" pre="R$" value={metaSales.length && vs ? Math.round(vs / metaSales.length).toLocaleString("pt-BR") : "–"} sub={`${metaSales.length} venda(s)`} />
+            </>}>
+              <NxTracks>
+                <NxTrack l="Cliques" r="Visitas" pct={clicks ? Math.min(100, (visits / clicks) * 100) : 0}><NxNote>{clicks.toLocaleString("pt-BR")} cliques · {visits.toLocaleString("pt-BR")} visitas</NxNote></NxTrack>
+                <NxTrack l="Leads" r="Grupo" pct={paidLeads ? (inGroup / paidLeads) * 100 : 0}><NxNote>{paidLeads.toLocaleString("pt-BR")} leads · {inGroup.toLocaleString("pt-BR")} no grupo</NxNote></NxTrack>
+                <NxTrack l="Compraram" r={metaSales.length} pct={paidLeads ? Math.min(100, (metaSales.length / paidLeads) * 100) : 0}><NxNote>{pctOf(metaSales.length, paidLeads)} dos leads</NxNote></NxTrack>
+              </NxTracks>
+            </NxHero>
+            <NxTabsCard title="Melhor campanha de venda" value={best ? best.name : "–"} chip={best && best.spend ? `ROAS ${(best.value / best.spend).toFixed(1).replace(".", ",")}` : ""}
+              tabs={best ? [{ top: brl(best.spend, 0), label: "Gasto" }, { top: brl(best.value, 0), label: "Vendas", on: true }, { top: best.purchases, label: "Pedidos" }] : [{ top: "–", label: "Gasto" }, { top: "–", label: "Vendas", on: true }, { top: "–", label: "Pedidos" }]}
+              button={best ? { label: "Abrir", href: qs({ g: undefined, sel: best.id }) } : undefined} />
+          </NxRow2>
+          <NxFilters>
+            <NxPill href={qs({ g: undefined, sel: undefined })} on={g === "vendas"}>Vendas</NxPill>
+            <NxPill href={qs({ g: "leads", sel: undefined })} on={g === "leads"}>Leads</NxPill>
+            <NxPill href={qs({ g: "perfil", sel: undefined })} on={g === "perfil"}>Perfil</NxPill>
+            <NxPill href={qs({ g: "todas", sel: undefined })} on={g === "todas"}>Todas</NxPill>
+            <NxPill href="#arvore">Campanha, conjunto e anúncio</NxPill>
+          </NxFilters>
+          <NxPanel title="Campanhas"
+            tabs={[{ label: "Todas", href: qs({ g: "todas", sel: undefined }), on: g === "todas" }, { label: "Vendas", count: (cstats ?? []).filter((c) => c.group === "vendas").length, href: qs({ g: undefined, sel: undefined }), on: g === "vendas" }, { label: "Leads", count: (cstats ?? []).filter((c) => c.group === "leads").length, href: qs({ g: "leads", sel: undefined }), on: g === "leads" }]}
+            list={clist.length ? clist.slice(0, 9).map((c) => {
+              const [n, u] = resOf(c);
+              return <NxItem key={c.account + c.id} href={qs({ sel: c.id })} name={c.name} title={c.name} sub={`${LABEL[c.group] ?? c.group} · ${n.toLocaleString("pt-BR")} ${u}`} status={c.group === "vendas" && c.spend ? `ROAS ${(c.value / c.spend).toFixed(1).replace(".", ",")}` : n && c.spend ? `${brl(c.spend / n)} cada` : "–"} ok={c.group === "vendas" ? c.value / (c.spend || 1) >= 2 : n > 0} value={brl(c.spend, 0)} on={cur?.id === c.id} />;
+            }) : <NxEmpty>{ads ? "Nenhuma campanha com gasto no período." : "Conecte o Meta Ads para ver as campanhas."}</NxEmpty>}
+            detail={cur ? (() => {
+              const [n, u] = resOf(cur);
+              return (<>
+                <NxDHead cols={[
+                  { label: "Campanha", node: <NxDNum chip={cur.spend > 0 ? "Com gasto" : "Sem gasto"}>{null}</NxDNum> },
+                  { label: "Objetivo", node: <NxDText>{LABEL[cur.group] ? LABEL[cur.group][0].toUpperCase() + LABEL[cur.group].slice(1) : cur.group}{cur.objective ? ` · ${cur.objective.replace("OUTCOME_", "").toLowerCase()}` : ""}</NxDText> },
+                  { label: "Período", node: <NxDText>{period.label}</NxDText> },
+                ]} />
+                <div className="nx-dnum" style={{ marginTop: -6 }}>{cur.name}</div>
+                <NxDCards cols={4} items={[{ v: cur.impressions.toLocaleString("pt-BR"), d: "Impressões" }, { v: cur.clicks.toLocaleString("pt-BR"), d: `Cliques${cur.clicks ? ` · CPC ${brl(cur.spend / cur.clicks)}` : ""}` }, { v: n.toLocaleString("pt-BR"), d: u[0].toUpperCase() + u.slice(1) }, { v: n ? brl(cur.spend / n) : "–", d: "Custo por resultado" }]} />
+                <NxDFoot vals={[{ l: "Gasto", v: brl(cur.spend, 0) }, { l: "Vendas", v: brl(cur.value, 0) }, { l: "ROAS", v: cur.spend ? (cur.value / cur.spend).toFixed(1).replace(".", ",") : "–" }]}>
+                  <NxBtn href={`https://adsmanager.facebook.com/adsmanager/manage/campaigns?act=${cur.account.replace(/^act_/, "")}&selected_campaign_ids=${cur.id}`} target="_blank" lime>Ver anúncios</NxBtn>
+                </NxDFoot>
+              </>);
+            })() : <NxEmpty>Escolha uma campanha da lista.</NxEmpty>} />
+        </>);
+      })()}
+      <div id="arvore" />
       {(cstats || accounts.length > 0) && (
         <div className="cols c-2-1" style={{ alignItems: "start", marginBottom: 16 }}>
           <section className="pnl">

@@ -4,7 +4,8 @@ import { db } from "@/lib/db";
 import { getSettings } from "@/lib/settings";
 import { brl } from "@/lib/time";
 import { formatPhone } from "@/lib/phone";
-import { Header, Panel } from "@/components/ui";
+import { Panel } from "@/components/ui";
+import { NxHead, NxRow2, NxHero, NxStat, NxTracks, NxTrack, NxAvs, NxTabsCard, NxFilters, NxPill, NxPanel, NxItem, NxEmpty, NxDHead, NxDNum, NxWho, NxDCards, NxDFoot, NxBtn } from "@/components/nx";
 import { NumberInput } from "@/components/NumberInput";
 import { CopyButton } from "@/components/CopyButton";
 import { ConfirmButton } from "@/components/ConfirmButton";
@@ -25,7 +26,7 @@ export const dynamic = "force-dynamic";
 const REASON: Record<string, string> = { compra: "Compra", estorno: "Estorno", mensalidade: "Mensalidade", resgate: "Resgate", evento: "Evento", ajuste: "Ajuste", bonus: "Bônus" };
 const OK: Record<string, string> = { cancelado: "Assinatura cancelada. O cupom de membro foi desligado.", pago: "Mensalidade registrada. O cupom de membro está ligado.", entrada: "Entrada no evento registrada.", ajuste: "Pontos ajustados.", regras: "Regras salvas.", aviso: "Aviso de lançamento na fila. As mensagens saem aos poucos, com a proteção do número.", evento: "Evento criado. Ele já aparece na página dos membros.", sorteio: "Sorteio feito. Os ganhadores estão no painel do sorteio.", cortesia: "Club de cortesia liberado. O kit entra na lista de envio.", cf: "Close Friends atualizado.", brindes: "Brindes enviados para a Shopify de novo.", afiliados: "Comissões marcadas como pagas.", "1": "Salvo." };
 
-export default async function Clube({ searchParams }: { searchParams: Promise<{ premios?: string; q?: string; novo?: string; erro?: string; ok?: string; cupom?: string; criado?: string; regras?: string; somados?: string; f?: string; editar?: string; msgs?: string; n?: string; pg?: string; evento?: string; endereco?: string }> }) {
+export default async function Clube({ searchParams }: { searchParams: Promise<{ premios?: string; q?: string; novo?: string; erro?: string; ok?: string; cupom?: string; criado?: string; regras?: string; somados?: string; f?: string; editar?: string; msgs?: string; n?: string; pg?: string; evento?: string; endereco?: string; sel?: string }> }) {
   const sp = await searchParams;
   const { club: c, postsale } = await getSettings();
   const store = postsale.storeUrl;
@@ -72,13 +73,63 @@ export default async function Clube({ searchParams }: { searchParams: Promise<{ 
 
   return (
     <>
-      <Header title={c.name} lede={`${brl(c.fee)} por mês. ${c.usesPerMonth ? `${c.discountPct}% em ${c.usesPerMonth} compras por mês` : `${c.discountPct}% em toda compra`}, pontos, níveis por tempo de club, eventos e brindes.`}>
+      <NxHead title={c.name} back="/">
         <form action={scanClubNow}><button className="btn" type="submit" title="Puxa as compras dos últimos 30 dias e soma os pontos"><RefreshCw size={15} /> Atualizar pontos</button></form>
         <Link className="btn" href={sp.premios ? "/clube" : "/clube?premios=1"}><Gift size={15} /> Recompensas</Link>
         <Link className="btn" href={sp.msgs ? "/clube" : "/clube?msgs=1"}><MessageCircle size={15} /> Mensagens</Link>
         <Link className="btn" href={sp.regras ? "/clube" : "/clube?regras=1"}><Settings2 size={15} /> Regras</Link>
         <Link className="btn pri" href={sp.novo ? "/clube" : "/clube?novo=1"}><Plus size={16} /> Novo membro</Link>
-      </Header>
+      </NxHead>
+      <NxRow2>
+        <NxHero stats={<>
+          <NxStat label="Membros ativos" value={active.length.toLocaleString("pt-BR")} sub={`${all.filter((m) => m.joinedAt.getTime() > Date.now() - 30 * 864e5).length} novo(s) em 30 dias`} tone="up" />
+          <NxStat label="Receita por mês" pre="R$" value={Math.round(active.reduce((a, m) => a + (m.courtesy ? 0 : m.fee || c.fee), 0)).toLocaleString("pt-BR")} sub={`${cardN} no cartão · ${pixN} no Pix`} />
+          <NxStat label="Pagamento atrasado" value={late.length} sub={canceledMonth ? `${canceledMonth} cancelaram em 30 dias` : "renovação falhou ou sem pagamento"} tone={late.length ? "dn" : "mut"} />
+        </>}>
+          <NxTracks>
+            {([["Até 3 meses", 0, 3], ["3 a 12 meses", 3, 12], ["12 meses ou mais", 12, 999]] as const).map(([l, x, y]) => {
+              const g = active.filter((m) => { const mo = (Date.now() - m.joinedAt.getTime()) / (30 * 864e5); return mo >= x && mo < y; });
+              return <NxTrack key={l} l={l} r={g.length} pct={active.length ? (g.length / active.length) * 100 : 0}><NxAvs names={g.slice(0, 4).map((m) => m.name)} more={Math.max(0, g.length - 4)} /></NxTrack>;
+            })}
+          </NxTracks>
+        </NxHero>
+        <NxTabsCard title="Pontos dos membros" value={pts.toLocaleString("pt-BR")} chip={`valem ${money(pts)}`}
+          tabs={[{ top: prizes.length, label: "Prêmios", href: "/clube?premios=1" }, { top: events.length, label: "Eventos", on: true }, { top: in7.length, label: "Cobram em 7 dias" }]}
+          button={{ label: "Ver prêmios", href: "/clube?premios=1" }} />
+      </NxRow2>
+      <NxFilters count={filter ? 1 : 0}>
+        <NxPill href="/clube" on={!filter}>Todos {all.length}</NxPill>
+        <NxPill href="/clube?f=ativos" on={filter === "ativos"}>Em dia {active.length}</NxPill>
+        <NxPill href="/clube?f=atraso" on={filter === "atraso"}>Atrasados {late.length}</NxPill>
+        <NxPill href="/clube?f=cancelados" on={filter === "cancelados"}>Cancelados</NxPill>
+        <form action="/clube" className="row" style={{ flex: 1, minWidth: 220, gap: 8 }}>
+          <input className="in" name="q" defaultValue={sp.q} placeholder="Buscar por CPF, telefone, e-mail ou nome" style={{ flex: 1 }} />
+          <button className="nx-ic" type="submit" aria-label="Buscar"><Search size={16} /></button>
+        </form>
+      </NxFilters>
+      {(() => {
+        const cur = list.find((m) => m.id === sp.sel) ?? list[0];
+        const mo = (m: (typeof all)[number]) => Math.floor((Date.now() - m.joinedAt.getTime()) / (30 * 864e5));
+        const lvl = (n: number) => (n >= 12 ? "12 meses" : n >= 6 ? "6 meses" : n >= 3 ? "3 meses" : "Novo");
+        const base = filter ? `/clube?f=${filter}&` : "/clube?";
+        return (
+          <NxPanel title="Membros"
+            tabs={[{ label: "Todos", href: "/clube", on: !filter }, { label: "Em dia", count: active.length, href: "/clube?f=ativos", on: filter === "ativos" }, { label: "Atrasados", count: late.length, href: "/clube?f=atraso", on: filter === "atraso" }]}
+            list={list.length ? list.slice(0, 9).map((m) => <NxItem key={m.id} href={`${base}sel=${m.id}`} name={m.name} title={m.name} sub={`Membro há ${mo(m)} ${mo(m) === 1 ? "mês" : "meses"} · ${m.points.toLocaleString("pt-BR")} pontos`} status={st(m).label} ok={st(m).k === "em_dia"} value={lvl(mo(m))} on={cur?.id === m.id} />) : <NxEmpty>Nenhum membro aqui.</NxEmpty>}
+            detail={cur ? (<>
+              <NxDHead cols={[
+                { label: "Membro", node: <NxWho name={cur.name} sub={cur.phone ? formatPhone(cur.phone) : cur.email ?? ""} /> },
+                { label: "Nível", node: <NxDNum>{lvl(mo(cur))}</NxDNum> },
+                { label: "Assinatura", node: <NxDNum chip={`${st(cur).label}${cur.paidUntil && st(cur).k === "em_dia" ? ` até ${fmt.format(cur.paidUntil)}` : ""}`}>{null}</NxDNum> },
+              ]} />
+              <NxDCards cols={3} items={[{ v: cur.points.toLocaleString("pt-BR"), d: `Pontos · valem ${money(cur.points)}` }, { v: `${c.discountPct}%`, d: "Desconto de membro" }, { v: cur.payMethod === "pix" ? "Pix" : cur.payMethod === "cartao" ? "Cartão" : "–", d: cur.nextChargeAt ? `Próxima cobrança ${fmt.format(cur.nextChargeAt)}` : "Forma de pagamento" }]} />
+              <NxDFoot vals={[{ l: "Entrou", v: fmt.format(cur.joinedAt) }, { l: "Próximo nível", v: mo(cur) >= 12 ? "no topo" : `em ${(mo(cur) >= 6 ? 12 : mo(cur) >= 3 ? 6 : 3) - mo(cur)} mês(es)` }]}>
+                <NxBtn href={`/clube?q=${encodeURIComponent(cur.cpf ?? cur.phone ?? cur.name)}`}>↗</NxBtn>
+                {cur.phone ? <NxBtn href={`https://wa.me/${cur.phone.replace(/\D/g, "")}`} target="_blank" lime>Chamar no WhatsApp</NxBtn> : <NxBtn href={`/clube?q=${encodeURIComponent(cur.cpf ?? cur.name)}`} lime>Abrir ficha</NxBtn>}
+              </NxDFoot>
+            </>) : <NxEmpty>Escolha um membro da lista.</NxEmpty>} />
+        );
+      })()}
       {sp.ok && <div className="ok">{OK[sp.ok] ?? "Salvo."}</div>}
       {sp.somados && <div className="ok">{Number(sp.somados) ? `${sp.somados} pontos somados das compras.` : "Nenhuma compra nova de membro para somar."}</div>}
       {sp.erro && sp.erro !== "nome" && <div className="err">{sp.erro}</div>}
@@ -170,12 +221,6 @@ export default async function Clube({ searchParams }: { searchParams: Promise<{ 
         </Panel>
       )}
 
-      <div className="grid g4">
-        <div className="pnl kpi hl"><small><Crown size={14} /> Membros em dia</small><span className="num up">{active.length}</span><div className="sub">{all.length} no total</div></div>
-        <div className="pnl kpi"><small>Receita por mês</small><span className="num">{brl(active.reduce((a, m) => a + (m.courtesy ? 0 : m.fee || c.fee), 0), 0)}</span><div className="sub">mensalidades dos membros em dia</div></div>
-        <div className={`pnl kpi ${late.length ? "warnk" : ""}`}><small>Em atraso</small><span className="num" style={late.length ? { color: "var(--sun)" } : undefined}>{late.length}</span><div className="sub">cupom desligado depois de {c.graceDays} dias</div></div>
-        <div className="pnl kpi"><small>Pontos em aberto</small><span className="num">{pts.toLocaleString("pt-BR")}</span><div className="sub">valem {money(pts)} em desconto</div></div>
-      </div>
 
       <ClubPlus all={all} c={c} evento={sp.evento} endereco={sp.endereco} />
 
