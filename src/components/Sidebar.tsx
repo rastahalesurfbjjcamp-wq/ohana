@@ -112,6 +112,46 @@ export function Sidebar({ name, store, connected, leaves, logout, role = "ADMIN"
 
   return (
     <>
+    <header className="tnav">
+      <Link href="/" className="tn-brand">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={lite ? "/demo/mark.png" : "/brand/lion.png"} alt="" width={30} height={32} />
+        <b>{store} Hub</b>
+      </Link>
+      <nav className="tn-pills">
+        {pinned.filter((it) => ok(it.href) && it.href === "/").map((it) => (
+          <Link key={it.href} href={it.href} className={active(it.href) ? "on" : ""}>{it.label}</Link>
+        ))}
+        {groups.filter((g) => g.items.length).map((g) => {
+          const on = g.items.some((i) => active(i.href));
+          return <Link key={g.label} href={g.items[0].href} className={on ? "on" : ""}>{g.label}</Link>;
+        })}
+      </nav>
+      <div className="tn-icons">
+        {ok("/tarefas") && <Link href="/tarefas" title="Tarefas" className={active("/tarefas") ? "on" : ""}><SquareCheckBig size={17} /></Link>}
+        {ok("/integracoes") && <Link href="/integracoes" title="Integrações" className={active("/integracoes") ? "on" : ""}><Plug size={17} /></Link>}
+        {ok("/equipe") && <Link href="/equipe" title="Equipe e acessos" className={active("/equipe") ? "on" : ""}><UserCog size={17} /></Link>}
+        {ok("/configuracoes") && <Link href="/configuracoes" title="Configurações" className={active("/configuracoes") ? "on" : ""}><Settings size={17} /></Link>}
+      </div>
+      <div className="tn-me" title={connected ? "WhatsApp conectado" : "WhatsApp desconectado"}>
+        <i className={`live${connected ? "" : " off"}`} />
+        <div className="av">{initials}</div>
+        <form action={logout}><button type="submit" title="Sair"><LogOut size={16} /></button></form>
+      </div>
+    </header>
+    {(() => {
+      const g = groups.find((x) => x.items.some((i) => active(i.href)));
+      if (!g) return null;
+      return (
+        <nav className="tn-sub">
+          {g.items.map((it) => (
+            <Link key={it.href} href={it.href} className={active(it.href) ? "on" : ""}>
+              <it.icon size={15} strokeWidth={1.9} />{it.label}{it.badge ? <span>{it.badge}</span> : null}
+            </Link>
+          ))}
+        </nav>
+      );
+    })()}
     <header className="mtop">
       <button type="button" className="mtop-b" onClick={() => setNav(true)} aria-label="Abrir menu"><Menu size={20} /></button>
       <Link href="/" className="mtop-brand">

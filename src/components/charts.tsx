@@ -30,7 +30,7 @@ function niceTicks(min: number, max: number, n = 3) {
 }
 
 export function AreaChart({
-  data, compare, markers = [], height = 240, format = (v) => v.toLocaleString("pt-BR"), color = "#34c26a", id = "a", zeroBase = false,
+  data, compare, markers = [], height = 240, format = (v) => v.toLocaleString("pt-BR"), color = "#b8f53c", id = "a", zeroBase = false,
 }: {
   data: Pt[];
   compare?: number[];
@@ -63,7 +63,7 @@ export function AreaChart({
     <svg className="svgc" viewBox={`0 0 ${W} ${H}`}>
       <defs>
         <linearGradient id={`g-${id}`} x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity=".28" />
+          <stop offset="0%" stopColor={color} stopOpacity=".42" />
           <stop offset="100%" stopColor={color} stopOpacity="0" />
         </linearGradient>
       </defs>
@@ -74,7 +74,7 @@ export function AreaChart({
         </g>
       ))}
       <path d={area} fill={`url(#g-${id})`} />
-      {cmp && <path d={cmp} fill="none" stroke="#6b7570" strokeWidth="2" strokeDasharray="5 6" vectorEffect="non-scaling-stroke" />}
+      {cmp && <path d={cmp} fill="none" stroke="#707070" strokeWidth="2" strokeDasharray="5 6" vectorEffect="non-scaling-stroke" />}
       <path d={line} fill="none" stroke={color} strokeWidth="2.6" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
       {markers.map((m) => {
         const p = pts[m.index];
@@ -85,17 +85,17 @@ export function AreaChart({
             <line x1={p[0]} x2={p[0]} y1={p[1]} y2={H - padB} stroke="#f7c928" strokeDasharray="3 5" strokeWidth="1.2" />
             <rect x={Math.min(p[0] - w / 2, W - w - 2)} y={p[1] - 36} width={w} height={24} rx={12} fill="#f7c928" />
             <text x={Math.min(p[0], W - w / 2 - 2)} y={p[1] - 20} textAnchor="middle" fontSize="12" fontWeight="700" fill="#1b1400">{m.label}</text>
-            <circle cx={p[0]} cy={p[1]} r={6} fill="#111413" stroke="#f7c928" strokeWidth="2.5" />
+            <circle cx={p[0]} cy={p[1]} r={6} fill="#131313" stroke="#f7c928" strokeWidth="2.5" />
           </g>
         );
       })}
       {data.map((d, i) => (
         <g className="pt" key={i}>
           <rect x={x(i) - (W / data.length) / 2} y={padT} width={W / data.length} height={H - padT - padB} fill="transparent" />
-          <circle className="ring" cx={pts[i][0]} cy={pts[i][1]} r={5} fill={color} stroke="#111413" strokeWidth="3" />
+          <circle className="ring" cx={pts[i][0]} cy={pts[i][1]} r={5} fill={color} stroke="#131313" strokeWidth="3" />
           <g className="tip">
-            <rect x={Math.min(Math.max(pts[i][0] - 70, 0), W - 140)} y={Math.max(pts[i][1] - 52, 0)} width={140} height={38} rx={9} fill="#1e2421" stroke="#2c3431" />
-            <text x={Math.min(Math.max(pts[i][0], 70), W - 70)} y={Math.max(pts[i][1] - 37, 15)} textAnchor="middle" fontSize="11" fill="#8b948f">{d.label}</text>
+            <rect x={Math.min(Math.max(pts[i][0] - 70, 0), W - 140)} y={Math.max(pts[i][1] - 52, 0)} width={140} height={38} rx={9} fill="#212121" stroke="#303030" />
+            <text x={Math.min(Math.max(pts[i][0], 70), W - 70)} y={Math.max(pts[i][1] - 37, 15)} textAnchor="middle" fontSize="11" fill="#8f8f8f">{d.label}</text>
             <text x={Math.min(Math.max(pts[i][0], 70), W - 70)} y={Math.max(pts[i][1] - 21, 31)} textAnchor="middle" fontSize="13" fontWeight="700" fill="#fff">{format(d.value)}</text>
           </g>
           {i % every === 0 || i === data.length - 1 ? (
@@ -103,7 +103,7 @@ export function AreaChart({
           ) : null}
         </g>
       ))}
-      <circle cx={last[0]} cy={last[1]} r={6} fill={color} stroke="#111413" strokeWidth="3" />
+      <circle cx={last[0]} cy={last[1]} r={6} fill={color} stroke="#131313" strokeWidth="3" />
     </svg>
   );
 }
@@ -121,7 +121,7 @@ export function Waterfall({ steps, format }: { steps: { label: string; value: nu
       <line className="grid" x1={0} x2={W} y1={y(0)} y2={y(0)} />
       {steps.map((s, i) => {
         const cx = (W / steps.length) * (i + 0.5);
-        let top = 0, bottom = 0, fill = "#e8ece9", label = format(s.value), lc = "#eef1ef";
+        let top = 0, bottom = 0, fill = "#eaeaea", label = format(s.value), lc = "#efefef";
         if (s.kind === "total") { top = y(s.value); bottom = y(0); running = s.value; }
         else if (s.kind === "neg") { top = y(running); running -= s.value; bottom = y(running); fill = "#8b2a2a"; label = `-${format(s.value)}`; lc = "#f87171"; }
         else { top = y(Math.max(0, s.value)); bottom = y(Math.min(0, s.value)); fill = s.value >= 0 ? "#34c26a" : "#ef4444"; lc = s.value >= 0 ? "#4ad781" : "#f87171"; }
@@ -131,11 +131,11 @@ export function Waterfall({ steps, format }: { steps: { label: string; value: nu
           <g key={s.label}>
             <rect x={cx - bw / 2} y={top} width={bw} height={h} rx={8} fill={fill} />
             {next && s.kind !== "result" && (
-              <line x1={cx + bw / 2} x2={(W / steps.length) * (i + 1.5) - bw / 2} y1={y(running)} y2={y(running)} stroke="#3a433f" strokeDasharray="4 5" />
+              <line x1={cx + bw / 2} x2={(W / steps.length) * (i + 1.5) - bw / 2} y1={y(running)} y2={y(running)} stroke="#3f3f3f" strokeDasharray="4 5" />
             )}
             <text x={cx} y={top - 10} textAnchor="middle" fontSize="15" fontWeight="700" fill={lc}>{label}</text>
-            <text x={cx} y={H - 30} textAnchor="middle" fontSize="13" fill="#aab3ae">{s.label}</text>
-            {s.sub && <text x={cx} y={H - 12} textAnchor="middle" fontSize="11.5" fill="#5d6661">{s.sub}</text>}
+            <text x={cx} y={H - 30} textAnchor="middle" fontSize="13" fill="#aeaeae">{s.label}</text>
+            {s.sub && <text x={cx} y={H - 12} textAnchor="middle" fontSize="11.5" fill="#616161">{s.sub}</text>}
           </g>
         );
       })}
@@ -157,7 +157,7 @@ export function GoalBars({ items, goal, format, height = 230 }: { items: Pt[]; g
         return (
           <g key={it.label + i}>
             <rect x={cx - bw / 2} y={y(it.value)} width={bw} height={Math.max(3, H - padB - y(it.value))} rx={8} fill={col} />
-            <text x={cx} y={y(it.value) - 9} textAnchor="middle" fontSize="13" fontWeight="700" fill="#eef1ef">{format(it.value)}</text>
+            <text x={cx} y={y(it.value) - 9} textAnchor="middle" fontSize="13" fontWeight="700" fill="#efefef">{format(it.value)}</text>
             <text className="xlab" x={cx} y={H - 6} textAnchor="middle" fontSize="12">{it.label}</text>
           </g>
         );
@@ -168,7 +168,7 @@ export function GoalBars({ items, goal, format, height = 230 }: { items: Pt[]; g
   );
 }
 
-export function Bars({ items, format, color = "#34c26a", height = 200, highlightLast = false }: { items: Pt[]; format: (v: number) => string; color?: string; height?: number; highlightLast?: boolean }) {
+export function Bars({ items, format, color = "#b8f53c", height = 200, highlightLast = false }: { items: Pt[]; format: (v: number) => string; color?: string; height?: number; highlightLast?: boolean }) {
   const W = 1000, H = height, padT = 26, padB = 24;
   const max = Math.max(1, ...items.map((i) => i.value));
   const slot = W / Math.max(1, items.length);
@@ -247,7 +247,7 @@ export function UpDownBars({ items, height = 260 }: { items: { label: string; up
             {it.down > 0 && <rect x={x} y={zero + 3} width={bw} height={Math.max(2, hd)} rx={Math.min(7, bw / 3)} fill="#b23636" />}
             {(i % every === 0 || i === items.length - 1) && <text x={x + bw / 2} y={H - 6} textAnchor="middle" className="xlab">{it.label}</text>}
             <g className="tip">
-              <rect x={Math.min(W - 120, Math.max(0, x + bw / 2 - 60))} y={2} width={120} height={40} rx={8} fill="#1b201e" stroke="#2d3531" />
+              <rect x={Math.min(W - 120, Math.max(0, x + bw / 2 - 60))} y={2} width={120} height={40} rx={8} fill="#1e1e1e" stroke="#313131" />
               <text x={Math.min(W - 60, Math.max(60, x + bw / 2))} y={19} textAnchor="middle" className="vlab" style={{ fontSize: 12 }}>{it.label}</text>
               <text x={Math.min(W - 60, Math.max(60, x + bw / 2))} y={35} textAnchor="middle" className="ylab" style={{ fontSize: 11.5 }}>+{it.up} entraram · {it.down} saíram</text>
             </g>
