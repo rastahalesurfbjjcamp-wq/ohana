@@ -194,7 +194,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
   const ks: Record<string, React.ReactNode> = {
     faturamento: <Link key="faturamento" href="/historico" className="ks hl"><small><Wallet size={14} /> Faturamento</small><b>{m ? brl(m.net, 0) : "–"}</b><span>{period.label.toLowerCase()}</span></Link>,
     pedidos: <Link key="pedidos" href="/pedidos" className="ks"><small><Receipt size={14} /> Pedidos</small><b>{nOrders}</b><span>ticket {old ? (m?.orders ? brl(m.aov, 0) : "–") : valid.length ? brl(valid.reduce((a, o) => a + o.subtotal, 0) / valid.length, 0) : "–"}</span></Link>,
-    lucro: <Link key="lucro" href="/financeiro" className="ks"><small><TrendingUp size={14} /> Lucro</small><b className={m && m.profitBeforeFixed < 0 ? "dn" : "up"}>{m ? brl(m.profitBeforeFixed, 0) : "–"}</b><span>antes dos custos fixos</span></Link>,
+    lucro: <Link key="lucro" href="/financeiro" className="ks"><small><TrendingUp size={14} /> Lucro</small><b className={m && m.profitBeforeFixed < 0 ? "dn" : "up"}>{m ? brl(m.profitBeforeFixed, 0) : "–"}</b><span>{m && m.net ? `margem ${Math.round((m.profitBeforeFixed / m.net) * 100)}% · ` : ""}antes dos custos fixos</span></Link>,
     vendas: <Link key="vendas" href="/campanhas" className="ks"><small><Target size={14} /> Anúncios de venda</small><b>{salesSpend != null ? brl(salesSpend, 0) : "–"}</b><span>{roas ? `ROAS ${roas.toFixed(2).replace(".", ",")}` : "sem gasto lido"}{g && g.vendas.purchases ? ` · Meta: ${n0(g.vendas.purchases)} compras` : ""}</span></Link>,
     leads: <Link key="leads" href="/campanhas" className="ks"><small><FileText size={14} /> Leads dos anúncios</small><b>{g ? n0(g.leads.leads) : "–"}</b><span>{g ? (g.leads.spend || g.leads.leads ? `${per(g.leads.spend, g.leads.leads)} por lead · gasto ${brl(g.leads.spend, 0)}` : "nenhuma campanha de lead") : "conecte o Meta Ads"}</span></Link>,
     perfil: <Link key="perfil" href="/campanhas" className="ks"><small><Heart size={14} /> {pLabel}</small><b>{g ? n0(pVal) : "–"}</b><span>{g ? (g.perfil.spend ? `${per(g.perfil.spend, pVal)} cada · gasto ${brl(g.perfil.spend, 0)}` : "nenhuma campanha de perfil") : "conecte o Meta Ads"}{perfilCs?.orders ? ` · cupom ${brl(perfilCs.net, 0)} em ${perfilCs.orders} venda(s)` : ""}</span></Link>,
@@ -228,7 +228,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
         <NxHero stats={<>
           <NxStat label={`Faturamento · ${plab}`} pre="R$" value={m ? Math.round(m.net).toLocaleString("pt-BR") : "–"} sub={m ? `${nOrders} pedido(s) pagos` : "sem dados da loja"} />
           <NxStat label="Pedidos pagos" value={nOrders.toLocaleString("pt-BR")} sub={`ticket ${old ? (m?.orders ? brl(m.aov, 0) : "–") : valid.length ? brl(valid.reduce((a, o) => a + o.subtotal, 0) / valid.length, 0) : "–"}`} tone="up" />
-          <NxStat label="Lucro" pre="R$" value={m ? Math.round(m.profitBeforeFixed).toLocaleString("pt-BR") : "–"} sub="antes dos custos fixos" tone={m && m.profitBeforeFixed < 0 ? "dn" : "mut"} />
+          <NxStat label="Lucro" pre="R$" value={m ? Math.round(m.profitBeforeFixed).toLocaleString("pt-BR") : "–"} sub={m && m.net ? `margem de ${Math.round((m.profitBeforeFixed / m.net) * 100)}% · antes dos custos fixos` : "antes dos custos fixos"} tone={m && m.profitBeforeFixed < 0 ? "dn" : "up"} />
         </>}>
           {nOrders ? <NxBars items={salesBars} fmt={(v) => brl(v, 0)} /> : <NxNote>Nenhuma venda {oneDay && period.from === today ? "hoje ainda" : "no período"}.</NxNote>}
         </NxHero>
