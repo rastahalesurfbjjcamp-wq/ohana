@@ -94,7 +94,7 @@ export const DEFAULTS = {
     kitTitle: "Kit de boas-vindas do club (camiseta + patch da bandeira)",
     t3Gift: "Boné do club (3 meses de club)",
     t6Points: 2, // pontos por real a partir de 6 meses
-    t6Gift: "Camiseta exclusiva de 6 meses - Rasta Hale Club (nunca disponível para compra)",
+    t6Gift: "Camiseta comemorativa Rasta Hale Club",
     t12Gift: "Peça exclusiva (12 meses de club)",
     t3Link: "", t6Link: "", t12Link: "", // coleções exclusivas por nível (fora do menu da loja)
     earlyLink: "", // coleção do acesso antecipado

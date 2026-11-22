@@ -14,7 +14,7 @@ export function clubBenefits(c: C): [string, string][] {
   ];
 }
 
-export const T6_GIFT_DEFAULT = "Camiseta exclusiva de 6 meses - Rasta Hale Club (nunca disponível para compra)";
+export const T6_GIFT_DEFAULT = "Camiseta comemorativa Rasta Hale Club";
 export function clubTenure(c: C) {
   return [{ m: 6, t: c.t6Gift || T6_GIFT_DEFAULT }];
 }
