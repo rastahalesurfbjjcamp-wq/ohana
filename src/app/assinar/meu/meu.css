@@ -103,7 +103,7 @@
 .rc-ev b { display:block; font-size:15px; font-weight:600 }
 .rc-ev small { font:12px/1.4 SEl,"Courier New",monospace; color:#444 }
 
-.rc-ten { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:14px 0 4px }
+.rc-ten { display:grid; grid-template-columns:repeat(auto-fit,minmax(0,1fr)); gap:8px; margin:14px 0 4px }
 .rc-ten > div { border:1px solid var(--line); border-radius:14px; padding:10px 8px; text-align:center; display:flex; flex-direction:column; gap:4px }
 .rc-ten b { font:800 14px/1 Montserrat,Arial,sans-serif }
 .rc-ten small { font-size:11.5px; color:#555; line-height:1.3 }

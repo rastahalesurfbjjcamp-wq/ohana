@@ -5,6 +5,7 @@ import { getSettings } from "@/lib/settings";
 import { hasAppmax } from "@/lib/appmax";
 import { SubscribeBox } from "./SubscribeBox";
 import "./assinar.css";
+import { clubBenefits, clubTenure } from "@/lib/clubBenefits";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: `${process.env.STORE_NAME ?? ""} Club`.trim(), description: "Assinatura mensal com desconto, camiseta exclusiva, pontos, eventos e lançamentos antes." };
@@ -36,21 +37,15 @@ export default async function Assinar({ searchParams }: { searchParams: Promise<
         <div className="sb-sec"><Lock /> Pagamento seguro</div>
       </header>
       <div className="sb-rule" />
-      <div className="sb-mhead"><div className="sb-eyebrow">Assinatura mensal</div><h1>{c.name}</h1><p className="lede">Camiseta exclusiva, {c.discountPct}% de desconto, pontos, eventos e lançamentos antes.</p></div>
+      <div className="sb-mhead"><div className="sb-eyebrow">Assinatura mensal</div><h1>{c.name}</h1><p className="lede">{c.discountPct}% de desconto, lançamentos antes, coleções exclusivas, open mats e eventos.</p></div>
       <div className="sb-wrap">
         <section>
           <div className="sb-eyebrow">Assinatura mensal</div>
           <h1>{c.name}</h1>
           <p className="lede">Para quem treina e pega onda com a gente o ano todo. Você paga um valor pequeno por mês e ganha vantagem em tudo que compra na loja.</p>
           <div className="sb-plan">
-            <div className="sb-li"><Ic d={I.gift} /><div><b>Camiseta exclusiva do club + patch da bandeira</b><span>Chega na sua casa logo depois de assinar. Só assinante tem.</span></div></div>
-            <div className="sb-li"><Ic d={I.tag} /><div><b>{c.discountPct}% de desconto {c.usesPerMonth ? `em ${c.usesPerMonth} compras por mês` : "em toda compra"}</b><span>Entra sozinho no checkout na sua conta da loja.{c.usesPerMonth ? " Renova todo dia 1." : ""}</span></div></div>
-            <div className="sb-li"><Ic d={I.clock} /><div><b>Acesso antecipado às coleções</b><span>Você compra os drops {c.earlyHours} horas antes de abrir para todo mundo.</span></div></div>
-            <div className="sb-li"><Ic d={I.star} /><div><b>Pontos em cada compra</b><span>Cada R$ 1 vira {c.pointsPerReal === 1 ? "1 ponto" : `${String(c.pointsPerReal).replace(".", ",")} pontos`}. Troque por desconto{prizes.length ? ", peças da loja" : ""} ou entrada nos eventos.</span></div></div>
-            <div className="sb-li"><Ic d={I.cal} /><div><b>Eventos 0800 com seus pontos</b><span>Seminários, open mats e eventos de luta.</span></div></div>
-            <div className="sb-li"><Ic d={I.trophy} /><div><b>Quanto mais tempo, mais benefícios</b><span>Brinde com 3 meses, {c.t6Points} pontos por real com 6 meses e uma peça exclusiva com 12 meses. Coleções que só quem é do club há mais tempo compra.</span></div></div>
-            <div className="sb-li"><Ic d={I.cake} /><div><b>{c.birthdayPct}% no mês do seu aniversário</b><span>Sorteio todo mês de peças, vídeo análise por atletas do time e aula particular.</span></div></div>
-            <div className="sb-li"><Ic d={I.users} /><div><b>Indicação</b><span>{c.affiliatePct}% da mensalidade de cada amigo que assinar pelo seu link.</span></div></div>
+            {clubBenefits(c).map(([t, d], i) => <div className="sb-li" key={i}><Ic d={[I.tag, I.clock, I.star, I.gift, I.trophy, I.users, I.cal, I.cake][i] ?? I.star} /><div><b>{t}</b><span>{d}</span></div></div>)}
+            {clubTenure(c).map((x) => <div className="sb-li" key={x.m}><Ic d={I.trophy} /><div><b>Com {x.m} meses de club</b><span>{x.t}</span></div></div>)}
           </div>
           <div className="sb-pts">
             <h4>O que seus pontos valem <small>{prizes.length ? "catálogo" : "exemplos"}</small></h4>

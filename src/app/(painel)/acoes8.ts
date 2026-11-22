@@ -111,7 +111,7 @@ export async function saveClubPlus(f: FormData) {
   const n = (k: string, d: number) => { const v = Number(str(f, k).replace(",", ".")); return Number.isFinite(v) && v >= 0 ? v : d; };
   await saveSetting("club", {
     usesPerMonth: Math.round(n("usesPerMonth", c.usesPerMonth)), birthdayPct: Math.min(90, n("birthdayPct", c.birthdayPct)), affiliatePct: Math.min(100, n("affiliatePct", c.affiliatePct)),
-    t6Points: n("t6Points", c.t6Points), kitTitle: str(f, "kitTitle") || c.kitTitle, t3Gift: str(f, "t3Gift") || c.t3Gift, t12Gift: str(f, "t12Gift") || c.t12Gift,
+    t6Points: n("t6Points", c.t6Points), kitTitle: str(f, "kitTitle") || c.kitTitle, t3Gift: str(f, "t3Gift") || c.t3Gift, t6Gift: str(f, "t6Gift") || c.t6Gift, t12Gift: str(f, "t12Gift") || c.t12Gift,
     t3Link: str(f, "t3Link"), t6Link: str(f, "t6Link"), t12Link: str(f, "t12Link"), earlyLink: str(f, "earlyLink"),
     rafflePrizes: str(f, "rafflePrizes") || c.rafflePrizes, instagram: str(f, "instagram").replace(/^@+/, ""),
   });

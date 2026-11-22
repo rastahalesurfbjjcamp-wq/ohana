@@ -169,6 +169,7 @@ export default async function Clube({ searchParams }: { searchParams: Promise<{ 
             <div className="row" style={{ gap: 12 }}>
               <div className="field" style={{ flex: 1, minWidth: 220 }}><label>Kit de boas-vindas</label><input className="in" name="kitTitle" defaultValue={c.kitTitle} /></div>
               <div className="field" style={{ flex: 1, minWidth: 220 }}><label>Brinde de 3 meses</label><input className="in" name="t3Gift" defaultValue={c.t3Gift} /></div>
+              <div className="field" style={{ flex: 1, minWidth: 220 }}><label>Camiseta de 6 meses</label><input className="in" name="t6Gift" defaultValue={c.t6Gift} /></div>
               <div className="field" style={{ flex: 1, minWidth: 220 }}><label>Peça de 12 meses</label><input className="in" name="t12Gift" defaultValue={c.t12Gift} /></div>
             </div>
             <div className="row" style={{ gap: 12 }}>

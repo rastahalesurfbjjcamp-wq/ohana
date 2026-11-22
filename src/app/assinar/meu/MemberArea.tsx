@@ -67,12 +67,7 @@ export function MemberArea({ token, portal }: { token: string; portal: Portal })
 
   /* ---------- Entrar ---------- */
   if (!v) {
-    const perks = [
-      [`${portal.discountPct}% em toda a loja`, "Entra sozinho no checkout"],
-      ["Lançamentos antecipados e produtos exclusivos", "Na Loja do Club"],
-      ["Sistema de pontos", "Compre, acumule e troque por crédito"],
-      ["Eventos e open mats", "Entrada gratuita"],
-    ];
+    const perks = portal.benefits;
     return (
       <div className="rc-card">
         <Brand logo={portal.logo} club={portal.club} />
