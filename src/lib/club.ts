@@ -212,6 +212,20 @@ export async function updateClubAutoDiscount() {
   if (d.discountAutomaticBasicUpdate.userErrors[0]) throw new Error(d.discountAutomaticBasicUpdate.userErrors[0].message);
 }
 
+// Quando o desconto do club muda, atualiza também o cupom pessoal de cada membro
+export async function updateMemberCodesPct(pct: number) {
+  const ms = await db.clubMember.findMany({ where: { discountId: { not: null }, codeActive: true }, select: { discountId: true } });
+  let ok = 0;
+  for (const m of ms) {
+    const r = await gqlNew<{ discountCodeBasicUpdate: { userErrors: { message: string }[] } }>(
+      `mutation($id:ID!,$input: DiscountCodeBasicInput!){ discountCodeBasicUpdate(id:$id, basicCodeDiscount:$input){ userErrors{ message } } }`,
+      { id: m.discountId!, input: { customerGets: { value: { percentage: pct / 100 }, items: { all: true } } } },
+    ).catch(() => null);
+    if (r && !r.discountCodeBasicUpdate.userErrors[0]) ok++;
+  }
+  return ok;
+}
+
 export async function tagCustomer(customerId: string, tag = "clube") {
   await gqlNew(`mutation($id:ID!,$t:[String!]!){ tagsAdd(id:$id, tags:$t){ userErrors{ message } } }`, { id: customerId, t: [tag] }).catch(() => null);
 }

@@ -134,6 +134,10 @@ export async function saveClubRules(f: FormData) {
     acceptPix: f.get("acceptPix") === "on",
   });
   // porcentagem ou nome mudou: atualiza o desconto automático da loja
+  if (Math.min(50, n("discountPct", c.discountPct)) !== c.discountPct) {
+    const { updateMemberCodesPct } = await import("@/lib/club");
+    await updateMemberCodesPct(Math.min(50, n("discountPct", c.discountPct))).catch(() => null);
+  }
   if (c.autoDiscountId && (Math.min(50, n("discountPct", c.discountPct)) !== c.discountPct || (str(f, "name") && str(f, "name") !== c.name))) {
     const { updateClubAutoDiscount } = await import("@/lib/club");
     await updateClubAutoDiscount().catch(() => null);
