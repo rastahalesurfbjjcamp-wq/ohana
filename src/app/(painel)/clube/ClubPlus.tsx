@@ -100,14 +100,14 @@ export async function ClubPlus({ all, c, evento, endereco }: { all: ClubMember[]
           </div>
           <div className="lrow">
             <span className="tile sm t-s"><Trophy size={16} /></span>
-            <div><div className="t">{gifts.length} brinde(s) de nível</div><div className="s">{gifts.length ? gifts.slice(0, 4).map((p) => `${p.member.name.split(" ")[0]} (${p.kind === "nivel3" ? "3 meses" : "12 meses"}) · ${p.orderName ?? PERK[p.status]}`).join(" · ") : "Nenhum agora."}</div></div>
+            <div><div className="t">{gifts.length} brinde(s) de nível</div><div className="s">{gifts.length ? gifts.slice(0, 4).map((p) => `${p.member.name.split(" ")[0]} (${p.kind === "nivel3" ? "3 meses" : p.kind === "nivel6" ? "6 meses" : "12 meses"}) · ${p.orderName ?? PERK[p.status]}`).join(" · ") : "Nenhum agora."}</div></div>
           </div>
           {perks.filter((p) => p.status === "criado").length > 0 && (
             <div style={{ overflowX: "auto", margin: "6px 0 4px" }}>
               <table className="tb" data-nosort>
                 <thead><tr><th>Membro</th><th>Brinde</th><th>Pedido</th><th /></tr></thead>
                 <tbody>{perks.filter((p) => p.status === "criado").slice(0, 12).map((p) => (
-                  <tr key={p.id}><td>{p.member.name}</td><td style={{ fontSize: 12.5 }}>{p.title}{p.kind === "kit" && p.member.shirtSize ? ` · ${p.member.shirtSize}` : ""}</td><td>{p.orderName}</td>
+                  <tr key={p.id}><td>{p.member.name}</td><td style={{ fontSize: 12.5 }}>{p.title}{(p.kind === "kit" || p.kind === "nivel6") && p.member.shirtSize ? ` · ${p.member.shirtSize}` : ""}</td><td>{p.orderName}</td>
                     <td className="r"><form action={perkSent}><input type="hidden" name="id" value={p.id} /><button className="btn sm ghost" type="submit">Marcar enviado</button></form></td></tr>
                 ))}</tbody>
               </table>

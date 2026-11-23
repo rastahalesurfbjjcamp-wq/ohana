@@ -168,8 +168,8 @@ export function SubscribeBox({ fee, ready, storeUrl, clubName, acceptPix = false
           <div className="sb-f"><label htmlFor="ig">Seu @ do Instagram</label><input id="ig" className="sb-in" value={x.instagram} onChange={(e) => setx("instagram", e.target.value.replace(/\s/g, ""))} placeholder="@seuusuario" /></div>
         </div>
 
-        <div className="sb-st" style={{ marginTop: 8 }}>Seu kit de boas-vindas</div>
-        <div className="sb-f"><label>Tamanho da camiseta do club</label><div className="sb-sizes">{["P", "M", "G", "GG", "XG"].map((z) => <button type="button" key={z} className={x.size === z ? "sb-on" : ""} onClick={() => setx("size", z)}>{z}</button>)}</div></div>
+        <div className="sb-st" style={{ marginTop: 8 }}>Camiseta comemorativa de 6 meses</div>
+        <div className="sb-f"><label>Tamanho da camiseta (enviada quando você completar 6 meses de club)</label><div className="sb-sizes">{["P", "M", "G", "GG", "XG"].map((z) => <button type="button" key={z} className={x.size === z ? "sb-on" : ""} onClick={() => setx("size", z)}>{z}</button>)}</div></div>
         <div className="sb-two">
           <div className="sb-f"><label htmlFor="cep">CEP</label><input id="cep" className="sb-in" inputMode="numeric" autoComplete="postal-code" value={x.zip} onChange={(e) => { const v = maskCep(e.target.value); setx("zip", v); lookupCep(v); }} placeholder="00000-000" required /></div>
           <div className="sb-f"><label htmlFor="num">Número</label><input id="num" className="sb-in" value={x.number} onChange={(e) => setx("number", e.target.value)} required /></div>

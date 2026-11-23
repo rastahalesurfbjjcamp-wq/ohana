@@ -29,9 +29,9 @@ export const nextTier = (t: number) => (t === 0 ? 3 : t === 3 ? 6 : t === 6 ? 12
 export const pointsRate = (m: { joinedAt: Date }, c: Club) => (monthsIn(m) >= 6 && c.t6Points > 0 ? c.t6Points : c.pointsPerReal);
 
 export function tierPerks(t: number, c: Club): string[] {
-  if (t === 0) return [`Camiseta do club + patch da bandeira`, c.usesPerMonth ? `${c.discountPct}% em ${c.usesPerMonth} compras por mês` : `${c.discountPct}% em toda compra`, `${c.pointsPerReal === 1 ? "1 ponto" : `${c.pointsPerReal} pontos`} por real`, "Acesso antecipado às coleções"];
+  if (t === 0) return [c.usesPerMonth ? `${c.discountPct}% em ${c.usesPerMonth} compras por mês` : `${c.discountPct}% em toda compra`, `${c.pointsPerReal === 1 ? "1 ponto" : `${c.pointsPerReal} pontos`} por real`, "Acesso antecipado às coleções"];
   if (t === 3) return [`Brinde: ${c.t3Gift.replace(/\s*\(.*\)$/, "")}`, "Coleção exclusiva 3 meses"];
-  if (t === 6) return [`${c.t6Points} pontos por real`, "Coleção exclusiva 6 meses"];
+  if (t === 6) return [`Brinde: ${c.t6Gift || "Camiseta comemorativa Rasta Hale Club"}`, `${c.t6Points} pontos por real`, "Coleção exclusiva 6 meses"];
   return [`${c.t12Gift.replace(/\s*\(.*\)$/, "")}`, "Coleção exclusiva 12 meses"];
 }
 
@@ -53,7 +53,7 @@ export async function ensureRefCode(memberId: string) {
 
 type Addr = { zip?: string; street?: string; number?: string; extra?: string; district?: string; city?: string; state?: string };
 
-export async function ensurePerk(memberId: string, kind: "kit" | "nivel3" | "nivel12", title: string) {
+export async function ensurePerk(memberId: string, kind: "kit" | "nivel3" | "nivel6" | "nivel12", title: string) {
   await db.clubPerk.upsert({ where: { memberId_kind: { memberId, kind } }, create: { memberId, kind, title }, update: {} });
 }
 
@@ -61,9 +61,9 @@ async function giftOrder(m: { name: string; customerId: string | null; email: st
   const a = (m.address ?? {}) as Addr;
   if (!a.zip || !a.street || !a.city) return { status: "sem_endereco" as const };
   const [first, ...rest] = m.name.trim().split(/\s+/);
-  const lineTitle = kind === "kit" && m.shirtSize ? `${title} · camiseta ${m.shirtSize}` : title;
+  const lineTitle = (kind === "kit" || kind === "nivel6") && m.shirtSize ? `${title} · camiseta ${m.shirtSize}` : title;
   const input = {
-    note: `Brinde do club (${kind === "kit" ? "boas-vindas" : kind === "nivel3" ? "3 meses" : "12 meses"}). Criado pelo Hub.`,
+    note: `Brinde do club (${kind === "kit" ? "boas-vindas" : kind === "nivel3" ? "3 meses" : kind === "nivel6" ? "6 meses" : "12 meses"}). Criado pelo Hub.`,
     tags: ["clube", "brinde"],
     email: m.email ?? undefined,
     ...(m.customerId ? { purchasingEntity: { customerId: m.customerId } } : {}),
@@ -111,6 +111,7 @@ export async function runTiers() {
     const t = tierOf(monthsIn(m));
     if (t <= m.tierGiven) continue;
     if (t >= 3 && m.tierGiven < 3) await ensurePerk(m.id, "nivel3", c.t3Gift);
+    if (t >= 6 && m.tierGiven < 6) await ensurePerk(m.id, "nivel6", c.t6Gift || "Camiseta comemorativa Rasta Hale Club");
     if (t >= 12 && m.tierGiven < 12) await ensurePerk(m.id, "nivel12", c.t12Gift);
     await db.clubMember.update({ where: { id: m.id }, data: { tierGiven: t } });
     await db.clubEvent.create({ data: { memberId: m.id, kind: "voltou", text: `Subiu para o nível ${tierName(t)}` } }).catch(() => null);
@@ -213,7 +214,7 @@ export async function topBuyers(n = 5): Promise<TopBuyer[]> {
   return rows.filter((r) => r.customer_id && r.customer_id !== "0").slice(0, n).map((r) => ({ id: `gid://shopify/Customer/${r.customer_id.replace(/\D/g, "")}`, name: r.customer_name || r.customer_email || "Cliente", email: r.customer_email || null, phone: null, orders: Number(r.orders) || 0, spent: Number(r.net_sales) || 0 }));
 }
 
-// Club de graça por um ano (ex.: top compradores). Cria o membro, cupom, marcação e o kit.
+// Club de graça por um ano (ex.: top compradores). Cria o membro, cupom e marcação.
 export async function grantCourtesy(b: TopBuyer, months = 12) {
   const c = (await getSettings()).club;
   let m = await db.clubMember.findFirst({ where: { OR: [{ customerId: b.id }, ...(b.email ? [{ email: b.email.toLowerCase() }] : [])] } });
@@ -225,7 +226,6 @@ export async function grantCourtesy(b: TopBuyer, months = 12) {
   const { ensureMemberCode } = await import("./club");
   await ensureMemberCode(m.id).catch(() => null);
   await ensureRefCode(m.id);
-  await ensurePerk(m.id, "kit", c.kitTitle);
   await db.clubEvent.create({ data: { memberId: m.id, kind: "assinou", text: `Ganhou o club de cortesia por ${months} meses` } }).catch(() => null);
   return m;
 }

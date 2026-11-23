@@ -141,9 +141,8 @@ export async function activate(checkoutId: string) {
     address: x.zip ? { zip: x.zip.replace(/\D/g, ""), street: x.street, number: x.number, extra: x.extra, district: x.district, city: x.city, state: x.state } : undefined,
     referredById: ref && ref.id !== m.id && !m.referredById ? ref.id : undefined,
   } }).catch(() => null);
-  const { ensurePerk, ensureRefCode } = await import("./clubPlus");
+  const { ensureRefCode } = await import("./clubPlus");
   await ensureRefCode(m.id).catch(() => null);
-  await ensurePerk(m.id, "kit", s.kitTitle).catch(() => null);
   if (!m.code) await ensureMemberCode(m.id).catch(() => null);
   if (s.msgWelcome) await enqueue("club-msg", { memberId: m.id, kind: "boasvindas" }, { jobId: `cw-${m.id}-${ck.id}`, delayMs: 60_000 }).catch(() => null);
   await import("./automations").then((a) => a.automationEvent("assinou_club", `club-${m!.id}`, m!.phone, { nome: m!.name, link: memberLink(m!.id) })).catch(() => null);
