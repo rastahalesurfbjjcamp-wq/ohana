@@ -28,7 +28,7 @@ export default async function Lancamento({ searchParams }: { searchParams: Promi
   const sp = await searchParams;
   const [launches, groups] = await Promise.all([
     db.launch.findMany({ orderBy: { opensAt: "desc" }, take: 20 }),
-    db.group.findMany({ where: { archived: false, isCommunity: true }, orderBy: { name: "asc" } }),
+    db.group.findMany({ where: { archived: false }, orderBy: [{ isCommunity: "desc" }, { name: "asc" }] }),
   ]);
   const upcoming = [...launches].filter((l) => (l.closesAt ?? new Date(l.opensAt.getTime() + 3 * 864e5)) > new Date()).sort((a, b) => a.opensAt.getTime() - b.opensAt.getTime())[0];
   const cur = launches.find((l) => l.id === sp.id) ?? upcoming ?? launches[0];
@@ -163,7 +163,7 @@ export default async function Lancamento({ searchParams }: { searchParams: Promi
               <div className="field" style={{ width: 220 }}><label>Palavra do produto (vendas)</label><input className="in" name="productKey" placeholder="kotb" /></div>
             </div>
             <div className="field"><label>Frase do lançamento</label><input className="in" name="about" placeholder="Live shop com as peças exclusivas liberadas só para o Grupo VIP" /></div>
-            <div className="field"><label>Grupos</label><GroupPicker name="groups" groups={groups.filter((g) => g.kind !== "comunidade").map((g) => ({ jid: g.jid, name: g.kind === "avisos" ? `Avisos: ${g.name}` : g.name, size: g.size, checked: true }))} /></div>
+            <div className="field"><label>Grupos</label><GroupPicker name="groups" groups={groups.filter((g) => g.kind !== "comunidade").map((g) => ({ jid: g.jid, name: g.kind === "avisos" ? `Avisos: ${g.name}` : g.name, size: g.size, tag: g.isResults ? "resultados" : g.isCommunity ? "comunidade" : undefined, checked: g.isCommunity && !g.isResults }))} /></div>
             <div className="g2f">
               {STEPS.map(([k, label, text]) => (
                 <div className="field" key={k}><label>{label}</label><textarea className="in" name={`msg_${k}`} defaultValue={text} style={{ minHeight: 70 }} /></div>

@@ -16,7 +16,7 @@ export default async function Votacoes({ searchParams }: { searchParams: Promise
   const sp = await searchParams;
   const [polls, groups, members] = await Promise.all([
     db.poll.findMany({ orderBy: { createdAt: "desc" }, take: 30, include: { votes: true } }),
-    db.group.findMany({ where: { archived: false, isCommunity: true }, orderBy: { name: "asc" } }),
+    db.group.findMany({ where: { archived: false }, orderBy: [{ isCommunity: "desc" }, { name: "asc" }] }),
     db.membership.count({ where: { leftAt: null, group: { isCommunity: true } } }),
   ]);
   const base = env.appUrl().replace(/\/$/, "");
@@ -50,7 +50,7 @@ export default async function Votacoes({ searchParams }: { searchParams: Promise
             <div className="field"><label>Fotos das opções, na mesma ordem (só página fechada)</label><input className="in file" type="file" name="images" accept="image/*" multiple /></div>
             <div className="field">
               <label>Grupos</label>
-              <GroupPicker name="groups" groups={groups.filter((g) => g.kind !== "comunidade").map((g) => ({ jid: g.jid, name: g.kind === "avisos" ? `Avisos: ${g.name}` : g.name, size: g.size, checked: true }))} />
+              <GroupPicker name="groups" groups={groups.filter((g) => g.kind !== "comunidade").map((g) => ({ jid: g.jid, name: g.kind === "avisos" ? `Avisos: ${g.name}` : g.name, size: g.size, tag: g.isResults ? "resultados" : g.isCommunity ? "comunidade" : undefined, checked: g.isCommunity && !g.isResults }))} />
             </div>
             <div className="field">
               <label>Quando enviar</label>
