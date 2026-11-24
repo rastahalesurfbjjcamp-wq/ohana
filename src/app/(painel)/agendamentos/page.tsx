@@ -6,6 +6,7 @@ import { Header } from "@/components/ui";
 import { ScheduleForm } from "@/components/ScheduleForm";
 import { libMsgs } from "@/lib/libMsgs";
 import { cancelSchedule, createSchedule, retrySchedule } from "../actions";
+import { createPoll } from "../acoes2";
 
 export const dynamic = "force-dynamic";
 
@@ -53,11 +54,19 @@ export default async function Agendamentos({ searchParams }: { searchParams: Pro
 
   const rangeStart = new Date(`${days[0]}T03:00:00Z`);
   const rangeEnd = new Date(`${addDays(days[days.length - 1], 1)}T03:00:00Z`);
-  const [groups, list, sel] = await Promise.all([
+  const [groups, list, sel, polls] = await Promise.all([
     db.group.findMany({ where: { archived: false }, orderBy: [{ isCommunity: "desc" }, { name: "asc" }] }),
     db.scheduledMessage.findMany({ where: { sendAt: { gte: rangeStart, lt: rangeEnd }, status: { not: "CANCELED" } }, orderBy: { sendAt: "asc" } }),
     sp.id ? db.scheduledMessage.findUnique({ where: { id: sp.id } }) : null,
+    db.poll.findMany({ where: { sendAt: { gte: rangeStart, lt: rangeEnd } }, orderBy: { sendAt: "asc" }, select: { id: true, question: true, sendAt: true, status: true } }),
   ]);
+  const pollsOn = (d: string) => polls.filter((p) => p.sendAt && isoDayLocal(p.sendAt) === d);
+  const PollEv = ({ p, compact }: { p: (typeof polls)[number]; compact?: boolean }) => (
+    <Link href={`/votacoes?id=${p.id}`} className={`sev ${p.status === "agendada" ? "ev-k" : "ev-l"}`} title={p.question}>
+      <b>{p.sendAt ? hhmm.format(p.sendAt) : ""} · enquete</b>
+      <span className={compact ? "one" : ""}>📊 {p.question.slice(0, compact ? 40 : 90)}</span>
+    </Link>
+  );
   const names = new Map(groups.map((g) => [g.jid, g.name]));
   // contato no privado: mostra o número
   const label = (j: string) => names.get(j) ?? (j.endsWith("@s.whatsapp.net") ? `Contato +${j.split("@")[0].replace(/^(\d{2})(\d{2})(\d{4,5})(\d{4})$/, "$1 $2 $3-$4")}` : j);
@@ -78,14 +87,14 @@ export default async function Agendamentos({ searchParams }: { searchParams: Pro
       <Header title="Agendamentos" lede="Programe mensagens para os grupos e marque todos os membros de uma vez.">
         <div className="seg">{[["dia", "Dia"], ["semana", "Semana"], ["mes", "Mês"]].map(([k, l]) => <Link key={k} href={`/agendamentos?${k === "semana" ? "" : `v=${k}`}${anchor !== today ? `${k === "semana" ? "" : "&"}d=${anchor}` : ""}`} className={view === k ? "on" : ""}>{l}</Link>)}</div>
       </Header>
-      {sp.ok && <div className="ok">{Number(sp.ok) > 1 ? `Sequência de ${sp.ok} mensagens agendada.` : "Mensagem agendada."}</div>}
-      {sp.erro && <div className="err">{sp.erro === "fone" ? "Confira o WhatsApp do contato, com DDD." : "Coloque pelo menos um texto ou arquivo, a data e escolha um grupo."}</div>}
+      {sp.ok && <div className="ok">{sp.ok === "enquete" ? "Enquete salva. Ela vai para os grupos no horário escolhido." : Number(sp.ok) > 1 ? `Sequência de ${sp.ok} mensagens agendada.` : "Mensagem agendada."}</div>}
+      {sp.erro && <div className="err">{sp.erro === "fone" ? "Confira o WhatsApp do contato, com DDD." : sp.erro === "enquete" ? "Escreva a pergunta, pelo menos 2 opções e escolha um grupo." : sp.erro === "repetida" ? "Tem duas opções iguais na enquete. Troque uma delas." : sp.erro === "passado" ? "Escolha um horário que ainda não passou." : "Coloque pelo menos um texto ou arquivo, a data e escolha um grupo."}</div>}
       <div className="cols c-2-1" style={{ alignItems: "start" }}>
         <section className="pnl" style={{ padding: 20 }}>
           <div className="row" style={{ justifyContent: "space-between", marginBottom: 14 }}>
             <div>
               <h3 style={{ fontSize: 16, fontWeight: 650, textTransform: "none" }}>{title}</h3>
-              <small className="dim">{list.length} mensage{list.length === 1 ? "m programada" : "ns programadas"}</small>
+              <small className="dim">{list.length} mensage{list.length === 1 ? "m programada" : "ns programadas"}{polls.length ? ` · ${polls.length} enquete${polls.length > 1 ? "s" : ""}` : ""}</small>
             </div>
             <div className="row" style={{ gap: 6 }}>
               {anchor !== today && <Link className="btn sm" href={href({ d: undefined })}>Hoje</Link>}
@@ -103,6 +112,7 @@ export default async function Agendamentos({ searchParams }: { searchParams: Pro
                   <div key={d} className={`cell${d.slice(0, 7) !== anchor.slice(0, 7) ? " out" : ""}${d === today ? " today" : ""}`}>
                     <Link className="n" href={`/agendamentos?v=dia&d=${d}`}>{Number(d.slice(8))}</Link>
                     {evs.slice(0, 3).map((m) => <Event key={m.id} m={m} compact />)}
+                    {pollsOn(d).slice(0, 2).map((p) => <PollEv key={p.id} p={p} compact />)}
                     {evs.length > 3 && <Link className="dim" style={{ fontSize: 11 }} href={`/agendamentos?v=dia&d=${d}`}>+{evs.length - 3}</Link>}
                   </div>
                 );
@@ -114,6 +124,7 @@ export default async function Agendamentos({ searchParams }: { searchParams: Pro
                 <div key={d} className={`wk-c${d === today ? " today" : ""}${d < today ? " past" : ""}`}>
                   <Link className="wk-h" href={`/agendamentos?v=dia&d=${d}`}>{WD[new Date(`${d}T12:00:00`).getDay()]} {Number(d.slice(8))}</Link>
                   {byDay(d).map((m) => <Event key={m.id} m={m} />)}
+                  {pollsOn(d).map((p) => <PollEv key={p.id} p={p} />)}
                   {d >= today && <Link className="wk-add" href={href({ novo: d })} title="Agendar neste dia"><Plus size={14} /></Link>}
                 </div>
               ))}
@@ -150,7 +161,7 @@ export default async function Agendamentos({ searchParams }: { searchParams: Pro
           ) : (
             <>
               <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>Nova mensagem{sp.novo ? ` para ${sp.novo.slice(8)}/${sp.novo.slice(5, 7)}` : ""}</h3>
-              <ScheduleForm key={sp.novo ?? "x"} action={createSchedule} library={await libMsgs()} groups={opts} defaultDate={sp.novo && /^\d{4}-\d{2}-\d{2}$/.test(sp.novo) ? `${sp.novo}T19:00` : undefined} />
+              <ScheduleForm key={sp.novo ?? "x"} action={createSchedule} pollAction={createPoll} library={await libMsgs()} groups={opts} defaultDate={sp.novo && /^\d{4}-\d{2}-\d{2}$/.test(sp.novo) ? `${sp.novo}T19:00` : undefined} />
             </>
           )}
         </section>

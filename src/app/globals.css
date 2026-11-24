@@ -1916,3 +1916,5 @@ body:has(.app) { background: #171a20; }
 .app ::-webkit-scrollbar { width: 10px; height: 10px; }
 .app ::-webkit-scrollbar-thumb { background: #3a404c; border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
 .app ::-webkit-scrollbar-track { background: transparent; }
+
+.sf-poll .pbl{grid-template-columns:minmax(0,1fr)}

@@ -193,10 +193,11 @@ export async function createPoll(f: FormData) {
   const question = str(f, "question");
   const boxes = f.getAll("opt").map((x) => String(x).trim()).filter(Boolean);
   const options = (boxes.length ? boxes : str(f, "options").split("\n").map((x) => x.trim()).filter(Boolean)).slice(0, 12);
-  if (new Set(options.map((o) => o.toLowerCase())).size !== options.length) redirect("/votacoes?nova=1&erro=repetida");
+  const back = str(f, "back") === "agendamentos" ? "/agendamentos" : null;
+  if (new Set(options.map((o) => o.toLowerCase())).size !== options.length) redirect(back ? `${back}?erro=repetida` : "/votacoes?nova=1&erro=repetida");
   const mode = str(f, "mode") === "pagina" ? "pagina" : "grupo";
   const groupJids = f.getAll("groups").map(String).filter(Boolean);
-  if (!question || options.length < 2) redirect("/votacoes?erro=campos");
+  if (!question || options.length < 2 || (back && !groupJids.length)) redirect(back ? `${back}?erro=enquete` : "/votacoes?erro=campos");
   const images: string[] = [];
   for (const file of f.getAll("images")) {
     if (file instanceof File && file.size > 0) images.push((await saveUpload(file)).url);
@@ -204,10 +205,11 @@ export async function createPoll(f: FormData) {
   // agendar: data e hora de Brasília
   const when = str(f, "sendAt");
   const sendAt = str(f, "quando") === "agendar" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(when) ? new Date(`${when}:00-03:00`) : null;
-  if (sendAt && sendAt.getTime() < Date.now() - 60_000) redirect("/votacoes?erro=passado");
+  if (sendAt && sendAt.getTime() < Date.now() - 60_000) redirect(back ? `${back}?erro=passado` : "/votacoes?erro=passado");
   const poll = await db.poll.create({ data: { question, options, mode, groupJids, imageUrls: images, createdBy: s.name, sendAt, status: sendAt ? "agendada" : "aberta" } });
   if (!sendAt) await (await import("@/lib/polls")).dispatchPoll(poll.id);
   revalidatePath("/votacoes");
+  if (back) { revalidatePath(back); redirect(`${back}?ok=enquete`); }
   redirect(`/votacoes?ok=${poll.id}`);
 }
 export async function cancelPoll(f: FormData) {

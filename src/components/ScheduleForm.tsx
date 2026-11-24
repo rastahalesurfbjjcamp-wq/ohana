@@ -1,10 +1,11 @@
 "use client";
 // Formulário de nova mensagem agendada para os grupos.
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { CalendarClock, Plus, Send, X } from "lucide-react";
 import { useFormStatus } from "react-dom";
 import { DateTimeField, FileField, GroupPicker, ToggleCard, type GroupOpt } from "./fields";
 import { LibraryPicker, type LibMsg } from "./LibraryPicker";
+import { PollBuilder } from "@/app/(painel)/votacoes/PollBuilder";
 
 function Buttons({ count, contact }: { count: number; contact?: boolean }) {
   const { pending } = useFormStatus();
@@ -20,7 +21,49 @@ function Buttons({ count, contact }: { count: number; contact?: boolean }) {
   );
 }
 
-export function ScheduleForm({ action, groups, defaultDate, library = [] }: { action: (f: FormData) => Promise<void>; groups: GroupOpt[]; defaultDate?: string; library?: LibMsg[] }) {
+function PollButtons({ count }: { count: number }) {
+  const { pending } = useFormStatus();
+  return (
+    <div className="stack" style={{ gap: 8 }}>
+      <button className="btn pri lg" type="submit" name="quando" value="agendar" disabled={pending || !count} style={{ width: "100%", justifyContent: "center" }}>
+        <CalendarClock size={17} /> {pending ? "Salvando…" : count ? `Agendar enquete para ${count} grupo${count > 1 ? "s" : ""}` : "Escolha os grupos"}
+      </button>
+      <button className="btn ghost sm" type="submit" name="quando" value="agora" disabled={pending || !count} style={{ alignSelf: "center" }}>
+        <Send size={14} /> Enviar agora em vez de agendar
+      </button>
+    </div>
+  );
+}
+
+// Enquete do WhatsApp agendada: mesma votação da tela Votações, salva com data e hora
+function PollForm({ action, groups, defaultDate }: { action: (f: FormData) => Promise<void>; groups: GroupOpt[]; defaultDate?: string }) {
+  const [count, setCount] = useState(groups.filter((g) => g.checked).length);
+  return (
+    <form action={action} className="stack sf-poll" style={{ gap: 12 }}>
+      <input type="hidden" name="back" value="agendamentos" />
+      <input type="hidden" name="mode" value="grupo" />
+      <PollBuilder />
+      <GroupPicker name="groups" groups={groups} onCount={setCount} />
+      <DateTimeField name="sendAt" defaultValue={defaultDate} />
+      <small className="dim" style={{ marginTop: -4 }}>A enquete vai para os grupos no horário escolhido e os votos aparecem em Votações.</small>
+      <PollButtons count={count} />
+    </form>
+  );
+}
+
+export function ScheduleForm({ action, pollAction, groups, defaultDate, library = [] }: { action: (f: FormData) => Promise<void>; pollAction?: (f: FormData) => Promise<void>; groups: GroupOpt[]; defaultDate?: string; library?: LibMsg[] }) {
+  const [kind, setKind] = useState<"msg" | "enquete">("msg");
+  const kindTabs = pollAction ? (
+    <div className="seg-tabs" role="tablist">
+      <button type="button" className={kind === "msg" ? "on" : ""} onClick={() => setKind("msg")}>Mensagem</button>
+      <button type="button" className={kind === "enquete" ? "on" : ""} onClick={() => setKind("enquete")}>Enquete</button>
+    </div>
+  ) : null;
+  if (pollAction && kind === "enquete") return <div className="stack" style={{ gap: 12 }}>{kindTabs}<PollForm action={pollAction} groups={groups} defaultDate={defaultDate} /></div>;
+  return <MsgForm action={action} groups={groups} defaultDate={defaultDate} library={library} tabs={kindTabs} />;
+}
+
+function MsgForm({ action, groups, defaultDate, library, tabs }: { action: (f: FormData) => Promise<void>; groups: GroupOpt[]; defaultDate?: string; library: LibMsg[]; tabs: ReactNode }) {
   const [count, setCount] = useState(groups.filter((g) => g.checked).length);
   const [parts, setParts] = useState(1);
   const [dest, setDest] = useState<"grupos" | "contato">("grupos");
@@ -29,6 +72,7 @@ export function ScheduleForm({ action, groups, defaultDate, library = [] }: { ac
   const phoneOk = digits.length >= 10 && digits.length <= 13;
   return (
     <form action={action} className="stack" style={{ gap: 12 }}>
+      {tabs}
       <input type="hidden" name="parts" value={parts} />
       <input type="hidden" name="dest" value={dest} />
       <div className="seg-tabs" role="tablist">
